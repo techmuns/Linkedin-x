@@ -1,0 +1,17 @@
+{
+  "name": "linkedin-x",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scuttlebutt Desk — a dashboard of senior ex-employees & stakeholders of any company, for buy-side primary research.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create linkedinx",
+    "db:init": "wrangler d1 execute linkedinx --remote --file=./migrations/0001_init.sql",
+    "db:init:local": "wrangler d1 execute linkedinx --local --file=./migrations/0001_init.sql",
+    "db:seed": "wrangler d1 execute linkedinx --remote --file=./seed/sample.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

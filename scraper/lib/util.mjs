@@ -1,0 +1,63 @@
+// Shared helpers for the research engine.
+
+export function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// Polite, jittered delay so we don't hammer search engines.
+export function politeDelay(min = 1200, max = 2600) {
+  return sleep(min + Math.floor(Math.random() * (max - min)));
+}
+
+const SENIOR_KEYWORDS = [
+  'founder', 'co-founder', 'cofounder', 'chairman', 'promoter',
+  'ceo', 'cfo', 'coo', 'cto', 'cmo', 'cpo', 'chro', 'chief',
+  'managing director', 'president', 'evp', 'svp', 'vp', 'vice president',
+  'director', 'head of', 'head,', 'head ', 'principal', 'general manager',
+  'national', 'senior manager',
+];
+
+export function looksSenior(text) {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  return SENIOR_KEYWORDS.some(k => t.includes(k));
+}
+
+// Pull a clean person name out of a LinkedIn result title like
+// "Jane Doe - Head of Retail - Reliance | LinkedIn"
+export function parseLinkedInTitle(title) {
+  if (!title) return null;
+  let t = title.replace(/\s*[|\-–]\s*LinkedIn.*$/i, '').trim();
+  const parts = t.split(/\s+[-–|]\s+/);
+  const name = (parts[0] || '').trim();
+  const headline = parts.slice(1).join(' · ').trim();
+  // crude sanity check: a name has 1-5 words, letters only-ish
+  if (!name || name.length < 3 || name.split(/\s+/).length > 6) return null;
+  if (!/[a-zA-Z]/.test(name)) return null;
+  return { name, headline };
+}
+
+// Normalise a LinkedIn profile URL (strip query, locale prefixes, trailing slash).
+export function cleanLinkedInUrl(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (!/linkedin\.com$/i.test(u.hostname.replace(/^([a-z]{2,3}\.)?/, 'linkedin.com'))
+        && !u.hostname.toLowerCase().endsWith('linkedin.com')) return null;
+    const m = u.pathname.match(/\/in\/[^/]+/i);
+    if (!m) return null;
+    return 'https://www.linkedin.com' + m[0].replace(/\/$/, '');
+  } catch { return null; }
+}
+
+// Try to read the "current employer" from a headline like
+// "Head of Retail at Reliance" -> Reliance
+export function employerFromHeadline(headline) {
+  if (!headline) return null;
+  const m = headline.match(/\bat\s+([A-Z][\w&.,'’\- ]{1,60})/);
+  if (m) return m[1].replace(/[.,]\s*$/, '').trim();
+  // "· Reliance" style
+  const dot = headline.split('·').map(s => s.trim()).filter(Boolean);
+  if (dot.length >= 2) return dot[dot.length - 1];
+  return null;
+}

@@ -1,0 +1,13 @@
+{
+  "name": "linkedin-x-scraper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Research engine: finds senior ex-employees of a company from public sources and pushes them to the dashboard.",
+  "scripts": {
+    "research": "node index.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

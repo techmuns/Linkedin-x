@@ -1,0 +1,57 @@
+name: Research
+
+# Runs the research engine for a company and pushes results to the dashboard.
+# Trigger it three ways:
+#   1. Manually:  Actions -> Research -> Run workflow -> type a company
+#   2. From the dashboard's "Run new research" button (sends a repository_dispatch)
+#   3. On a schedule (optional, edit the cron below)
+
+on:
+  workflow_dispatch:
+    inputs:
+      company:
+        description: "Company to research (e.g. Bluestone)"
+        required: true
+        type: string
+      sources:
+        description: "Sources to run (comma-separated)"
+        required: false
+        default: "search,news"
+        type: string
+  repository_dispatch:
+    types: [research]
+  # schedule:
+  #   - cron: "0 6 * * 1"   # uncomment to run weekly
+
+concurrency:
+  group: research-${{ github.event.inputs.company || github.event.client_payload.company }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run research
+        env:
+          COMPANY: ${{ github.event.inputs.company || github.event.client_payload.company }}
+          SOURCES: ${{ github.event.inputs.sources || 'search,news' }}
+          SEARCH_ID: ${{ github.event.client_payload.search_id }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+        run: node index.mjs

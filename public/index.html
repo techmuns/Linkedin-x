@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scuttlebutt Desk — Senior Ex-Employee Finder</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c; --line: #2a2f3a;
+    --text: #e6e9ef; --muted: #97a0b0; --accent: #4f8cff; --accent2:#36c08a;
+    --warn:#e0a13a; --chip:#262b35;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { padding:18px 22px; border-bottom:1px solid var(--line); display:flex;
+    align-items:center; gap:16px; background:var(--panel); position:sticky; top:0; z-index:5; }
+  header h1 { font-size:17px; margin:0; font-weight:650; letter-spacing:.2px; }
+  header .sub { color:var(--muted); font-size:12px; }
+  .grow { flex:1; }
+  button, select, input { font:inherit; color:var(--text); }
+  .btn { background:var(--accent); border:none; color:#fff; padding:8px 14px;
+    border-radius:8px; cursor:pointer; font-weight:600; }
+  .btn.ghost { background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+  .btn:hover { filter:brightness(1.08); }
+  .wrap { padding:20px 22px; max-width:1400px; margin:0 auto; }
+  .searchbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .searchbar input[type=text] { flex:1; min-width:220px; background:var(--panel);
+    border:1px solid var(--line); padding:10px 12px; border-radius:8px; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;
+    color:var(--muted); font-size:13px; }
+  .filters select, .filters input { background:var(--panel); border:1px solid var(--line);
+    padding:7px 9px; border-radius:7px; }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border-radius:10px;
+    overflow:hidden; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.4px;
+    position:sticky; top:73px; background:var(--panel2); cursor:pointer; user-select:none; }
+  tr:hover td { background:#1c2029; }
+  .name { font-weight:650; }
+  .role { color:var(--muted); font-size:12.5px; }
+  .chip { display:inline-block; background:var(--chip); border:1px solid var(--line);
+    border-radius:20px; padding:2px 9px; font-size:11px; color:var(--muted); }
+  .score { font-weight:700; text-align:center; }
+  .score.hi { color:var(--accent2); } .score.mid { color:var(--warn); } .score.lo { color:var(--muted); }
+  .pill { border-radius:7px; padding:5px 7px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--text); }
+  .notes { width:100%; background:transparent; border:1px solid transparent; color:var(--muted);
+    border-radius:6px; padding:4px 6px; resize:vertical; min-height:30px; }
+  .notes:focus { border-color:var(--line); background:var(--bg); color:var(--text); outline:none; }
+  .muted { color:var(--muted); }
+  .empty { text-align:center; padding:60px 20px; color:var(--muted); }
+  .banner { background:#231d12; border:1px solid #50421f; color:#e7c98a; padding:10px 14px;
+    border-radius:8px; margin-bottom:16px; font-size:13px; display:none; }
+  .stat { display:flex; gap:20px; margin-bottom:16px; color:var(--muted); font-size:13px; flex-wrap:wrap; }
+  .stat b { color:var(--text); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center;
+    justify-content:center; z-index:20; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px;
+    width:min(520px,92vw); }
+  .modal h3 { margin:0 0 14px; }
+  .modal label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
+  .modal input, .modal select { width:100%; background:var(--bg); border:1px solid var(--line);
+    padding:8px 10px; border-radius:7px; }
+  .modal .row { display:flex; gap:10px; } .modal .row > * { flex:1; }
+  .modal .actions { margin-top:18px; display:flex; gap:10px; justify-content:flex-end; }
+  .src { font-size:10.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📇 Scuttlebutt Desk</h1>
+    <div class="sub">Senior ex-employees &amp; stakeholders worth a call</div>
+  </div>
+  <div class="grow"></div>
+  <button class="btn ghost" id="addBtn">+ Add person</button>
+  <button class="btn ghost" id="exportBtn">⤓ Export CSV</button>
+  <button class="btn ghost" id="keyBtn" title="Set edit password">🔑</button>
+</header>
+
+<div class="wrap">
+  <div class="banner" id="banner"></div>
+
+  <div class="searchbar">
+    <input type="text" id="company" placeholder="Company to research (e.g. Bluestone, CaratLane)…" />
+    <button class="btn" id="loadBtn">View list</button>
+    <button class="btn ghost" id="runBtn" title="Kick off an automatic research run in GitHub Actions">⚡ Run new research</button>
+  </div>
+
+  <div class="filters">
+    <span>Filter:</span>
+    <select id="fRel">
+      <option value="">All relationships</option>
+      <option value="ex_employee">Ex-employee</option>
+      <option value="competitor_ex">Competitor ex</option>
+      <option value="franchise_partner">Franchise partner</option>
+      <option value="board">Board / advisor</option>
+      <option value="vendor">Vendor</option>
+    </select>
+    <select id="fContacted">
+      <option value="">Any status</option>
+      <option value="no">Not contacted</option>
+      <option value="contacted">Contacted</option>
+      <option value="replied">Replied</option>
+      <option value="scheduled">Scheduled</option>
+      <option value="done">Done</option>
+      <option value="skip">Skip</option>
+    </select>
+    <label>Min seniority score
+      <input type="range" id="fScore" min="0" max="120" value="55" style="vertical-align:middle" />
+      <span id="fScoreVal">55</span>
+    </label>
+    <input type="text" id="fQ" placeholder="search name / role…" />
+  </div>
+
+  <div class="stat" id="stats"></div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th data-sort="score">Score</th>
+        <th data-sort="full_name">Name</th>
+        <th data-sort="last_role">Role at target</th>
+        <th data-sort="tenure_end">Tenure / Left</th>
+        <th data-sort="current_employer">Now at</th>
+        <th>Link</th>
+        <th data-sort="contacted">Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">
+    Nothing here yet. Type a company and hit <b>View list</b>, or <b>Run new research</b> to populate it automatically.
+  </div>
+</div>
+
+<!-- Add person modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Add a person</h3>
+    <label>Full name *</label><input id="m_name" />
+    <div class="row">
+      <div><label>Company (target) *</label><input id="m_company" /></div>
+      <div><label>Relationship</label>
+        <select id="m_rel">
+          <option value="ex_employee">Ex-employee</option>
+          <option value="competitor_ex">Competitor ex</option>
+          <option value="franchise_partner">Franchise partner</option>
+          <option value="board">Board / advisor</option>
+          <option value="vendor">Vendor</option>
+        </select>
+      </div>
+    </div>
+    <label>Most senior role at the target company</label><input id="m_role" />
+    <div class="row">
+      <div><label>Tenure start</label><input id="m_start" placeholder="2016" /></div>
+      <div><label>Left / retired</label><input id="m_end" placeholder="2021" /></div>
+    </div>
+    <div class="row">
+      <div><label>Now at (employer)</label><input id="m_emp" /></div>
+      <div><label>Current role</label><input id="m_crole" /></div>
+    </div>
+    <label>LinkedIn URL</label><input id="m_url" placeholder="https://www.linkedin.com/in/…" />
+    <div class="actions">
+      <button class="btn ghost" id="m_cancel">Cancel</button>
+      <button class="btn" id="m_save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let TOKEN = localStorage.getItem('lx_token') || '';
+let CURRENT = [];           // currently loaded people
+let SORT = { key: 'score', dir: -1 };
+
+function authHeaders() {
+  const h = { 'content-type': 'application/json' };
+  if (TOKEN) h['authorization'] = 'Bearer ' + TOKEN;
+  return h;
+}
+
+function scoreClass(s) { return s >= 80 ? 'hi' : s >= 55 ? 'mid' : 'lo'; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function tenureText(p) {
+  if (p.tenure_start || p.tenure_end) {
+    return esc((p.tenure_start||'?') + ' → ' + (p.tenure_end || (p.is_current ? 'present' : '?')));
+  }
+  return '<span class="muted">—</span>';
+}
+
+function render() {
+  let rows = [...CURRENT];
+  const k = SORT.key, dir = SORT.dir;
+  rows.sort((a,b) => {
+    let va = a[k], vb = b[k];
+    if (k === 'score') { va = +va||0; vb = +vb||0; }
+    else { va = (va||'').toString().toLowerCase(); vb = (vb||'').toString().toLowerCase(); }
+    return va < vb ? -dir : va > vb ? dir : 0;
+  });
+  const tb = $('rows');
+  tb.innerHTML = '';
+  $('empty').style.display = rows.length ? 'none' : 'block';
+  $('tbl').style.display = rows.length ? '' : 'none';
+
+  for (const p of rows) {
+    const tr = document.createElement('tr');
+    const status = ['no','contacted','replied','scheduled','done','skip']
+      .map(s => `<option value="${s}" ${p.contacted===s?'selected':''}>${s}</option>`).join('');
+    tr.innerHTML = `
+      <td class="score ${scoreClass(p.score)}">${p.score||0}</td>
+      <td>
+        <div class="name">${esc(p.full_name)}</div>
+        <div class="role">${esc([cap(p.relationship), p.seniority].filter(Boolean).join(' · '))}
+          ${p.source ? `<span class="chip src">${esc(p.source)}</span>` : ''}</div>
+      </td>
+      <td>${esc(p.last_role||'—')}</td>
+      <td>${tenureText(p)}</td>
+      <td>${esc(p.current_employer||'—')}${p.current_role?`<div class="role">${esc(p.current_role)}</div>`:''}</td>
+      <td>${p.linkedin_url ? `<a href="${esc(p.linkedin_url)}" target="_blank" rel="noopener">profile ↗</a>` : '<span class="muted">—</span>'}</td>
+      <td><select class="pill" data-act="status" data-id="${p.id}">${status}</select></td>
+      <td><textarea class="notes" data-act="notes" data-id="${p.id}" placeholder="notes…">${esc(p.notes||'')}</textarea></td>
+    `;
+    tb.appendChild(tr);
+  }
+  $('stats').innerHTML = statLine(rows);
+}
+function cap(s){ return s? s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : ''; }
+
+function statLine(rows){
+  const senior = rows.filter(r => (r.score||0) >= 60).length;
+  const left = rows.filter(r => Number(r.is_current)===0).length;
+  const done = rows.filter(r => ['contacted','replied','scheduled','done'].includes(r.contacted)).length;
+  return `<span><b>${rows.length}</b> people</span>
+          <span><b>${senior}</b> senior (score ≥ 60)</span>
+          <span><b>${left}</b> already left</span>
+          <span><b>${done}</b> in outreach</span>`;
+}
+
+async function load() {
+  const company = $('company').value.trim();
+  const params = new URLSearchParams();
+  if (company) params.set('company', company);
+  if ($('fRel').value) params.set('relationship', $('fRel').value);
+  if ($('fContacted').value) params.set('contacted', $('fContacted').value);
+  if (+$('fScore').value) params.set('minScore', $('fScore').value);
+  if ($('fQ').value.trim()) params.set('q', $('fQ').value.trim());
+  const r = await fetch('/api/people?' + params.toString());
+  const data = await r.json();
+  CURRENT = data.people || [];
+  render();
+}
+
+async function patch(id, body) {
+  if (!TOKEN) { setKey(); if (!TOKEN) return; }
+  const r = await fetch('/api/people/' + id, { method:'PATCH', headers: authHeaders(), body: JSON.stringify(body) });
+  if (r.status === 401) { alert('Wrong edit password — click 🔑 to set it.'); }
+}
+
+function setKey() {
+  const k = prompt('Enter the edit password (the INGEST_TOKEN you set on Cloudflare).\nNeeded to save edits, add people, or run research.', TOKEN || '');
+  if (k !== null) { TOKEN = k.trim(); localStorage.setItem('lx_token', TOKEN); }
+}
+
+// --- events ---
+$('loadBtn').onclick = load;
+$('company').addEventListener('keydown', e => { if (e.key==='Enter') load(); });
+['fRel','fContacted','fQ'].forEach(id => $(id).addEventListener('input', load));
+$('fScore').addEventListener('input', () => { $('fScoreVal').textContent = $('fScore').value; load(); });
+$('keyBtn').onclick = setKey;
+
+$('rows').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.act === 'status') {
+    patch(t.dataset.id, { contacted: t.value });
+    const p = CURRENT.find(x => x.id === t.dataset.id); if (p) p.contacted = t.value;
+  }
+});
+$('rows').addEventListener('focusout', e => {
+  const t = e.target;
+  if (t.dataset.act === 'notes') {
+    const p = CURRENT.find(x => x.id === t.dataset.id);
+    if (p && p.notes !== t.value) { p.notes = t.value; patch(t.dataset.id, { notes: t.value }); }
+  }
+});
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.sort;
+    SORT.dir = (SORT.key === k) ? -SORT.dir : (k==='score' ? -1 : 1);
+    SORT.key = k; render();
+  };
+});
+
+$('exportBtn').onclick = () => {
+  const c = $('company').value.trim();
+  window.location = '/api/export' + (c ? '?company=' + encodeURIComponent(c) : '');
+};
+
+$('runBtn').onclick = async () => {
+  const c = $('company').value.trim();
+  if (!c) { alert('Type a company first.'); return; }
+  if (!TOKEN) { setKey(); if (!TOKEN) return; }
+  const r = await fetch('/api/search', { method:'POST', headers: authHeaders(), body: JSON.stringify({ company: c }) });
+  const d = await r.json();
+  if (r.status === 401) { alert('Wrong edit password — click 🔑.'); return; }
+  if (d.dispatched) banner(`Research run started for “${c}”. Results will appear here in a few minutes — hit View list to refresh.`);
+  else banner(`Logged a research request for “${c}”. Trigger the GitHub Action manually (Actions → Research → Run, company = ${c}) — auto-trigger isn't configured.`);
+};
+
+// --- add modal ---
+$('addBtn').onclick = () => { $('m_company').value = $('company').value.trim(); $('modalBg').style.display='flex'; };
+$('m_cancel').onclick = () => $('modalBg').style.display='none';
+$('modalBg').onclick = (e) => { if (e.target === $('modalBg')) $('modalBg').style.display='none'; };
+$('m_save').onclick = async () => {
+  if (!TOKEN) { setKey(); if (!TOKEN) return; }
+  const body = {
+    full_name: $('m_name').value.trim(), company: $('m_company').value.trim(),
+    relationship: $('m_rel').value, last_role: $('m_role').value.trim(),
+    tenure_start: $('m_start').value.trim(), tenure_end: $('m_end').value.trim(),
+    current_employer: $('m_emp').value.trim(), current_role: $('m_crole').value.trim(),
+    linkedin_url: $('m_url').value.trim(), source: 'manual',
+    is_current: $('m_end').value.trim() ? 0 : 0,
+  };
+  if (!body.full_name || !body.company) { alert('Name and company are required.'); return; }
+  const r = await fetch('/api/people', { method:'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  if (r.status === 401) { alert('Wrong edit password — click 🔑.'); return; }
+  $('modalBg').style.display='none';
+  ['m_name','m_role','m_start','m_end','m_emp','m_crole','m_url'].forEach(id => $(id).value='');
+  if (!$('company').value.trim()) $('company').value = body.company;
+  load();
+};
+
+function banner(msg){ const b=$('banner'); b.textContent=msg; b.style.display='block'; }
+
+// initial: load everything
+load();
+</script>
+</body>
+</html>
