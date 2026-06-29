@@ -22,15 +22,20 @@ to CSV any time.
 │  Cloudflare Worker  │  push  │      GitHub Actions       │
 │  • dashboard (UI)   │◀───────│  "research engine" robot  │
 │  • JSON API         │results │  • Source 1: public       │
-│  • D1 database      │        │    LinkedIn via search    │
-└─────────────────────┘        │  • Source 3: news / DRHP  │
-                               └───────────────────────────┘
+└──────────┬──────────┘        │    LinkedIn via search    │
+           │ SQL               │  • Source 3: news / DRHP  │
+           ▼                   └───────────────────────────┘
+┌─────────────────────┐
+│  Neon Postgres DB   │
+└─────────────────────┘
 ```
 
-- **Cloudflare Worker** serves the dashboard, stores everyone in a **D1**
-  database, and receives results.
+- **Cloudflare Worker** serves the dashboard, talks to **Neon Postgres**, and
+  receives results.
+- **Neon** (serverless Postgres) stores everyone. The Worker reaches it over
+  HTTP with the `@neondatabase/serverless` driver.
 - **GitHub Actions** runs the **research engine** (Playwright) that finds people
-  and pushes them to the Worker.
+  and pushes them to the Worker (which writes them to Neon).
 
 ### Data sources (enabled today)
 1. **Public LinkedIn via search engine** — reads *public* profile results that
@@ -47,25 +52,24 @@ to CSV any time.
 
 ## One-time setup
 
-You need: a Cloudflare account (you already deployed a Worker), and this repo on
-GitHub.
+You need: a Cloudflare account (you already deployed a Worker), a free
+[Neon](https://neon.tech) project, and this repo on GitHub.
 
-### 1. Create the database
+### 1. Create the Neon database
+1. Create a project at **neon.tech**.
+2. Copy its **connection string** (Neon dashboard → *Connection string* → use the
+   **Pooled connection**; looks like `postgresql://user:pass@…neon.tech/db?sslmode=require`).
+3. Create the tables — open Neon's **SQL Editor** and paste the contents of
+   [`migrations/0001_init.sql`](migrations/0001_init.sql), then run it.
+   (Optional: paste [`seed/sample.sql`](seed/sample.sql) for a few demo rows.)
+
+### 2. Give the Worker the database + edit password
+The Neon string lives as a **Cloudflare Worker secret** (that's what talks to the
+database) — *not* only in GitHub. Also set the shared edit password.
 ```bash
 npm install
-npx wrangler d1 create linkedinx
-```
-Copy the printed `database_id` into **`wrangler.jsonc`** (replace
-`PASTE_YOUR_D1_DATABASE_ID_HERE`). Then create the tables:
-```bash
-npm run db:init        # creates tables in your live D1
-npm run db:seed        # optional: a few clearly-labelled demo rows
-```
-
-### 2. Set the edit password (one shared secret)
-This password protects edits/uploads. Pick any strong string.
-```bash
-npx wrangler secret put INGEST_TOKEN
+npx wrangler secret put DATABASE_URL    # paste the Neon connection string
+npx wrangler secret put INGEST_TOKEN    # pick any strong password
 ```
 
 ### 3. Deploy the dashboard
@@ -79,6 +83,9 @@ Open the printed `*.workers.dev` URL. Click **🔑** and paste the same
 In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
 - `WORKER_URL` → your Worker URL (e.g. `https://linkedin-x.you.workers.dev`)
 - `INGEST_TOKEN` → the same password from step 2
+
+> The research robot talks to the **Worker**, so GitHub only needs those two.
+> You do **not** have to put the Neon string in GitHub.
 
 ### 5. (Optional) Let the dashboard's "Run new research" button auto-start a run
 Add two **Worker** secrets so the button can trigger GitHub for you:
@@ -127,8 +134,8 @@ it found.
 
 ## Project layout
 ```
-wrangler.jsonc            Cloudflare Worker + D1 config
-migrations/0001_init.sql  database schema
+wrangler.jsonc            Cloudflare Worker config
+migrations/0001_init.sql  Neon/Postgres schema (paste into Neon SQL editor)
 src/worker.js             Worker: dashboard API + database
 public/index.html         the dashboard UI
 scraper/                  the research engine (GitHub Actions / local)

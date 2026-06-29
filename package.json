@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:create": "wrangler d1 create linkedinx",
-    "db:init": "wrangler d1 execute linkedinx --remote --file=./migrations/0001_init.sql",
-    "db:init:local": "wrangler d1 execute linkedinx --local --file=./migrations/0001_init.sql",
-    "db:seed": "wrangler d1 execute linkedinx --remote --file=./seed/sample.sql"
+    "db:init": "psql \"$DATABASE_URL\" -f ./migrations/0001_init.sql",
+    "db:seed": "psql \"$DATABASE_URL\" -f ./seed/sample.sql"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
   },
   "devDependencies": {
     "wrangler": "^3.90.0"
