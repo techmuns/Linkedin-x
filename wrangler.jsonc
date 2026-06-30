@@ -22,7 +22,7 @@
     {
       "binding": "DB",
       "database_name": "linkedinx",
-      "database_id": "PASTE_YOUR_D1_DATABASE_ID_HERE",
+      "database_id": "799fcee5-6e48-4ba2-b18a-ccbb27e279a8",
       "migrations_dir": "migrations"
     }
   ]
