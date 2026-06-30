@@ -88,7 +88,7 @@ export async function runNewsSource(browser, company, log, env = process.env) {
     } catch (e) {
       log(`    ! news query failed: ${e.message}`);
     }
-    if (searcher.provider === 'bing') await politeDelay();
+    await politeDelay(searcher.provider === 'bing' ? 1200 : 600, searcher.provider === 'bing' ? 2600 : 1100);
   }
 
   if (ctx) await ctx.close();

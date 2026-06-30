@@ -16,8 +16,10 @@ function buildQueries(company, hint = '') {
   return [
     `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}" OR "formerly ${company}")${h} ${SENIOR_TERMS}`,
     `site:linkedin.com/in ("previously at ${company}" OR "ex ${company}" OR "former ${company}")${h} (Founder OR "Co-Founder" OR CEO OR CFO OR CTO OR COO OR President OR "Vice President" OR Director OR Head)`,
-    // Broader net — seniority is still enforced later in classify().
-    `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}")${h}`,
+    // Broad net: anyone senior whose profile mentions the company. classify()
+    // then keeps only those who have since moved to a DIFFERENT employer (so we
+    // catch ex-employees who never wrote the word "ex").
+    `site:linkedin.com/in "${company}"${h} ${SENIOR_TERMS}`,
   ];
 }
 
@@ -39,20 +41,23 @@ function classify(r, company) {
   const isSenior = looksSenior(r.title) || looksSenior(r.snippet);
   if (!isSenior) return null;
 
-  // Require an explicit ex/former signal tied to the company.
-  const exSignal = /\b(ex[-\s]?|former(ly)?|previously|past|retired|left)\b/.test(blob);
-  if (!exSignal) return null;
-
   const employer = employerFromHeadline(parsed.headline);
   const stillThere = employer && employer.toLowerCase().includes(c);
+  if (stillThere) return null;   // currently AT the target -> a current employee, skip
+
+  // Treat as an ex-employee if EITHER they explicitly say ex/former, OR we can
+  // see a different current employer (they moved on). Skip the truly ambiguous
+  // case where there's neither signal nor a known current employer.
+  const exSignal = /\b(ex[-\s]?|former(ly)?|previously|past|retired|left)\b/.test(blob);
+  if (!exSignal && !employer) return null;
 
   return {
     full_name: parsed.name,
     company,
     last_role: roleAtCompany(parsed.headline, blob, company),
-    current_employer: stillThere ? null : employer,
-    current_role: stillThere ? null : (parsed.headline || null),
-    is_current: stillThere ? 1 : 0,
+    current_employer: employer || null,
+    current_role: parsed.headline || null,
+    is_current: 0,
     relationship: 'ex_employee',
     linkedin_url: cleanLinkedInUrl(r.url),
     source: 'search',
@@ -110,7 +115,8 @@ export async function runSearchSource(browser, company, log, env = process.env) 
     } catch (e) {
       log(`    ! query failed: ${e.message}`);
     }
-    if (searcher.provider === 'bing') await politeDelay();
+    // Pace requests so the search API / engine doesn't rate-limit us.
+    await politeDelay(searcher.provider === 'bing' ? 1200 : 600, searcher.provider === 'bing' ? 2600 : 1100);
   }
 
   if (ctx) await ctx.close();
