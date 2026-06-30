@@ -19,7 +19,9 @@ const COMPANY = process.env.COMPANY || process.argv[2];
 const WORKER_URL = (process.env.WORKER_URL || '').replace(/\/$/, '');
 const INGEST_TOKEN = process.env.INGEST_TOKEN || '';
 const SEARCH_ID = process.env.SEARCH_ID || '';
-const SOURCES = (process.env.SOURCES || 'search,news').split(',').map(s => s.trim());
+// Default to the high-quality LinkedIn search source. The news/DRHP source is
+// noisier (opt in with SOURCES="search,news").
+const SOURCES = (process.env.SOURCES || 'search').split(',').map(s => s.trim());
 
 const log = (...a) => console.log(...a);
 

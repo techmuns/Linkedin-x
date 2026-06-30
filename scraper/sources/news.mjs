@@ -19,10 +19,16 @@ function buildQueries(company) {
   ];
 }
 
-// Words that signal a candidate is actually a job title, not a person's name.
-const ROLE_WORDS = /\b(chief|officer|executive|financial|managing|director|president|vice|head|general|manager|founder|chairman|board|annual|report|managerial|personnel|company|limited|private|jewellery|jewelry|retail|sales|marketing|operations)\b/i;
+// Words that signal a candidate is actually a job title / place / boilerplate,
+// not a person's name.
+const ROLE_WORDS = /\b(chief|officer|executive|financial|managing|director|president|vice|head|general|manager|founder|chairman|board|annual|report|managerial|personnel|company|limited|private|jewellery|jewelry|retail|sales|marketing|operations|capital|partners|fund|prospectus|street|road|suite|calle|puerto|rico|india|mumbai|delhi|chennai|bengaluru|reports|increase|series|education)\b/i;
 
-// Pull a plausible "Firstname Lastname" that sits next to a senior role word.
+// An explicit "this person is leaving/left" phrase must appear near the name for
+// us to treat them as an ex-employee lead (keeps out addresses, boilerplate, etc).
+const EXIT_PHRASE = /\b(resign|steps? down|stepped down|stepping down|quit|retire|former|ex[-\s]|depart|moved on|left the|to leave)\b/i;
+
+// Pull a plausible "Firstname Lastname" that sits next to BOTH a senior role
+// word and an exit phrase.
 function extractNames(text, company) {
   const out = [];
   if (!text) return out;
@@ -32,10 +38,11 @@ function extractNames(text, company) {
     const name = m[1];
     const low = name.toLowerCase();
     if (low.includes(company.toLowerCase())) continue;
-    // Reject candidates that are really role phrases (e.g. "Chief Financial Officer").
-    if (ROLE_WORDS.test(name)) continue;
-    const around = text.slice(Math.max(0, m.index - 45), m.index + name.length + 45);
-    if (looksSenior(around)) out.push({ name, context: around.trim() });
+    if (ROLE_WORDS.test(name)) continue;            // not a real person name
+    const around = text.slice(Math.max(0, m.index - 60), m.index + name.length + 60);
+    if (!looksSenior(around)) continue;             // a senior role nearby
+    if (!EXIT_PHRASE.test(around)) continue;         // ...and they actually left
+    out.push({ name, context: around.trim() });
   }
   return out;
 }

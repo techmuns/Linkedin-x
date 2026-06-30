@@ -8,12 +8,16 @@ import { makeSearcher } from '../lib/providers.mjs';
 
 const SENIOR_TERMS = '(Founder OR Chief OR CEO OR CFO OR CTO OR COO OR President OR VP OR "Vice President" OR Director OR Head OR "General Manager")';
 
-function buildQueries(company) {
-  const c = `"${company}"`;
+function buildQueries(company, hint = '') {
+  const h = hint ? ` ${hint}` : '';
+  // Every query demands an explicit "ex / former / previously" near the company
+  // name, so we get people who actually LEFT — not random folks who merely
+  // mention the company or who happen to be surnamed like it.
   return [
-    `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}") ${SENIOR_TERMS}`,
-    `site:linkedin.com/in (${c}) ("previously" OR "formerly") ${SENIOR_TERMS}`,
-    `site:linkedin.com/in (${c}) (Founder OR "Co-Founder" OR CEO OR CFO OR CTO OR COO)`,
+    `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}" OR "formerly ${company}")${h} ${SENIOR_TERMS}`,
+    `site:linkedin.com/in ("previously at ${company}" OR "ex ${company}" OR "former ${company}")${h} (Founder OR "Co-Founder" OR CEO OR CFO OR CTO OR COO OR President OR "Vice President" OR Director OR Head)`,
+    // Broader net — seniority is still enforced later in classify().
+    `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}")${h}`,
   ];
 }
 
@@ -26,10 +30,18 @@ function classify(r, company) {
   const parsed = parseLinkedInTitle(r.title);
   if (!parsed) return null;
 
+  // Drop people whose own NAME contains the company (e.g. "Danny Bluestone") —
+  // that's a surname match, not an ex-employee.
+  const nameLow = parsed.name.toLowerCase();
+  const tokens = c.split(/\s+/).filter(t => t.length >= 5);
+  if (nameLow.includes(c) || tokens.some(t => nameLow.includes(t))) return null;
+
   const isSenior = looksSenior(r.title) || looksSenior(r.snippet);
   if (!isSenior) return null;
 
+  // Require an explicit ex/former signal tied to the company.
   const exSignal = /\b(ex[-\s]?|former(ly)?|previously|past|retired|left)\b/.test(blob);
+  if (!exSignal) return null;
 
   const employer = employerFromHeadline(parsed.headline);
   const stillThere = employer && employer.toLowerCase().includes(c);
@@ -80,7 +92,10 @@ export async function runSearchSource(browser, company, log, env = process.env) 
   const searcher = makeSearcher(env, getPage, log);
   const byKey = new Map();
 
-  for (const q of buildQueries(company)) {
+  // Optional disambiguation hint (e.g. "India", "jewellery") to avoid same-named
+  // companies/people in other countries.
+  const hint = env.COMPANY_HINT || '';
+  for (const q of buildQueries(company, hint)) {
     try {
       log(`  search: ${q}`);
       const results = await searcher.search(q);
