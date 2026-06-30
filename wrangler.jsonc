@@ -1,7 +1,7 @@
 {
   // Cloudflare Worker configuration for the LinkedIn-X scuttlebutt dashboard.
   // The Worker serves the dashboard (static files in /public), exposes a small
-  // JSON API, and stores everyone in a Neon Postgres database.
+  // JSON API, and stores everyone in a D1 database (binding: DB).
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "linkedin-x",
   "main": "src/worker.js",
@@ -13,13 +13,21 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }
+  },
 
-  // Secrets (set with `npx wrangler secret put <NAME>`), NOT stored here:
-  //   DATABASE_URL   -> your Neon Postgres connection string
-  //                     (Neon dashboard -> Connection string -> "Pooled connection").
+  // D1 database. Create it once with:
+  //   npx wrangler d1 create linkedinx
+  // then paste the printed database_id below.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "linkedinx",
+      "database_id": "PASTE_YOUR_D1_DATABASE_ID_HERE",
+      "migrations_dir": "migrations"
+    }
+  ]
+
+  // Secrets (set with `npx wrangler secret put <NAME>`), not stored here:
   //   INGEST_TOKEN   -> shared password the GitHub Action uses to push results
   //                     and the dashboard uses to edit/add rows.
-  //   GH_TOKEN       -> (optional) GitHub token so the dashboard's "Run new
-  //   GH_REPO        -> research" button can trigger the Action (e.g. techmuns/linkedin-x).
 }

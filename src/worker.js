@@ -2,20 +2,13 @@
 //
 // Responsibilities:
 //   - Serve the dashboard (static files via env.ASSETS)
-//   - JSON API under /api/* backed by Neon Postgres (env.DATABASE_URL)
+//   - JSON API under /api/* backed by D1 (env.DB)
 //   - Ingest endpoint the GitHub Action posts scraped people to
-//
-// Database: Neon serverless Postgres, reached over HTTP with the
-// @neondatabase/serverless driver — no connection pooling or Node APIs needed,
-// so it runs fine on Workers. Set the connection string as a Worker secret:
-//   npx wrangler secret put DATABASE_URL
 //
 // Auth model (intentionally simple): write/ingest endpoints require
 //   Authorization: Bearer <INGEST_TOKEN>
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
-
-import { neon } from '@neondatabase/serverless';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -77,29 +70,27 @@ function requireAuth(request, env) {
 
 // ---- Person upsert -------------------------------------------------------
 
-async function findExisting(sql, person) {
+async function findExisting(env, person) {
   const company = normCompany(person.company);
   if (person.linkedin_url) {
-    const rows = await sql.query(
-      'SELECT * FROM people WHERE company = $1 AND linkedin_url = $2 LIMIT 1',
-      [company, person.linkedin_url]
-    );
-    if (rows[0]) return rows[0];
+    const row = await env.DB.prepare(
+      'SELECT * FROM people WHERE company = ? AND linkedin_url = ? LIMIT 1'
+    ).bind(company, person.linkedin_url).first();
+    if (row) return row;
   }
-  const rows = await sql.query(
-    'SELECT * FROM people WHERE company = $1 AND lower(full_name) = lower($2) LIMIT 1',
-    [company, person.full_name]
-  );
-  return rows[0] || null;
+  const row = await env.DB.prepare(
+    'SELECT * FROM people WHERE company = ? AND lower(full_name) = lower(?) LIMIT 1'
+  ).bind(company, person.full_name).first();
+  return row || null;
 }
 
-async function upsertPerson(sql, input) {
+async function upsertPerson(env, input) {
   if (!input.full_name || !input.company) {
     return { ok: false, reason: 'missing full_name or company' };
   }
   const now = new Date().toISOString();
   const company = normCompany(input.company);
-  const existing = await findExisting(sql, input);
+  const existing = await findExisting(env, input);
 
   // Merge: incoming non-empty fields win, but never clobber the user's
   // contacted/notes once set.
@@ -118,44 +109,47 @@ async function upsertPerson(sql, input) {
     linkedin_url: input.linkedin_url ?? existing?.linkedin_url ?? null,
     source: input.source || existing?.source || 'search',
     source_detail: input.source_detail ?? existing?.source_detail ?? null,
+    contacted: existing?.contacted || 'no',
+    notes: existing?.notes ?? null,
   };
   merged.seniority = input.seniority || classifySeniority(merged.last_role || merged.current_role);
   merged.score = computeScore(merged);
 
   if (existing) {
-    await sql.query(
-      `UPDATE people SET full_name=$1, company_label=$2, relationship=$3, last_role=$4,
-         seniority=$5, current_employer=$6, "current_role"=$7, tenure_start=$8, tenure_end=$9,
-         is_current=$10, location=$11, linkedin_url=$12, source=$13, source_detail=$14, score=$15,
-         updated_at=$16 WHERE id=$17`,
-      [merged.full_name, merged.company_label, merged.relationship, merged.last_role,
-       merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
-       merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url,
-       merged.source, merged.source_detail, merged.score, now, existing.id]
-    );
+    await env.DB.prepare(
+      `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?,
+         seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
+         is_current=?, location=?, linkedin_url=?, source=?, source_detail=?, score=?,
+         updated_at=? WHERE id=?`
+    ).bind(
+      merged.full_name, merged.company_label, merged.relationship, merged.last_role,
+      merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
+      merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url,
+      merged.source, merged.source_detail, merged.score, now, existing.id
+    ).run();
     return { ok: true, id: existing.id, updated: true };
   }
 
   const id = crypto.randomUUID();
-  await sql.query(
+  await env.DB.prepare(
     `INSERT INTO people (id, full_name, company, company_label, relationship, last_role,
-       seniority, current_employer, "current_role", tenure_start, tenure_end, is_current,
+       seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
        location, linkedin_url, source, source_detail, score, contacted, notes,
        created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
-    [id, merged.full_name, merged.company, merged.company_label, merged.relationship,
-     merged.last_role, merged.seniority, merged.current_employer, merged.current_role,
-     merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
-     merged.linkedin_url, merged.source, merged.source_detail, merged.score,
-     'no', null, now, now]
-  );
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).bind(
+    id, merged.full_name, merged.company, merged.company_label, merged.relationship,
+    merged.last_role, merged.seniority, merged.current_employer, merged.current_role,
+    merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
+    merged.linkedin_url, merged.source, merged.source_detail, merged.score,
+    merged.contacted, merged.notes, now, now
+  ).run();
   return { ok: true, id, created: true };
 }
 
 // ---- Routing -------------------------------------------------------------
 
 async function handleApi(request, env, url) {
-  const sql = neon(env.DATABASE_URL);
   const path = url.pathname;
   const method = request.method;
 
@@ -169,34 +163,33 @@ async function handleApi(request, env, url) {
 
     const where = [];
     const binds = [];
-    let i = 1;
-    if (company) { where.push(`company = $${i++}`); binds.push(company); }
-    if (relationship) { where.push(`relationship = $${i++}`); binds.push(relationship); }
-    if (contacted) { where.push(`contacted = $${i++}`); binds.push(contacted); }
-    if (minScore) { where.push(`score >= $${i++}`); binds.push(minScore); }
+    if (company) { where.push('company = ?'); binds.push(company); }
+    if (relationship) { where.push('relationship = ?'); binds.push(relationship); }
+    if (contacted) { where.push('contacted = ?'); binds.push(contacted); }
+    if (minScore) { where.push('score >= ?'); binds.push(minScore); }
     if (q) {
-      where.push(`(lower(full_name) LIKE $${i} OR lower(last_role) LIKE $${i} OR lower(current_employer) LIKE $${i})`);
-      binds.push(`%${q}%`); i++;
+      where.push('(lower(full_name) LIKE ? OR lower(last_role) LIKE ? OR lower(current_employer) LIKE ?)');
+      binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
     }
-    const sqlText = `SELECT * FROM people ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY score DESC, full_name ASC LIMIT 1000`;
-    const results = await sql.query(sqlText, binds);
+    const sql = `SELECT * FROM people ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY score DESC, full_name ASC LIMIT 1000`;
+    const { results } = await env.DB.prepare(sql).bind(...binds).all();
     return json({ people: results });
   }
 
   // GET /api/companies -> distinct companies with counts
   if (path === '/api/companies' && method === 'GET') {
-    const results = await sql.query(
-      'SELECT company, max(company_label) AS label, count(*)::int AS n FROM people GROUP BY company ORDER BY n DESC'
-    );
+    const { results } = await env.DB.prepare(
+      'SELECT company, max(company_label) AS label, count(*) AS n FROM people GROUP BY company ORDER BY n DESC'
+    ).all();
     return json({ companies: results });
   }
 
   // GET /api/export?company= -> CSV download
   if (path === '/api/export' && method === 'GET') {
     const company = normCompany(url.searchParams.get('company'));
-    const results = company
-      ? await sql.query('SELECT * FROM people WHERE company = $1 ORDER BY score DESC', [company])
-      : await sql.query('SELECT * FROM people ORDER BY score DESC');
+    const sql = `SELECT * FROM people ${company ? 'WHERE company = ?' : ''} ORDER BY score DESC`;
+    const stmt = company ? env.DB.prepare(sql).bind(company) : env.DB.prepare(sql);
+    const { results } = await stmt.all();
     const cols = ['full_name', 'company_label', 'relationship', 'last_role', 'seniority',
       'current_employer', 'current_role', 'tenure_start', 'tenure_end', 'location',
       'linkedin_url', 'score', 'contacted', 'notes', 'source', 'source_detail'];
@@ -217,7 +210,7 @@ async function handleApi(request, env, url) {
     const items = Array.isArray(body) ? body : (body.people || [body]);
     let created = 0, updated = 0, skipped = 0;
     for (const item of items) {
-      const r = await upsertPerson(sql, item);
+      const r = await upsertPerson(env, item);
       if (!r.ok) skipped++;
       else if (r.created) created++;
       else updated++;
@@ -234,23 +227,19 @@ async function handleApi(request, env, url) {
     const editable = ['contacted', 'notes', 'last_role', 'current_employer', 'current_role',
       'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'location'];
     const sets = [], binds = [];
-    let i = 1;
     for (const k of editable) {
-      if (k in body) {
-        const col = k === 'current_role' ? '"current_role"' : k;
-        sets.push(`${col} = $${i++}`); binds.push(body[k]);
-      }
+      if (k in body) { sets.push(`${k} = ?`); binds.push(body[k]); }
     }
     if (!sets.length) return json({ error: 'no editable fields' }, { status: 400 });
-    sets.push(`updated_at = $${i++}`); binds.push(new Date().toISOString());
+    sets.push('updated_at = ?'); binds.push(new Date().toISOString());
     binds.push(id);
-    await sql.query(`UPDATE people SET ${sets.join(', ')} WHERE id = $${i}`, binds);
+    await env.DB.prepare(`UPDATE people SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
     return json({ ok: true });
   }
 
   if (m && method === 'DELETE') {
     if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
-    await sql.query('DELETE FROM people WHERE id = $1', [m[1]]);
+    await env.DB.prepare('DELETE FROM people WHERE id = ?').bind(m[1]).run();
     return json({ ok: true });
   }
 
@@ -263,10 +252,9 @@ async function handleApi(request, env, url) {
     if (!company) return json({ error: 'company required' }, { status: 400 });
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    await sql.query(
-      'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5)',
-      [id, normCompany(company), 'queued', now, now]
-    );
+    await env.DB.prepare(
+      'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES (?,?,?,?,?)'
+    ).bind(id, normCompany(company), 'queued', now, now).run();
 
     let dispatched = false;
     if (env.GH_TOKEN && env.GH_REPO) {
@@ -289,7 +277,9 @@ async function handleApi(request, env, url) {
 
   // GET /api/searches -> recent jobs
   if (path === '/api/searches' && method === 'GET') {
-    const results = await sql.query('SELECT * FROM searches ORDER BY created_at DESC LIMIT 25');
+    const { results } = await env.DB.prepare(
+      'SELECT * FROM searches ORDER BY created_at DESC LIMIT 25'
+    ).all();
     return json({ searches: results });
   }
 
@@ -298,10 +288,9 @@ async function handleApi(request, env, url) {
   if (sm && method === 'PATCH') {
     if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
     const body = await request.json();
-    await sql.query(
-      'UPDATE searches SET status=$1, found=$2, message=$3, updated_at=$4 WHERE id=$5',
-      [body.status || 'done', body.found || 0, body.message || null, new Date().toISOString(), sm[1]]
-    );
+    await env.DB.prepare(
+      'UPDATE searches SET status=?, found=?, message=?, updated_at=? WHERE id=?'
+    ).bind(body.status || 'done', body.found || 0, body.message || null, new Date().toISOString(), sm[1]).run();
     return json({ ok: true });
   }
 
@@ -312,9 +301,6 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
-      if (!env.DATABASE_URL) {
-        return json({ error: 'DATABASE_URL not configured. Run: wrangler secret put DATABASE_URL' }, { status: 500 });
-      }
       try {
         return await handleApi(request, env, url);
       } catch (err) {
