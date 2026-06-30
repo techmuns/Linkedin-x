@@ -13,6 +13,7 @@
 import { chromium } from 'playwright';
 import { runSearchSource } from './sources/search.mjs';
 import { runNewsSource } from './sources/news.mjs';
+import { pickProvider } from './lib/providers.mjs';
 
 const COMPANY = process.env.COMPANY || process.argv[2];
 const WORKER_URL = (process.env.WORKER_URL || '').replace(/\/$/, '');
@@ -71,11 +72,20 @@ async function main() {
     console.error('ERROR: set COMPANY env var (or pass as first arg).');
     process.exit(1);
   }
+  const provider = pickProvider(process.env);
   log(`=== Research engine: "${COMPANY}" ===`);
-  log(`Sources: ${SOURCES.join(', ')}`);
+  log(`Sources: ${SOURCES.join(', ')} | search provider: ${provider}`);
   await updateSearch('running', 0, null);
 
-  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  // Only spin up a browser if we're falling back to scraping (Bing). API
+  // providers (Google/Serper) need no browser at all.
+  let browser = null;
+  if (provider === 'bing') {
+    const launchOpts = { headless: true, args: ['--no-sandbox'] };
+    if (process.env.CHROMIUM_PATH) launchOpts.executablePath = process.env.CHROMIUM_PATH;
+    if (process.env.HTTPS_PROXY) launchOpts.proxy = { server: process.env.HTTPS_PROXY };
+    browser = await chromium.launch(launchOpts);
+  }
   const collected = [];
   try {
     if (SOURCES.includes('search')) {
@@ -89,7 +99,7 @@ async function main() {
       catch (e) { log('  ! news source error: ' + e.message); }
     }
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 
   const people = dedupe(collected);

@@ -44,7 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Only needed for the Bing fallback. Skipped when a search API key is set.
       - name: Install Playwright Chromium
+        if: ${{ secrets.GOOGLE_API_KEY == '' && secrets.SERPER_API_KEY == '' }}
         run: npx playwright install --with-deps chromium
 
       - name: Run research
@@ -54,4 +56,7 @@ jobs:
           SEARCH_ID: ${{ github.event.client_payload.search_id }}
           WORKER_URL: ${{ secrets.WORKER_URL }}
           INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_CSE_ID: ${{ secrets.GOOGLE_CSE_ID }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         run: node index.mjs

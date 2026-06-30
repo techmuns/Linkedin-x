@@ -38,11 +38,15 @@ to CSV any time.
   and pushes them to the Worker (which writes them to Neon).
 
 ### Data sources (enabled today)
-1. **Public LinkedIn via search engine** — reads *public* profile results that
-   mention being a *former/ex* senior person of the target company. **No
-   LinkedIn login, so no account risk.**
+1. **Public LinkedIn via search** — queries a search **API** (Google/Serper) for
+   *public* profile results that mention being a *former/ex* senior person of the
+   target company. **No LinkedIn login, so no account risk.**
 3. **News / DRHP** — finds senior people the press/offer-documents say
    resigned/retired/stepped down. Produces *leads* to verify.
+
+Both sources share one pluggable search provider (see setup step 5). API
+providers are used when configured; otherwise a Bing browser-scrape is the
+fallback.
 
 > Source **2 (logged-in LinkedIn via Playwright)** is intentionally **not**
 > wired yet. It is the deepest source but carries account-ban risk. We'll add it
@@ -84,8 +88,25 @@ In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
 - `WORKER_URL` → your Worker URL (e.g. `https://linkedin-x.you.workers.dev`)
 - `INGEST_TOKEN` → the same password from step 2
 
-> The research robot talks to the **Worker**, so GitHub only needs those two.
-> You do **not** have to put the Neon string in GitHub.
+> The research robot talks to the **Worker**, so GitHub only needs those two
+> (plus a search key below). You do **not** have to put the Neon string in GitHub.
+
+### 5. Give the engine a search provider (important)
+Search engines block automated requests from cloud computers — and GitHub
+Actions runs on cloud computers. So the engine uses an **official search API**.
+Pick one and add it to the **GitHub Actions secrets**:
+
+**Recommended — Google Programmable Search (free ~100 queries/day):**
+1. Create a search engine at **programmablesearchengine.google.com** → set it to
+   **"Search the entire web"** → copy the **Search engine ID** (`cx`).
+2. Get an API key at **console.cloud.google.com** → enable **"Custom Search API"**.
+3. Add GitHub secrets: `GOOGLE_API_KEY` and `GOOGLE_CSE_ID`.
+
+**Or — Serper.dev (paid, ~$5 covers this project, highest coverage):**
+- Add GitHub secret: `SERPER_API_KEY`.
+
+If you set **none**, the engine falls back to scraping Bing with a browser —
+free but frequently blocked on cloud IPs (not recommended).
 
 ### 5. (Optional) Let the dashboard's "Run new research" button auto-start a run
 Add two **Worker** secrets so the button can trigger GitHub for you:
