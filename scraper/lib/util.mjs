@@ -23,6 +23,25 @@ export function looksSenior(text) {
   return SENIOR_KEYWORDS.some(k => t.includes(k));
 }
 
+// Classify seniority from any text (title + snippet). Mirrors the buckets the
+// Worker uses so the dashboard score is right even when we can't isolate the
+// exact role string. First match wins (highest seniority first).
+const SENIORITY_RULES = [
+  [/\b(founder|co[-\s]?founder|promoter|chairman|chairperson)\b/i, 'founder'],
+  [/\b(ceo|cfo|coo|cto|cmo|cpo|chro|chief|managing director|\bmd\b|president)\b/i, 'clevel'],
+  [/\b(evp|svp|\bvp\b|vice president)\b/i, 'vp'],
+  [/\b(director|head of|\bhead\b|principal|general manager|\bgm\b|national|regional)\b/i, 'director'],
+  [/\b(senior manager|lead|manager)\b/i, 'manager'],
+];
+
+export function seniorityOf(text) {
+  if (!text) return 'other';
+  for (const [re, bucket] of SENIORITY_RULES) {
+    if (re.test(text)) return bucket;
+  }
+  return 'other';
+}
+
 // Pull a clean person name out of a LinkedIn result title like
 // "Jane Doe - Head of Retail - Reliance | LinkedIn"
 export function parseLinkedInTitle(title) {

@@ -3,7 +3,7 @@
 // LinkedIn — we only read public result titles/snippets — so this does not put
 // any LinkedIn account at risk.
 
-import { politeDelay, parseLinkedInTitle, cleanLinkedInUrl, employerFromHeadline, looksSenior } from '../lib/util.mjs';
+import { politeDelay, parseLinkedInTitle, cleanLinkedInUrl, employerFromHeadline, looksSenior, seniorityOf } from '../lib/util.mjs';
 import { makeSearcher } from '../lib/providers.mjs';
 
 const SENIOR_TERMS = '(Founder OR Chief OR CEO OR CFO OR CTO OR COO OR President OR VP OR "Vice President" OR Director OR Head OR "General Manager")';
@@ -51,10 +51,23 @@ function classify(r, company) {
   const exSignal = /\b(ex[-\s]?|former(ly)?|previously|past|retired|left)\b/.test(blob);
   if (!exSignal && !employer) return null;
 
+  const lastRole = roleAtCompany(parsed.headline, blob, company);
+
+  // Seniority: trust an actual role string first (role-at-company, else the
+  // current headline). Only if that's inconclusive, fall back to scanning the
+  // whole snippet — and cap that guess at "director" so a stray word can never
+  // invent a fake founder/CXO.
+  let seniority = seniorityOf(lastRole || parsed.headline || '');
+  if (seniority === 'other') {
+    const broad = seniorityOf(`${r.title} ${r.snippet}`);
+    seniority = (broad === 'founder' || broad === 'clevel') ? 'director' : broad;
+  }
+
   return {
     full_name: parsed.name,
     company,
-    last_role: roleAtCompany(parsed.headline, blob, company),
+    last_role: lastRole,
+    seniority,
     current_employer: employer || null,
     current_role: parsed.headline || null,
     is_current: 0,
