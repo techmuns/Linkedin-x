@@ -113,10 +113,18 @@ export async function runSearchSource(browser, company, log, env = process.env) 
   // Optional disambiguation hint (e.g. "India", "jewellery") to avoid same-named
   // companies/people in other countries.
   const hint = env.COMPANY_HINT || '';
+  const PAGES = Number(env.SEARCH_PAGES || 3);   // how deep to page each query
   for (const q of buildQueries(company, hint)) {
-    try {
-      log(`  search: ${q}`);
-      const results = await searcher.search(q);
+    log(`  search: ${q}`);
+    for (let pageNum = 1; pageNum <= PAGES; pageNum++) {
+      let results = [];
+      try {
+        results = await searcher.search(q, pageNum);
+      } catch (e) {
+        log(`    ! page ${pageNum} failed: ${e.message}`);
+        break;
+      }
+      if (!results.length) break;   // no more results for this query
       for (const r of results) {
         const person = classify(r, company);
         if (!person) continue;
@@ -124,12 +132,10 @@ export async function runSearchSource(browser, company, log, env = process.env) 
         const prev = byKey.get(key);
         if (!prev || (person._exSignal && !prev._exSignal)) byKey.set(key, person);
       }
-      log(`    -> ${results.length} raw, ${byKey.size} candidates so far`);
-    } catch (e) {
-      log(`    ! query failed: ${e.message}`);
+      log(`    p${pageNum}: ${results.length} raw, ${byKey.size} candidates so far`);
+      // Pace requests so the search API / engine doesn't rate-limit us.
+      await politeDelay(searcher.provider === 'bing' ? 1200 : 600, searcher.provider === 'bing' ? 2600 : 1100);
     }
-    // Pace requests so the search API / engine doesn't rate-limit us.
-    await politeDelay(searcher.provider === 'bing' ? 1200 : 600, searcher.provider === 'bing' ? 2600 : 1100);
   }
 
   if (ctx) await ctx.close();

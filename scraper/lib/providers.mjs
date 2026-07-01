@@ -21,11 +21,12 @@ export function pickProvider(env) {
   return 'bing';
 }
 
-async function googleSearch(query, env, num = 10) {
+async function googleSearch(query, env, num = 10, page = 1) {
   const u = new URL('https://www.googleapis.com/customsearch/v1');
   u.searchParams.set('key', env.GOOGLE_API_KEY);
   u.searchParams.set('cx', env.GOOGLE_CSE_ID);
   u.searchParams.set('num', String(Math.min(num, 10)));
+  u.searchParams.set('start', String((page - 1) * 10 + 1));
   u.searchParams.set('q', query);
   const r = await fetch(u, { headers: { accept: 'application/json' } });
   if (!r.ok) {
@@ -40,11 +41,11 @@ async function googleSearch(query, env, num = 10) {
   }));
 }
 
-async function serperSearch(query, env, num = 10) {
+async function serperSearch(query, env, num = 10, page = 1) {
   const r = await fetch('https://google.serper.dev/search', {
     method: 'POST',
     headers: { 'X-API-KEY': env.SERPER_API_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({ q: query, num }),
+    body: JSON.stringify({ q: query, num, page }),
   });
   if (!r.ok) throw new Error(`serper ${r.status}`);
   const data = await r.json();
@@ -57,10 +58,10 @@ async function serperSearch(query, env, num = 10) {
 
 // Fallback: scrape Bing with a real browser. Works locally / on residential IPs;
 // frequently blocked on datacenter IPs.
-async function bingScrape(page, query) {
-  const url = 'https://www.bing.com/search?count=30&q=' + encodeURIComponent(query);
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-  return page.$$eval('li.b_algo', (items) => items.map((li) => {
+async function bingScrape(pageObj, query, page = 1) {
+  const url = `https://www.bing.com/search?count=20&first=${(page - 1) * 20 + 1}&q=` + encodeURIComponent(query);
+  await pageObj.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  return pageObj.$$eval('li.b_algo', (items) => items.map((li) => {
     const a = li.querySelector('h2 a');
     const p = li.querySelector('.b_caption p, p');
     return {
@@ -79,11 +80,11 @@ export function makeSearcher(env, getPage, log = () => {}) {
   let page = null;
   return {
     provider,
-    async search(query) {
-      if (provider === 'google') return googleSearch(query, env);
-      if (provider === 'serper') return serperSearch(query, env);
+    async search(query, pageNum = 1) {
+      if (provider === 'google') return googleSearch(query, env, 10, pageNum);
+      if (provider === 'serper') return serperSearch(query, env, 10, pageNum);
       if (!page) page = await getPage();
-      return bingScrape(page, query);
+      return bingScrape(page, query, pageNum);
     },
   };
 }
