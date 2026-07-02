@@ -67,6 +67,18 @@
   .ci-sector{color:var(--muted);font-size:13px;margin-top:2px}
   .ci-summary{margin-top:12px;background:#faf8ff;border:1px solid #ece3ff;border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.6}
   .ci-summary .ai-tag{font-size:10px;font-weight:800;color:#6d28d9;background:#efe6ff;border-radius:6px;padding:2px 7px;letter-spacing:.4px;vertical-align:middle}
+  .ci-stage{margin-left:auto;text-align:right;flex:none}
+  .ci-stage .sb{font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;display:inline-block}
+  .ci-stage .st{font-size:10.5px;color:var(--muted);margin-top:4px}
+  .ci-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+  .ci-fact{background:#fbfaff;border:1px solid var(--line2);border-radius:11px;padding:10px 12px}
+  .ci-fact .cil{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--faint);text-transform:uppercase}
+  .ci-fact .civ{display:block;font-size:15px;font-weight:750;margin-top:3px}
+  .ci-fact.full{grid-column:1/-1}
+  .cov-wrap{display:flex;align-items:center;gap:9px;margin-top:4px}
+  .cov-track{flex:1;height:7px;background:#eef0f3;border-radius:4px;overflow:hidden}
+  .cov-track > i{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#6d28d9);border-radius:4px}
+  @media(max-width:720px){.ci-grid{grid-template-columns:repeat(2,1fr)}}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
   .chip{font-size:11.5px;font-weight:650;padding:4px 10px;border-radius:999px;background:#f2f4f7;color:#475467;border:1px solid var(--line2)}
   .chip.gap{background:#fef3f2;color:#b42318;border-color:#fecdca}
@@ -109,8 +121,12 @@
   .b-director{background:#e0f2fe;color:#026aa2}.b-manager{background:#d1fadf;color:#067647}.b-other{background:#f2f4f7;color:#475467}
   .b-fn{background:#eef2ff;color:#3538cd}.b-cur{background:#fef3e6;color:#b54708}
 
-  .timeline{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);background:#fbfbfd;border:1px solid var(--line2);border-radius:9px;padding:7px 10px}
-  .timeline .seg2{flex:1;height:5px;border-radius:4px;background:linear-gradient(90deg,#c7b2f5,#8b5cf6)}
+  .cinfo{display:flex;flex-direction:column;gap:3px}
+  .cinfo .line{font-size:13px;line-height:1.35;overflow:hidden;text-overflow:ellipsis}
+  .cinfo .line .lb{display:inline-block;width:30px;color:var(--faint);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .cdiv{height:1px;background:var(--line2)}
+  .tierrow{display:flex;align-items:center;gap:9px}
+  .tierrow .stars{font-size:15px}
   .meters{display:flex;gap:9px}
   .meter{flex:1}
   .meter .ml{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;display:flex;justify-content:space-between}
@@ -255,13 +271,18 @@ const FUNCTIONS=['Leadership','Finance','Operations','Technology','Marketing','S
 const AV=['#6941c6','#026aa2','#b54708','#067647','#b42318','#3538cd','#0e7090','#c11574'];
 
 // Known company intelligence (facts for the tracked names; generic otherwise).
+// Editable company facts (approximate headcounts — adjust as you verify).
 const CO_INTEL={
-  bluestone:{sector:'Omnichannel fine-jewellery retailer (D2C, recently IPO’d)',comps:['CaratLane','Tanishq','Melorra','GIVA','Kalyan']},
-  caratlane:{sector:'Online-first fine jewellery (Titan group)',comps:['Bluestone','Tanishq','Melorra','GIVA']},
-  shadowfax:{sector:'Last-mile logistics & delivery network',comps:['Delhivery','Ecom Express','XpressBees','Shiprocket','Loadshare']},
-  'quality power':{sector:'Power / electrical equipment (grid, HVDC, reactors)',comps:['Hitachi Energy','Siemens Energy','GE Grid','ABB','TBEA']},
-  thangamayil:{sector:'Regional gold jewellery retail (Tamil Nadu)',comps:['Kalyan Jewellers','Joyalukkas','GRT','Lalithaa','Tanishq']},
+  bluestone:{industry:'Jewellery retail (omnichannel D2C)',employees:'~5,000',comps:['CaratLane','Tanishq','Kalyan','Melorra','GIVA']},
+  caratlane:{industry:'Jewellery retail (online-first, Titan)',employees:'~6,000',comps:['Bluestone','Tanishq','Melorra','GIVA']},
+  shadowfax:{industry:'Last-mile logistics & delivery',employees:'~3,000 + gig network',comps:['Delhivery','Ecom Express','XpressBees','Shiprocket','Loadshare']},
+  'quality power':{industry:'Power / electrical equipment (grid, HVDC)',employees:'~1,500',comps:['Hitachi Energy','Siemens Energy','GE Grid','ABB','TBEA']},
+  thangamayil:{industry:'Gold jewellery retail (Tamil Nadu)',employees:'~1,200',comps:['Kalyan Jewellers','Joyalukkas','GRT','Lalithaa','Tanishq']},
 };
+function readinessOf(list){const senior=list.filter(p=>p.score>=75).length;const reach=list.filter(p=>p._reach>=70).length;const cov=new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100;return Math.min(100,Math.round(cov*0.5+Math.min(senior,8)/8*30+Math.min(reach,8)/8*20));}
+// Research stage is driven by function coverage (how complete the picture is).
+function stageOf(covPct){return covPct>=83?{s:'Stage 2',t:'Deep-dive ready',c:'#067647',bg:'#ecfdf3'}:covPct>=50?{s:'Stage 1 → 2',t:'Building coverage',c:'#b54708',bg:'#fef3e6'}:{s:'Stage 1',t:'Screening',c:'#6d28d9',bg:'#efe6ff'};}
+function coverageOf(list){return Math.round(new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100);}
 
 function authHeaders(){const h={'content-type':'application/json'};if(TOKEN)h.authorization='Bearer '+TOKEN;return h;}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -300,12 +321,20 @@ function topics(fn,co){const g=[`Why they left ${co} and how the culture felt`,`
     'Supply Chain':['Vendor concentration & pricing power','Inventory / working-capital discipline'],
     Leadership:['Founder/promoter decision-making','Where the strategy could break']}[fn]||['Competitive threats they’d worry about'];
   return g.concat(m);}
+function targetRolePhrase(p){
+  // A reliable description of their role AT the target company.
+  let lr=p.last_role||'';const l=lr.toLowerCase();
+  const unreliable=!lr||(p.current_role&&l===p.current_role.toLowerCase())||(p.current_employer&&l.includes(p.current_employer.toLowerCase()))||/\bcurrent|currently|presently|\bnow\b/.test(l);
+  if(!unreliable)return `${p.company_label||p.company}’s ${lr}`;
+  const sm={founder:'a founder',clevel:'a C-suite leader',vp:'a VP',director:'a senior leader',manager:'a manager',other:'a senior figure'};
+  return `${sm[p.seniority]||'a senior leader'} at ${p.company_label||p.company}`;
+}
 function whyMatters(p){
   const fn=p._fn,fnl=fn.toLowerCase(),co=p.company_label||p.company,nm=firstName(p.full_name);
-  const role=p.last_role||SENLABEL[p.seniority]||'a senior leader';
-  const now=p.current_employer?` Now at ${p.current_employer}, ${nm.toLowerCase()==='they'?'they':nm} can speak candidly without a current conflict.`:'';
+  const now=p.current_employer?` Now at ${p.current_employer}, ${nm} can speak candidly without a current conflict.`:'';
+  const insight=fnl==='leadership'?'strategy and how decisions were actually made':fnl;
   const rel=p.relationship==='competitor_ex'?`As a competitor-side executive, ${nm} offers an outside-in read on how ${co} is really perceived and where it’s vulnerable.`
-    :`As ${co}’s ${role}, ${nm} had first-hand visibility into ${fnl==='leadership'?'strategy and how decisions were actually made':fnl}.`;
+    :`As ${targetRolePhrase(p)}, ${nm} had first-hand visibility into ${insight}.`;
   return rel+now;
 }
 function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);return p;}
@@ -380,28 +409,40 @@ function confidence(p){let c=30;if(p.last_role)c+=25;if(p.current_employer)c+=20
 
 function renderCI(list){
   if(!COMPANY){
-    $('ciCard').innerHTML=`<h3>🏢 Portfolio overview</h3><div class="hint">Pick a company above to open its full intelligence brief.</div>
-      <div class="chips">${[...new Set(RAW.map(p=>p.company_label||p.company))].map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')||'<span class="chip">No companies yet</span>'}</div>`;
+    // Useful portfolio table instead of an empty overview.
+    const cos=[...new Set(RAW.map(p=>p.company))].map(c=>{const l=RAW.filter(p=>p.company===c);const cov=Math.round(new Set(l.map(p=>p._fn)).size/FUNCTIONS.length*100);const st=stageOf(cov);return{label:l[0].company_label||c,co:c,n:l.length,cov,st};}).sort((a,b)=>b.n-a.n);
+    $('ciCard').innerHTML=`<h3>🏢 Portfolio overview</h3><div class="hint">Research depth across your tracked companies — click a company chip above to open its brief.</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+      ${cos.map(c=>`<div style="display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid var(--line2);border-radius:11px;background:#fbfaff">
+        <div class="ci-logo" style="width:34px;height:34px;font-size:14px;border-radius:9px;background:${avColor(c.label)}">${esc(initials(c.label))}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:750">${esc(c.label)}</div><div style="font-size:11.5px;color:var(--muted)">${(CO_INTEL[c.co]||{}).industry||'—'}</div></div>
+        <div style="text-align:center;min-width:64px"><div style="font-weight:800">${c.n}</div><div style="font-size:10px;color:var(--faint)">SOURCES</div></div>
+        <div style="text-align:center;min-width:64px"><div style="font-weight:800">${c.cov}%</div><div style="font-size:10px;color:var(--faint)">COVERAGE</div></div>
+        <span class="sb" style="color:${c.st.c};background:${c.st.bg};font-weight:800;font-size:12px;padding:4px 10px;border-radius:999px">${c.st.s}</span></div>`).join('')||'<span class="chip">No companies yet</span>'}
+      </div>`;
     return;
   }
-  const label=list[0]?.company_label||COMPANY;const intel=CO_INTEL[COMPANY]||{sector:'—',comps:[]};
+  const label=list[0]?.company_label||COMPANY;const intel=CO_INTEL[COMPANY]||{industry:'—',employees:'—',comps:[]};
   const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);
   const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const covered=FUNCTIONS.length-gaps.length;
-  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,3).map(p=>firstName(p.full_name)+' ('+(SENLABEL[p.seniority]||'')+')');
-  const movers=[...new Set(list.filter(p=>p.current_employer).map(p=>p.current_employer))].slice(0,5);
+  const covered=FUNCTIONS.length-gaps.length;const covPct=Math.round(covered/FUNCTIONS.length*100);
   const strongest=FUNCTIONS.slice().sort((a,b)=>fnCount[b]-fnCount[a])[0];
-  const summary=`We’ve mapped <b>${list.length}</b> sources for <b>${esc(label)}</b> spanning <b>${covered}/${FUNCTIONS.length}</b> functions. Coverage is strongest in <b>${strongest}</b>${gaps.length?`, and thin in <b>${gaps.join(', ')}</b>`:''}. ${movers.length?`Alumni have moved to ${movers.slice(0,3).map(esc).join(', ')}${movers.length>3?' and others':''} — useful for cross-checks. `:''}${top.length?`Best first calls: <b>${top.map(esc).join(', ')}</b>.`:''}`;
+  const stage=stageOf(covPct);
+  const summary=`Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}`;
   $('ciCard').innerHTML=`
     <div class="ci-top">
       <div class="ci-logo" style="background:${avColor(label)}">${esc(initials(label))}</div>
-      <div style="flex:1;min-width:0">
-        <div class="ci-name">${esc(label)}</div>
-        <div class="ci-sector">${esc(intel.sector)}</div>
-        <div class="chips"><span class="chip">Sources: ${list.length}</span><span class="chip">Coverage ${Math.round(covered/FUNCTIONS.length*100)}%</span>${intel.comps.map(c=>`<span class="chip comp">vs ${esc(c)}</span>`).join('')}</div>
-      </div>
+      <div style="flex:1;min-width:0"><div class="ci-name">${esc(label)}</div><div class="ci-sector">${esc(intel.industry)}</div></div>
+      <div class="ci-stage"><span class="sb" style="color:${stage.c};background:${stage.bg}">${stage.s}</span><div class="st">${stage.t}</div></div>
     </div>
-    <div class="ci-summary"><span class="ai-tag">AI BRIEF</span> ${summary}</div>
+    <div class="ci-grid">
+      <div class="ci-fact"><span class="cil">Industry</span><span class="civ" style="font-size:13px">${esc(intel.industry)}</span></div>
+      <div class="ci-fact"><span class="cil">Employees</span><span class="civ">${esc(intel.employees)}</span></div>
+      <div class="ci-fact"><span class="cil">Sources mapped</span><span class="civ">${list.length}</span></div>
+      <div class="ci-fact"><span class="cil">Coverage</span><span class="civ">${covPct}%</span><div class="cov-wrap"><div class="cov-track"><i style="width:${covPct}%"></i></div></div></div>
+      <div class="ci-fact full"><span class="cil">Competitors</span><div class="chips" style="margin-top:6px">${(intel.comps||[]).map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')||'—'}</div></div>
+    </div>
+    <div class="ci-summary"><span class="ai-tag">AI SUMMARY</span> ${summary}</div>
     ${gaps.length?`<div class="chips" style="margin-top:10px"><span style="font-size:11.5px;color:var(--muted);font-weight:600;align-self:center">Coverage gaps:</span>${gaps.map(g=>`<span class="chip gap">⚠ ${g}</span>`).join('')}</div>`:''}`;
 }
 
@@ -418,24 +459,41 @@ function pcard(p){
   const sen=p.seniority||'other';const cur=Number(p.is_current)===1;
   const status=['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${({no:'○ Not contacted',contacted:'◑ Contacted',replied:'◓ Replied',scheduled:'◕ Scheduled',done:'● Done',skip:'⊘ Skip'})[s]}</option>`).join('');
   const li=p.linkedin_url?`<a class="li-btn" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg> LinkedIn</a>`:`<span class="li-btn disabled">No link</span>`;
+  // "Now" line: take the first (primary) segment of the noisy LinkedIn headline.
+  let nowRole=(p.current_role||'').split(/\s*[|·]\s*/)[0].trim();
+  if(!nowRole)nowRole=cur?(p.last_role||'Current role'):'—';
+  const curCo=p.current_employer||(cur?(p.company_label||p.company):'—');
+  const showCurCo=curCo&&curCo!=='—'&&!nowRole.toLowerCase().includes(curCo.toLowerCase());
+  const prevCo=p.company_label||p.company;
+  // Guard: sometimes the scraper captured the person's CURRENT role as last_role.
+  // If it looks like their current role (matches it, names the current employer,
+  // or says "currently"), fall back to a neutral label.
+  let prevRole=p.last_role||'Senior role';
+  const lr=prevRole.toLowerCase();
+  if(!p.last_role || (p.current_role&&lr===p.current_role.toLowerCase()) || (p.current_employer&&lr.includes(p.current_employer.toLowerCase())) || /\bcurrent|currently|presently|\bnow\b/.test(lr)) prevRole='Senior role';
+  const tps=topics(p._fn,esc(p.company_label||p.company));
   return `<div class="pcard">
     <div class="ph">
       <div class="avatar" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="who"><div class="nm">${esc(p.full_name)}</div>
-        <div class="sub">${cur?'<span class="badge b-cur">Still there</span> ':''}${esc(RELLABEL[p.relationship]||'Stakeholder')} · ${esc(p.company_label||p.company)}</div></div>
-      <div class="tier"><div class="stars">${stars(p._tier)}</div><div class="tierlab t${p._tier}">TIER ${p._tier}</div></div>
+        <div class="sub" style="margin-top:4px">${cur?'<span class="badge b-cur">Still there</span> ':''}<span class="badge b-${sen}">${SENLABEL[sen]}</span> <span class="badge b-fn">${p._fn}</span></div></div>
     </div>
-    <div class="badges"><span class="badge b-${sen}">${SENLABEL[sen]}</span><span class="badge b-fn">${p._fn}</span></div>
-    <div class="timeline"><b>${esc(p.last_role||'Senior role')}</b> <span class="seg2"></span> ${esc(p.current_employer||'—')}</div>
+    <div class="cinfo">
+      <div class="line"><span class="lb">Now</span>${esc(nowRole)}${showCurCo?` · <b>${esc(curCo)}</b>`:''}</div>
+      <div class="line"><span class="lb">Ex</span>${esc(prevRole)} · <b>${esc(prevCo)}</b>${cur?' <span style="color:#b54708">· current</span>':''}</div>
+    </div>
+    <div class="cdiv"></div>
+    <div class="tierrow"><div class="stars">${stars(p._tier)}</div><div class="tierlab t${p._tier}">TIER ${p._tier}</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--faint);font-weight:700">PRIORITY</span></div>
     <div class="meters">
       <div class="meter"><div class="ml"><span>AI Signal</span><span>${p.score||0}</span></div><div class="track"><i style="width:${Math.min(100,(p.score||0)/1.3)}%;background:linear-gradient(90deg,#8b5cf6,#6d28d9)"></i></div></div>
       <div class="meter"><div class="ml"><span>Reachability</span><span>${reachLabel(p._reach)}</span></div><div class="track"><i style="width:${p._reach}%;background:${reachColor(p._reach)}"></i></div></div>
     </div>
+    <div class="cdiv"></div>
     <div class="ai-box"><span class="lbl">✨ Why this person matters</span>${esc(whyMatters(p))}</div>
-    <details><summary style="cursor:pointer;color:#6d28d9;font-size:12px;font-weight:650">Knowledge areas & discussion topics ▾</summary>
-      <div class="ai-box" style="margin-top:7px"><span class="lbl">Likely knowledge areas</span>${knowledge(p._fn).map(k=>'• '+esc(k)).join('<br>')}</div>
-      <div class="ai-box"><span class="lbl">Suggested discussion topics</span>${topics(p._fn,esc(p.company_label||p.company)).map(k=>'• '+esc(k)).join('<br>')}</div>
-    </details>
+    <div class="ai-box"><span class="lbl">💬 Discussion topics</span>${tps.slice(0,3).map(k=>'• '+esc(k)).join('<br>')}
+      <details style="margin-top:6px"><summary style="cursor:pointer;color:#6d28d9;font-size:11.5px;font-weight:650">＋ Likely knowledge areas</summary>${knowledge(p._fn).map(k=>'• '+esc(k)).join('<br>')}</details></div>
+    <div class="cdiv"></div>
     <div class="pfoot">${li}
       <button class="icon-btn ${p._saved?'saved':''}" data-act="save" data-id="${p.id}">${p._saved?'★ Saved':'☆ Save'}</button>
       <select class="status" data-act="status" data-id="${p.id}">${status}</select></div>
