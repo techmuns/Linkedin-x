@@ -51,8 +51,8 @@
   .copill .c{background:rgba(0,0,0,.06);border-radius:999px;padding:1px 8px;font-size:11px}
   .copill.active .c{background:rgba(255,255,255,.22)}
 
-  .layout{display:grid;grid-template-columns:1fr 372px;gap:18px;max-width:1440px;margin:0 auto;padding:16px 24px 60px;align-items:start}
-  @media(max-width:1080px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
+  .layout{max-width:1320px;margin:0 auto;padding:16px 24px 60px}
+  @media(max-width:1080px){.stats{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
@@ -103,7 +103,9 @@
   .nlchip{font-size:11.5px;border:1px dashed #cbb9f5;color:#6d28d9;background:#faf7ff;border-radius:999px;padding:4px 11px;cursor:pointer}
   .nlchip:hover{background:#f1eaff}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:13px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
   .pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);transition:.16s;display:flex;flex-direction:column;gap:10px}
   .pcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
   .ph{display:flex;gap:11px;align-items:flex-start}
@@ -182,6 +184,7 @@
       <div class="tag">AI-powered buy-side intelligence · primary-research sourcing</div>
     </div>
     <div class="hactions">
+      <button class="btn primary" id="outreachBtn">✨ Generate outreach list</button>
       <button class="btn" id="addBtn">＋ Add</button>
       <button class="btn" id="exportBtn">⤓ Export</button>
       <button class="btn" id="keyBtn">🔑</button>
@@ -223,9 +226,6 @@
     <div id="tableWrap" style="display:none"></div>
     <div class="empty" id="empty" style="display:none"><div class="big">🔍</div><div id="emptyMsg">No sources match. Adjust filters or run research.</div></div>
   </div>
-
-  <!-- RIGHT AI PANEL -->
-  <div class="ai-panel" id="aiPanel"></div>
 </div>
 
 <!-- Add modal -->
@@ -487,20 +487,12 @@ function prow(p){return `<tr>
   <td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank">Profile ↗</a>`:'—'}</td>
   <td><select class="status" data-act="status" data-id="${p.id}">${['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;}
 
-function renderAIPanel(list){
-  $('aiPanel').innerHTML=`
-    <div class="card sec"><h3>🧠 AI Intelligence</h3><div class="hint">Computed live from ${list.length} mapped sources${COMPANY?' for '+esc(list[0]?.company_label||COMPANY):' across the portfolio'}.</div>
-      <button class="btn primary" style="width:100%" id="outreachBtn2">✨ Generate outreach list</button>
-    </div>`;
-  const o2=$('outreachBtn2');if(o2)o2.onclick=openOutreach;
-}
 
 function render(){
   renderCopills([...new Set(RAW.map(p=>p.company))].map(c=>({company:c,label:RAW.find(x=>x.company===c).company_label,n:RAW.filter(x=>x.company===c).length})).sort((a,b)=>b.n-a.n));
   const scope=scopeList();
   renderStats(scope);
   renderCI(scope);
-  renderAIPanel(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
   $('empty').style.display=has?'none':'block';
@@ -525,6 +517,7 @@ $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('v
 document.querySelectorAll('.nlchip').forEach(c=>c.onclick=()=>{$('q').value=c.dataset.nl;render();});
 $('keyBtn').onclick=setKey;
 $('exportBtn').onclick=openExport;
+$('outreachBtn').onclick=openOutreach;
 function banner(m){const b=$('banner');b.textContent=m;b.style.display='block';}
 
 // add modal
