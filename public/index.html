@@ -6,229 +6,261 @@
 <title>Scuttlebutt Desk — Buy-Side Intelligence</title>
 <style>
   :root{
-    --bg:#f4f5f8; --panel:#ffffff; --ink:#0f1729; --muted:#697586; --faint:#98a2b3;
-    --line:#e6e8ec; --line2:#eef0f3;
-    --brand:#4f46e5; --brand2:#7c3aed; --brand3:#9333ea; --li:#0a66c2;
-    --hi:#12b76a; --mid:#f79009; --lo:#98a2b3; --red:#f04438;
-    --seq0:#f2f4f7; --seq1:#efe8ff; --seq2:#d9c6ff; --seq3:#b79bf3; --seq4:#8b5cf6; --seq5:#6d28d9;
-    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.10);
-    --shadow-lg:0 10px 30px rgba(16,24,40,.14);
+    --bg:#f5f6fa; --panel:#ffffff; --ink:#101828; --muted:#667085; --faint:#98a2b3;
+    --line:#eaecf0; --line2:#f2f4f7;
+    --brand:#6d28d9; --brand2:#7c3aed; --li:#0a66c2;
+    --gold:#f59e0b; --green:#12b76a; --amber:#f79009; --red:#f04438;
+    --hd1:#0a0e24; --hd2:#160f38; --hd3:#241653;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
+    --shadow-lg:0 12px 34px rgba(16,24,40,.16);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif}
-  a{color:var(--li);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}
   button,select,input,textarea{font:inherit;color:inherit}
-  .btn{border:1px solid var(--line);background:var(--panel);padding:8px 13px;border-radius:9px;cursor:pointer;
+  .btn{border:1px solid var(--line);background:var(--panel);padding:9px 14px;border-radius:10px;cursor:pointer;
     font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:.15s;white-space:nowrap}
-  .btn:hover{background:#f9fafb;box-shadow:var(--shadow)}
-  .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none}
-  .btn.primary:hover{filter:brightness(1.07)}
-  .btn.sm{padding:6px 10px;font-size:12.5px}
+  .btn:hover{background:#fafafe;box-shadow:var(--shadow)}
+  .btn.primary{background:var(--brand);color:#fff;border:none}
+  .btn.primary:hover{background:var(--brand2)}
+  .btn.sm{padding:6px 11px;font-size:12.5px}
 
-  header{background:linear-gradient(120deg,#4338ca,#6d28d9 55%,#9333ea);color:#fff;padding:18px 24px 20px;position:relative;overflow:hidden}
-  header::after{content:"";position:absolute;right:-80px;top:-90px;width:320px;height:320px;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%)}
-  .brandrow{display:flex;align-items:center;gap:13px;position:relative;z-index:1;flex-wrap:wrap}
-  .logo{width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:20px}
-  .brandrow h1{margin:0;font-size:18px;font-weight:750;letter-spacing:.2px}
-  .brandrow .tag{color:#e9d5ff;font-size:12px}
-  .hactions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
-  .hactions .btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff}
-  .hactions .btn:hover{background:rgba(255,255,255,.24)}
-  .hactions .btn.primary{background:#fff;color:#5b21b6}
+  /* ---------- HEADER ---------- */
+  header{background:linear-gradient(120deg,var(--hd1),var(--hd2) 52%,var(--hd3));color:#fff;
+    padding:18px 30px 22px;position:relative;overflow:hidden}
+  header .mesh{position:absolute;right:0;top:0;bottom:0;width:46%;pointer-events:none;
+    background-image:radial-gradient(rgba(139,110,246,.16) 1px,transparent 1px);background-size:20px 20px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 60%);mask-image:linear-gradient(90deg,transparent,#000 60%);opacity:.7}
+  header .mesh::after{content:"";position:absolute;right:-40px;top:-60px;width:340px;height:340px;
+    background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);filter:blur(6px)}
+  .hrow{display:flex;align-items:center;gap:14px;position:relative;z-index:2}
+  .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    display:grid;place-items:center;font-size:20px;box-shadow:0 6px 18px rgba(124,58,237,.5)}
+  .brand h1{margin:0;font-size:21px;font-weight:750;letter-spacing:.2px;font-family:Georgia,"Times New Roman",serif}
+  .brand .sub{color:#c7bdf0;font-size:12.5px;margin-top:1px}
+  .hactions{margin-left:auto;display:flex;align-items:center;gap:10px;position:relative;z-index:2}
+  .hactions .btn{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);color:#fff}
+  .hactions .btn:hover{background:rgba(255,255,255,.18)}
+  .hactions .btn.primary{background:#7c3aed;border:none}
+  .avatar-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;padding:4px 10px 4px 4px;cursor:pointer;color:#fff}
+  .avatar-btn .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#f0abfc,#a78bfa);display:grid;place-items:center;font-size:15px}
 
-  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:11px;position:relative;z-index:1;margin-top:16px}
-  .stat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.20);border-radius:12px;padding:11px 13px}
-  .stat .n{font-size:21px;font-weight:750;line-height:1}
-  .stat .l{font-size:10.5px;color:#e9d5ff;margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
-  .stat .bar{height:4px;background:rgba(255,255,255,.2);border-radius:3px;margin-top:7px;overflow:hidden}
-  .stat .bar > i{display:block;height:100%;background:#fff;border-radius:3px}
+  .rctx{display:flex;align-items:center;gap:14px;margin-top:16px;position:relative;z-index:2}
+  .rctx .lab{font-size:10.5px;font-weight:800;letter-spacing:1px;color:#a99cf0}
+  .rctx .txt{color:#d7d0f2;font-size:13px}
+  .rctx .more{margin-left:6px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);color:#fff;
+    border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+  .rctx .more:hover{background:rgba(255,255,255,.2)}
 
-  .copills{display:flex;gap:8px;flex-wrap:wrap;padding:14px 24px 0;position:relative;z-index:1}
-  .copill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;
-    font-weight:650;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:7px;box-shadow:var(--shadow)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px;position:relative;z-index:2}
+  .kpi{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:16px 18px;
+    box-shadow:0 0 0 1px rgba(124,58,237,.10) inset,0 8px 24px rgba(10,8,30,.35);display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:.15s}
+  .kpi:hover{border-color:rgba(139,110,246,.5);transform:translateY(-1px)}
+  .kpi .ic{width:44px;height:44px;border-radius:12px;background:rgba(124,58,237,.22);display:grid;place-items:center;font-size:20px;flex:none}
+  .kpi .n{font-size:26px;font-weight:750;line-height:1}
+  .kpi .l{font-size:12px;color:#bcb2ea;margin-top:5px}
+  .kpi .bar{height:3px;background:rgba(255,255,255,.14);border-radius:3px;margin-top:10px;overflow:hidden}
+  .kpi .bar>i{display:block;height:100%;background:linear-gradient(90deg,#a78bfa,#7c3aed);border-radius:3px}
+
+  /* ---------- BODY ---------- */
+  .wrap{max-width:1320px;margin:0 auto;padding:18px 30px 70px}
+  .pillrow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .copill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 15px;cursor:pointer;
+    font-weight:650;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;box-shadow:var(--shadow)}
   .copill.active{background:var(--ink);color:#fff;border-color:var(--ink)}
   .copill .c{background:rgba(0,0,0,.06);border-radius:999px;padding:1px 8px;font-size:11px}
   .copill.active .c{background:rgba(255,255,255,.22)}
+  .copill.add{border-style:dashed;color:var(--brand);background:#faf7ff}
+  .savedviews{margin-left:auto}
+  select.sv{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 12px;font-weight:600;color:var(--muted);box-shadow:var(--shadow);cursor:pointer}
 
-  .layout{max-width:1320px;margin:0 auto;padding:16px 24px 60px}
-  @media(max-width:1080px){.stats{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
-
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
-  .sec{padding:16px 18px}
-  .sec h3{margin:0 0 3px;font-size:14px;font-weight:750;display:flex;align-items:center;gap:8px}
-  .sec .hint{color:var(--faint);font-size:11.5px;margin-bottom:11px}
-
-  /* company intel */
-  .ci-top{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
-  .ci-logo{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:20px;flex:none}
-  .ci-name{font-size:18px;font-weight:800}
-  .ci-sector{color:var(--muted);font-size:13px;margin-top:2px}
-  .ci-summary{margin-top:12px;background:#faf8ff;border:1px solid #ece3ff;border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.6}
-  .ci-summary .ai-tag{font-size:10px;font-weight:800;color:#6d28d9;background:#efe6ff;border-radius:6px;padding:2px 7px;letter-spacing:.4px;vertical-align:middle}
-  .ci-stage{margin-left:auto;text-align:right;flex:none}
-  .ci-stage .sb{font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;display:inline-block}
-  .ci-stage .st{font-size:10.5px;color:var(--muted);margin-top:4px}
-  .ci-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
-  .ci-fact{background:#fbfaff;border:1px solid var(--line2);border-radius:11px;padding:10px 12px}
-  .ci-fact .cil{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--faint);text-transform:uppercase}
-  .ci-fact .civ{display:block;font-size:15px;font-weight:750;margin-top:3px}
-  .ci-fact.full{grid-column:1/-1}
-  .cov-wrap{display:flex;align-items:center;gap:9px;margin-top:4px}
-  .cov-track{flex:1;height:7px;background:#eef0f3;border-radius:4px;overflow:hidden}
-  .cov-track > i{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#6d28d9);border-radius:4px}
-  @media(max-width:720px){.ci-grid{grid-template-columns:repeat(2,1fr)}}
-  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
-  .chip{font-size:11.5px;font-weight:650;padding:4px 10px;border-radius:999px;background:#f2f4f7;color:#475467;border:1px solid var(--line2)}
+  .brief{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:none}
+  .brief .bt{display:flex;align-items:center;gap:12px}
+  .brief .blogo{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:#fff;font-weight:800;flex:none}
+  .brief .bn{font-size:16px;font-weight:750}
+  .brief .bs{color:var(--muted);font-size:12.5px}
+  .brief .bstage{margin-left:auto;font-weight:800;font-size:12px;padding:5px 12px;border-radius:999px}
+  .brief .bfacts{display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+  .brief .bfacts b{display:block;font-size:15px}
+  .brief .bfacts .k{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+  .brief .bsum{margin-top:10px;font-size:12.5px;color:var(--ink);background:#faf8ff;border:1px solid #ece3ff;border-radius:10px;padding:9px 12px}
+  .brief .bsum .ai{font-size:9.5px;font-weight:800;color:var(--brand);background:#efe6ff;border-radius:5px;padding:2px 6px;letter-spacing:.4px}
+  .chip{font-size:11.5px;font-weight:650;padding:3px 10px;border-radius:999px;background:#f2f4f7;color:#475467;border:1px solid var(--line2)}
   .chip.gap{background:#fef3f2;color:#b42318;border-color:#fecdca}
   .chip.comp{background:#eef2ff;color:#3538cd;border-color:#e0e7ff}
 
-  /* relationship tabs */
-  .rtabs{display:flex;gap:6px;overflow-x:auto;padding:4px;background:#f6f7f9;border-radius:12px;border:1px solid var(--line2)}
-  .rtab{border:none;background:transparent;padding:8px 12px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:650;font-size:12.5px;white-space:nowrap;display:flex;align-items:center;gap:6px}
-  .rtab.active{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
-  .rtab .c{font-size:11px;background:#eaecf0;border-radius:999px;padding:0 6px}
-  .rtab.active .c{background:#efe6ff;color:#6d28d9}
+  /* filter panel */
+  .fpanel{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    padding:12px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .fgroup .glab{font-size:9.5px;font-weight:800;letter-spacing:.7px;color:var(--faint);margin-bottom:6px}
+  .seg{display:flex;gap:4px;background:#f6f7fb;border:1px solid var(--line2);border-radius:11px;padding:4px}
+  .seg button{border:none;background:transparent;padding:7px 11px;border-radius:8px;cursor:pointer;color:var(--muted);
+    font-weight:650;font-size:12.5px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .seg button.on{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+  .lens{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:7px 11px;background:var(--panel);cursor:pointer}
+  .lens select{border:none;background:transparent;font-weight:650;cursor:pointer;outline:none}
+  .fright{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .search{position:relative}
+  .search input{width:290px;max-width:44vw;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  .search svg{position:absolute;left:10px;top:10px;color:var(--faint)}
+  .toggle{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .toggle button{background:var(--panel);border:none;padding:9px 12px;cursor:pointer;color:var(--muted);font-weight:650;display:flex;gap:6px;align-items:center}
+  .toggle button.on{background:var(--brand);color:#fff}
 
-  .toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:13px 0}
-  .search{flex:1;min-width:220px;position:relative}
-  .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}
-  .search svg{position:absolute;left:11px;top:11px;color:var(--faint)}
-  select.ctl{padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow);font-weight:600;color:var(--muted);font-size:12.5px}
-  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .seg button{background:var(--panel);border:none;padding:9px 11px;cursor:pointer;color:var(--muted);font-weight:650}
-  .seg button.on{background:var(--ink);color:#fff}
-  .nlchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-  .nlchip{font-size:11.5px;border:1px dashed #cbb9f5;color:#6d28d9;background:#faf7ff;border-radius:999px;padding:4px 11px;cursor:pointer}
-  .nlchip:hover{background:#f1eaff}
+  /* ---------- CONTACT ROWS ---------- */
+  .rows{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+  .row{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:284px 1fr 292px;cursor:pointer;transition:.14s;overflow:hidden}
+  .row:hover{box-shadow:var(--shadow-lg);border-color:#e0d6fb}
+  .rl{padding:16px 18px;display:flex;gap:13px}
+  .rav{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:17px;flex:none}
+  .rid{min-width:0;flex:1}
+  .rtop{display:flex;align-items:flex-start;gap:8px}
+  .rname{font-weight:750;font-size:16px;line-height:1.2}
+  .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1}
+  .star.on{color:var(--gold)}
+  .rrole{color:var(--ink);font-size:13px;margin-top:3px}
+  .rco{color:var(--muted);font-size:12.5px}
+  .rtags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px}
+  .tg-clevel{background:#fee4e2;color:#b42318}.tg-founder{background:#f4ebff;color:#6941c6}.tg-vp{background:#fef0c7;color:#b54708}
+  .tg-director{background:#e0f2fe;color:#026aa2}.tg-manager{background:#d1fadf;color:#067647}.tg-other{background:#f2f4f7;color:#475467}
+  .tg-fn{background:#eef2ff;color:#3538cd}
 
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  @media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:640px){.grid{grid-template-columns:1fr}}
-  .pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);transition:.16s;display:flex;flex-direction:column;gap:10px}
-  .pcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
-  .ph{display:flex;gap:11px;align-items:flex-start}
-  .avatar{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;flex:none}
-  .who{flex:1;min-width:0}
-  .nm{font-weight:750;font-size:15px;line-height:1.25}
-  .sub{color:var(--muted);font-size:12px;margin-top:2px}
-  .tier{flex:none;text-align:right}
-  .stars{color:#f79009;font-size:13px;letter-spacing:1px;line-height:1}
-  .tierlab{font-size:9.5px;font-weight:800;letter-spacing:.5px;margin-top:3px}
-  .t1{color:#067647}.t2{color:#5b21b6}.t3{color:#b54708}.t4{color:#667085}.t5{color:#98a2b3}
-  .badges{display:flex;gap:6px;flex-wrap:wrap}
-  .badge{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px;letter-spacing:.2px}
-  .b-founder{background:#f4ebff;color:#6941c6}.b-clevel{background:#fee4e2;color:#b42318}.b-vp{background:#fef0c7;color:#b54708}
-  .b-director{background:#e0f2fe;color:#026aa2}.b-manager{background:#d1fadf;color:#067647}.b-other{background:#f2f4f7;color:#475467}
-  .b-fn{background:#eef2ff;color:#3538cd}.b-cur{background:#fef3e6;color:#b54708}
+  .rm{padding:16px 20px;border-left:1px solid var(--line2);position:relative;min-width:0}
+  .rnet{position:absolute;right:16px;top:14px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+  .rnet.in{background:#ecfdf3;color:#067647}.rnet.out{background:#fffaeb;color:#b54708}
+  .klab{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--faint)}
+  .rbest{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-right:96px}
+  .bchip{font-size:11px;font-weight:650;background:#f5f3ff;color:#5b21b6;border:1px solid #e9d7fe;border-radius:8px;padding:3px 9px}
+  .rwhy{margin-top:11px}
+  .rwhy .t{font-size:13px;color:var(--ink);margin-top:3px;line-height:1.45}
+  .rmetrics{display:flex;gap:26px;margin-top:13px;flex-wrap:wrap}
+  .metric .mlab{font-size:9.5px;font-weight:800;letter-spacing:.5px;color:var(--faint)}
+  .metric .mv{font-size:13px;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:6px}
+  .sig{display:inline-flex;align-items:flex-end;gap:2px;height:13px}
+  .sig i{width:3px;background:#7c3aed;border-radius:1px;display:block}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 
-  .cinfo{display:flex;flex-direction:column;gap:3px}
-  .cinfo .line{font-size:13px;line-height:1.35;overflow:hidden;text-overflow:ellipsis}
-  .cinfo .line .lb{display:inline-block;width:30px;color:var(--faint);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
-  .cdiv{height:1px;background:var(--line2)}
-  .tierrow{display:flex;align-items:center;gap:9px}
-  .tierrow .stars{font-size:15px}
-  .meters{display:flex;gap:9px}
-  .meter{flex:1}
-  .meter .ml{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;display:flex;justify-content:space-between}
-  .meter .track{height:6px;background:#eef0f3;border-radius:4px;margin-top:3px;overflow:hidden}
-  .meter .track > i{display:block;height:100%;border-radius:4px}
-  .ai-box{background:#faf8ff;border:1px solid #ece3ff;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.5}
-  .ai-box .lbl{font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#6d28d9;text-transform:uppercase;display:block;margin-bottom:3px}
-  .ai-box + .ai-box{margin-top:7px}
-  .pfoot{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-  .li-btn{background:var(--li);color:#fff;border:none;border-radius:9px;padding:8px 11px;font-weight:650;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px}
-  .li-btn.disabled{background:#eaecf0;color:#98a2b3;pointer-events:none}
-  .icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 10px;cursor:pointer;font-size:12.5px;font-weight:650;color:var(--muted)}
-  .icon-btn.saved{background:#fff7e6;color:#b54708;border-color:#fedf89}
-  select.status{margin-left:auto;border-radius:9px;padding:7px 9px;border:1px solid var(--line);font-weight:650;background:var(--panel);font-size:12px}
-  textarea.notes{width:100%;border:1px solid var(--line2);border-radius:9px;padding:8px 10px;resize:vertical;min-height:32px;background:#fcfcfd;font-size:12px}
-  textarea.notes:focus{outline:none;border-color:var(--brand);background:#fff}
+  .rr{padding:16px 18px;border-left:1px solid var(--line2);display:flex;flex-direction:column;gap:12px}
+  .ractions{display:flex;align-items:center;gap:8px}
+  .vprofile{flex:1;justify-content:center;background:#f5f3ff;border:1px solid #e9d7fe;color:#5b21b6;border-radius:10px;padding:8px 10px;font-weight:650;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .vprofile:hover{background:#ede9fe}
+  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+  .iconbtn.on{background:#fff7e6;color:var(--gold);border-color:#fedf89}
+  .rrat .t{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 
-  /* right AI panel */
-  .ai-panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:14px}
-  .heatmap{display:flex;flex-direction:column;gap:6px}
-  .hmrow{display:flex;align-items:center;gap:9px}
-  .hmrow .fn{width:96px;font-size:11.5px;color:var(--muted);flex:none}
-  .hmrow .cell{flex:1;height:26px;border-radius:7px;display:flex;align-items:center;padding:0 9px;font-size:11.5px;font-weight:700}
-  .rank{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2)}
-  .rank:last-child{border-bottom:none}
-  .rank .rn{width:20px;height:20px;border-radius:6px;background:#efe6ff;color:#6d28d9;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
-  .rank .ri{flex:1;min-width:0}
-  .rank .rname{font-weight:700;font-size:13px}
-  .rank .rmeta{color:var(--muted);font-size:11.5px}
-  .rank .rs{font-weight:800;color:#067647;font-size:13px}
-
-  .empty{text-align:center;padding:56px 20px;color:var(--muted)}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
   .empty .big{font-size:38px;margin-bottom:8px}
-  .banner{background:#eff8ff;border:1px solid #b2ddff;color:#026aa2;padding:11px 15px;border-radius:11px;margin-bottom:14px;font-size:13px;display:none}
 
-  .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.55);display:none;align-items:center;justify-content:center;z-index:40;backdrop-filter:blur(3px);padding:20px}
-  .modal{background:var(--panel);border-radius:16px;padding:22px;width:min(760px,96vw);max-height:88vh;overflow:auto;box-shadow:var(--shadow-lg)}
+  /* table */
+  table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-top:14px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line2);font-size:13px}
+  th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:#fafbfc}
+
+  /* drawer */
+  .drawer-bg{position:fixed;inset:0;background:rgba(16,24,40,.45);opacity:0;pointer-events:none;transition:.2s;z-index:50}
+  .drawer-bg.show{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,96vw);background:var(--panel);box-shadow:var(--shadow-lg);
+    transform:translateX(100%);transition:.25s;z-index:51;overflow:auto}
+  .drawer.show{transform:none}
+  .dhead{background:linear-gradient(120deg,var(--hd1),var(--hd3));color:#fff;padding:22px 22px 18px;position:relative}
+  .dhead .close{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px}
+  .dhead .dav{width:56px;height:56px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:20px;margin-bottom:10px}
+  .dhead .dn{font-size:20px;font-weight:750}
+  .dhead .dr{color:#ccc2f0;font-size:13px;margin-top:2px}
+  .dsec{padding:16px 22px;border-bottom:1px solid var(--line2)}
+  .dsec h4{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--brand);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+  .dsec p{margin:0;font-size:13.5px;line-height:1.6}
+  .dsec ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.7}
+  .dsec textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;resize:vertical;min-height:64px;background:#fcfcfd}
+  .dsec textarea:focus{outline:none;border-color:var(--brand)}
+  .drow2{display:flex;gap:10px;flex-wrap:wrap}
+  .dstat{border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-weight:650}
+
+  /* modals */
+  .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.55);display:none;align-items:center;justify-content:center;z-index:60;backdrop-filter:blur(2px);padding:20px}
+  .modal{background:var(--panel);border-radius:16px;padding:22px;width:min(680px,96vw);max-height:88vh;overflow:auto;box-shadow:var(--shadow-lg)}
   .modal h3{margin:0 0 4px}.modal .mnote{color:var(--muted);font-size:12.5px;margin-bottom:14px}
   .modal label{display:block;font-size:12px;color:var(--muted);margin:11px 0 5px;font-weight:600}
   .modal input,.modal select{width:100%;background:#fcfcfd;border:1px solid var(--line);padding:9px 11px;border-radius:9px}
   .modal .r2{display:flex;gap:11px}.modal .r2>*{flex:1}
   .modal .acts{margin-top:18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-  .tag-ai{font-size:10px;font-weight:800;color:#6d28d9;background:#efe6ff;border-radius:6px;padding:2px 7px;letter-spacing:.4px}
-  @media print{header .hactions,.copills,.toolbar,.rtabs,.nlchips,.ai-panel .btn{display:none!important}body{background:#fff}}
+  .menu{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow-lg);padding:6px;z-index:70;min-width:180px}
+  .menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600}
+  .menu button:hover{background:#f6f7fb}
+  .hmrow{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+  .hmrow .fn{width:100px;font-size:12px;color:var(--muted)}
+  .hmrow .cell{flex:1;height:24px;border-radius:7px;display:flex;align-items:center;padding:0 9px;font-size:11.5px;font-weight:700}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}.rbest{padding-right:0}.rnet{position:static;margin-bottom:8px}}
+  @media print{header .hactions,.fpanel,.pillrow .savedviews,.ractions{display:none!important}body{background:#fff}}
 </style>
 </head>
-<body data-palette="#6d28d9,#026aa2,#b54708,#067647,#b42318,#3538cd">
+<body>
 <header>
-  <div class="brandrow">
+  <div class="mesh"></div>
+  <div class="hrow">
     <div class="logo">📡</div>
-    <div>
-      <h1>Scuttlebutt Desk</h1>
-      <div class="tag">AI-powered buy-side intelligence · primary-research sourcing</div>
-    </div>
+    <div class="brand"><h1>Scuttlebutt Desk</h1><div class="sub">Executive intelligence. Buy-side advantage.</div></div>
     <div class="hactions">
-      <button class="btn primary" id="outreachBtn">✨ Generate outreach list</button>
-      <button class="btn" id="addBtn">＋ Add</button>
+      <button class="btn primary" id="addBtn">＋ Add source</button>
       <button class="btn" id="exportBtn">⤓ Export</button>
-      <button class="btn" id="keyBtn">🔑</button>
+      <div class="avatar-btn" id="avatarBtn"><span class="av">🧑‍💼</span><span style="font-size:12px">▾</span></div>
     </div>
   </div>
-  <div class="stats" id="stats"></div>
+  <div class="rctx">
+    <span class="lab">RESEARCH CONTEXT</span>
+    <span class="txt">Tracking senior operators and domain experts across priority sectors.</span>
+    <button class="more" id="insightsBtn">📊 More insights ›</button>
+  </div>
+  <div class="kpis" id="kpis"></div>
 </header>
 
-<div class="copills" id="copills"></div>
+<div class="wrap">
+  <div class="pillrow" id="pillrow"></div>
 
-<div class="layout">
-  <!-- LEFT -->
-  <div>
-    <div class="card sec" id="ciCard" style="margin-bottom:14px"></div>
+  <div class="brief" id="brief"></div>
 
-    <div class="banner" id="banner"></div>
-
-    <div class="nlchips">
-      <span class="nlchip" data-nl="finance leaders">💰 Find finance leaders</span>
-      <span class="nlchip" data-nl="people close to ceo">👑 People close to the CEO</span>
-      <span class="nlchip" data-nl="operations supply chain">📦 Ops &amp; supply chain</span>
-      <span class="nlchip" data-nl="tier 1 reachable">⭐ Tier-1 &amp; reachable</span>
-      <span class="nlchip" data-nl="left recently">🕒 Recently departed</span>
-    </div>
-
-    <div class="toolbar">
-      <div class="search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" id="q" placeholder='Ask: "finance leaders", "people close to CEO", "tier 1 reachable"…'/>
+  <div class="fpanel">
+    <div class="fgroup">
+      <div class="glab">SOURCE TYPE</div>
+      <div class="seg" id="sourceType">
+        <button data-st="all" class="on">▦ All</button>
+        <button data-st="finance">📊 Finance leaders</button>
+        <button data-st="ops">📦 Ops &amp; Supply Chain</button>
+        <button data-st="ceo">👑 People near CEO</button>
+        <button data-st="left">🕒 Recently left</button>
       </div>
-      <select class="ctl" id="fFunction"><option value="">All functions</option></select>
-      <select class="ctl" id="fSeniority"><option value="0">All seniority</option><option value="90">C-suite / Founder</option><option value="75">VP+</option><option value="60">Director / Head+</option></select>
-      <select class="ctl" id="fStatus"><option value="">Any status</option><option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option><option value="skip">Skipped</option><option value="__saved">★ Saved</option></select>
-      <select class="ctl" id="sort"><option value="score">Sort: Priority</option><option value="full_name">Sort: Name</option><option value="current_employer">Sort: Now at</option></select>
-      <div class="seg"><button id="viewCards" class="on">▦</button><button id="viewTable">▤</button></div>
     </div>
-
-    <div id="cards" class="grid"></div>
-    <div id="tableWrap" style="display:none"></div>
-    <div class="empty" id="empty" style="display:none"><div class="big">🔍</div><div id="emptyMsg">No sources match. Adjust filters or run research.</div></div>
+    <div class="fgroup">
+      <div class="glab">RESEARCH LENS</div>
+      <div class="lens">◎ <select id="lens">
+        <option value="leadership">Leadership influence</option>
+        <option value="operations">Operational depth</option>
+        <option value="finance">Financial insight</option>
+        <option value="fresh">Recent exits</option>
+        <option value="reach">Reachability</option>
+      </select></div>
+    </div>
+    <div class="fright">
+      <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
+      <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
+    </div>
   </div>
+
+  <div class="rows" id="rows"></div>
+  <div id="tableWrap" style="display:none"></div>
+  <div class="empty" id="empty" style="display:none"><div class="big">🔍</div><div>No sources match. Adjust filters or add a company.</div></div>
 </div>
 
-<!-- Add modal -->
+<!-- Detail drawer -->
+<div class="drawer-bg" id="drawerBg"></div>
+<div class="drawer" id="drawer"></div>
+
+<!-- Add source modal -->
 <div class="modal-bg" id="modalBg"><div class="modal" style="width:min(540px,96vw)">
   <h3>Add a source</h3><div class="mnote">Manually add a stakeholder (franchise partner, ex-vendor, board member, industry expert…).</div>
   <label>Full name *</label><input id="m_name"/>
@@ -244,27 +276,19 @@
   <div class="acts"><button class="btn" id="m_cancel">Cancel</button><button class="btn primary" id="m_save">Save source</button></div>
 </div></div>
 
-<!-- Generic modal (outreach / network / compare) -->
+<!-- Generic modal -->
 <div class="modal-bg" id="genBg"><div class="modal" id="genModal"></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('lx_token')||'';
 let SAVED=new Set(JSON.parse(localStorage.getItem('lx_saved')||'[]'));
-let RAW=[];            // all people from server, enriched
-let COMPANY='';       // active company scope
-let RTAB='all';       // relationship tab
-let VIEW='cards';
-let SORT={key:'score',dir:-1};
+let RAW=[];let COMPANY='';let STYPE='all';let LENS='leadership';let VIEW='cards';let VIEWFILTER='';
 
 const RELLABEL={ex_employee:'Ex-employee',competitor_ex:'Competitor exec',franchise_partner:'Franchise partner',vendor:'Supplier / vendor',consultant:'Consultant',board:'Board member',investor:'Investor',expert:'Industry expert',other:'Stakeholder'};
 const SENLABEL={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director / Head',manager:'Manager',other:'Professional'};
-const RTABS=[['all','All sources'],['ex_employee','Ex-employees'],['competitor_ex','Competitor execs'],['franchise_partner','Franchise partners'],['vendor','Suppliers & vendors'],['consultant','Consultants'],['board','Board members'],['investor','Investors'],['expert','Industry experts']];
 const FUNCTIONS=['Leadership','Finance','Operations','Technology','Marketing','Supply Chain'];
 const AV=['#6941c6','#026aa2','#b54708','#067647','#b42318','#3538cd','#0e7090','#c11574'];
-
-// Known company intelligence (facts for the tracked names; generic otherwise).
-// Editable company facts (approximate headcounts — adjust as you verify).
 const CO_INTEL={
   bluestone:{industry:'Jewellery retail (omnichannel D2C)',employees:'~5,000',comps:['CaratLane','Tanishq','Kalyan','Melorra','GIVA']},
   caratlane:{industry:'Jewellery retail (online-first, Titan)',employees:'~6,000',comps:['Bluestone','Tanishq','Melorra','GIVA']},
@@ -272,20 +296,17 @@ const CO_INTEL={
   'quality power':{industry:'Power / electrical equipment (grid, HVDC)',employees:'~1,500',comps:['Hitachi Energy','Siemens Energy','GE Grid','ABB','TBEA']},
   thangamayil:{industry:'Gold jewellery retail (Tamil Nadu)',employees:'~1,200',comps:['Kalyan Jewellers','Joyalukkas','GRT','Lalithaa','Tanishq']},
 };
-function readinessOf(list){const senior=list.filter(p=>p.score>=75).length;const reach=list.filter(p=>p._reach>=70).length;const cov=new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100;return Math.min(100,Math.round(cov*0.5+Math.min(senior,8)/8*30+Math.min(reach,8)/8*20));}
-// Research stage is driven by function coverage (how complete the picture is).
-function stageOf(covPct){return covPct>=83?{s:'Stage 2',t:'Deep-dive ready',c:'#067647',bg:'#ecfdf3'}:covPct>=50?{s:'Stage 1 → 2',t:'Building coverage',c:'#b54708',bg:'#fef3e6'}:{s:'Stage 1',t:'Screening',c:'#6d28d9',bg:'#efe6ff'};}
-function coverageOf(list){return Math.round(new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100);}
 
 function authHeaders(){const h={'content-type':'application/json'};if(TOKEN)h.authorization='Bearer '+TOKEN;return h;}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function initials(n){return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
 function avColor(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;return AV[h%AV.length];}
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
+function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
+function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))return '—';const days=Math.floor((Date.now()-d)/86400000);if(days<=0)return 'today';if(days===1)return '1 day ago';if(days<30)return days+' days ago';const m=Math.floor(days/30);return m+' mo ago';}
 
-// ---- enrichment (computed intelligence) ----
-function fnOf(p){
-  const t=((p.last_role||'')+' '+(p.current_role||'')+' '+(p.seniority||'')).toLowerCase();
+// enrichment
+function fnOf(p){const t=((p.last_role||'')+' '+(p.current_role||'')+' '+(p.seniority||'')).toLowerCase();
   if(/\bcfo\b|chief financial|financial officer|finance|controller|\baccounts\b|treasury|\baudit\b|fp&a/.test(t))return'Finance';
   if(/\bcto\b|\bcio\b|chief technology|software|engineering|\bengineer|developer|data scien|analytics|machine learning|platform|\bproduct\b/.test(t))return'Technology';
   if(/\bcmo\b|chief marketing|marketing|\bbrand\b|growth|social media|communications|\bcategory\b/.test(t))return'Marketing';
@@ -294,342 +315,291 @@ function fnOf(p){
   if(['founder','clevel'].includes(p.seniority))return'Leadership';
   if(/general manager|business head|country head|president|\bstrategy\b|corporate/.test(t))return'Leadership';
   if(/vice president|\bvp\b|director|\bhead\b|principal/.test(t))return'Leadership';
-  return 'Operations';
-}
+  return 'Operations';}
 function tierOf(s){s=s||0;return s>=100?1:s>=85?2:s>=70?3:s>=55?4:5;}
 function reachOf(p){let r=18;if(p.linkedin_url)r+=46;if(p.current_employer)r+=20;if(Number(p.is_current)===0)r+=16;return Math.min(100,r);}
-function knowledge(fn){return{
-  Finance:['Unit economics & margins','Cash burn / path to profit','Financial controls & reporting','Fundraising & investor expectations'],
-  Operations:['Cost structure & efficiency','Store / fulfilment operations','Scaling & execution quality','Attrition & ground realities'],
-  Technology:['Product roadmap & tech debt','Data / analytics maturity','Build vs buy decisions','Engineering culture'],
-  Marketing:['CAC & channel economics','Brand positioning vs peers','Customer retention / repeat','Discounting & promo intensity'],
-  'Supply Chain':['Sourcing & vendor terms','Inventory & working capital','Procurement leverage','Quality & lead times'],
-  Leadership:['Strategy & competitive position','Board & promoter dynamics','Culture & leadership quality','Why growth is/ isn’t working'],
-  }[fn]||['Company strategy','Competitive dynamics','Team & culture'];}
-function topics(fn,co){const g=[`Why they left ${co} and how the culture felt`,`How they’d rate the current leadership team`];
-  const m={Finance:['Real margin & cash-flow picture vs reported','Aggressiveness of accounting / provisioning'],
-    Operations:['Biggest operational bottleneck at scale','Unit-level profitability of stores/routes'],
-    Technology:['State of the tech & data stack','Whether product is a moat or a cost'],
-    Marketing:['True CAC and payback vs claims','Brand strength vs competitors'],
-    'Supply Chain':['Vendor concentration & pricing power','Inventory / working-capital discipline'],
-    Leadership:['Founder/promoter decision-making','Where the strategy could break']}[fn]||['Competitive threats they’d worry about'];
-  return g.concat(m);}
-function targetRolePhrase(p){
-  // A reliable description of their role AT the target company.
-  let lr=p.last_role||'';const l=lr.toLowerCase();
-  const unreliable=!lr||(p.current_role&&l===p.current_role.toLowerCase())||(p.current_employer&&l.includes(p.current_employer.toLowerCase()))||/\bcurrent|currently|presently|\bnow\b/.test(l);
-  if(!unreliable)return `${p.company_label||p.company}’s ${lr}`;
-  const sm={founder:'a founder',clevel:'a C-suite leader',vp:'a VP',director:'a senior leader',manager:'a manager',other:'a senior figure'};
-  return `${sm[p.seniority]||'a senior leader'} at ${p.company_label||p.company}`;
-}
-function whyMatters(p){
-  const fn=p._fn,fnl=fn.toLowerCase(),co=p.company_label||p.company,nm=firstName(p.full_name);
-  const now=p.current_employer?` Now at ${p.current_employer}, ${nm} can speak candidly without a current conflict.`:'';
-  const insight=fnl==='leadership'?'strategy and how decisions were actually made':fnl;
-  const rel=p.relationship==='competitor_ex'?`As a competitor-side executive, ${nm} offers an outside-in read on how ${co} is really perceived and where it’s vulnerable.`
-    :`As ${targetRolePhrase(p)}, ${nm} had first-hand visibility into ${insight}.`;
-  return rel+now;
-}
-function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);return p;}
+function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._in=!!p.linkedin_url&&p._reach>=55;return p;}
 
-// ---- data ----
+const BESTFOR={Leadership:['Strategy & positioning','Leadership quality'],Finance:['Unit economics','Margins & cash'],Operations:['Operational insight','Execution at scale'],Technology:['Product & tech','Data maturity'],Marketing:['Brand & CAC','Growth channels'],'Supply Chain':['Sourcing & vendors','Inventory & WC']};
+function bestFor(p){return BESTFOR[p._fn]||['Sector view','Competitive read'];}
+function roleWord(p){return {founder:'Founder',clevel:'C-suite operator',vp:'Senior VP',director:'Senior leader',manager:'Manager',other:'Domain expert'}[p.seniority]||'Senior operator';}
+function shortWhy(p){
+  const phrase={Leadership:'end-to-end visibility into strategy and how decisions were made',Finance:'a deep view of margins, cash and financial controls',Operations:'hands-on experience building and scaling operations and teams',Technology:'insight into the product, data and technology stack',Marketing:'a read on brand strength, CAC and growth channels','Supply Chain':'insight into sourcing, vendors and inventory discipline'}[p._fn];
+  if(p.relationship==='competitor_ex')return `Competitor-side ${roleTitle(p)} with an outside-in read on how the target is really perceived.`;
+  return `${roleTitle(p)} with ${phrase}.`;
+}
+function rationale(p){
+  const m={Leadership:'Strong operator reputation; trusted across functions and external partners.',Finance:'Credible on the real financial picture beyond reported numbers.',Operations:'Proven track record improving execution and operational efficiency.',Technology:'Hands-on view of technical depth and product moat.',Marketing:'Candid on true customer economics and brand position.','Supply Chain':'Ground truth on vendor leverage and working-capital discipline.'};
+  const fresh=Number(p.is_current)===0?' Has since left — can speak candidly.':'';
+  return (m[p._fn]||'Relevant domain perspective for this company.')+fresh;
+}
+function discussionQs(p){
+  const g=[`Why did they leave, and how did the culture feel?`,`How would they rate the current leadership team?`];
+  const m={Leadership:['Where could the strategy break?','How are promoter/board decisions really made?'],Finance:['What does the real margin & cash picture look like?','Any aggressive accounting to watch?'],Operations:['Biggest operational bottleneck at scale?','Unit-level profitability of stores/routes?'],Technology:['Is the tech a moat or a cost centre?','State of the data & product stack?'],Marketing:['True CAC and payback vs claims?','Brand strength vs competitors?'],'Supply Chain':['Vendor concentration & pricing power?','Inventory / working-capital discipline?']}[p._fn]||['What competitive threats worry them?'];
+  return g.concat(m);
+}
+function outreachDraft(p){
+  const co=p.company_label||p.company;
+  return `Hi ${firstName(p.full_name)},\n\nI'm doing some independent research on ${co} and came across your profile given your time there. I'd really value 15–20 minutes to hear your perspective on ${p._fn.toLowerCase()} at ${co}.\n\nWould you be open to a brief call in the next week or two?\n\nBest regards,`;
+}
+
+// data
 async function loadAll(){
   const r=await fetch('/api/people');RAW=((await r.json()).people||[]).map(enrich);
-  const cs=await(await fetch('/api/companies')).json();renderCopills(cs.companies||[]);
-  // function filter options
-  $('fFunction').innerHTML='<option value="">All functions</option>'+FUNCTIONS.map(f=>`<option>${f}</option>`).join('');
-  render();
+  renderPills();render();
 }
 function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
-function relCount(list,key){return key==='all'?list.length:list.filter(p=>(p.relationship||'ex_employee')===key).length;}
 
-function renderCopills(cos){
-  const total=RAW.length;
-  const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${total}</span></div>`]
-    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span></div>`));
-  $('copills').innerHTML=pills.join('');
-  document.querySelectorAll('.copill').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;RTAB='all';render();});
+function renderPills(){
+  const cos=[...new Set(RAW.map(p=>p.company))].map(c=>({company:c,label:RAW.find(x=>x.company===c).company_label,n:RAW.filter(x=>x.company===c).length})).sort((a,b)=>b.n-a.n);
+  const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
+    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span></div>`))
+    .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
+  $('pillrow').innerHTML=pills.join('')+`<div class="savedviews"><select class="sv" id="savedViews">
+    <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
+    <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
+  document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
+  $('addCo').onclick=addCompany;
+  $('savedViews').value=VIEWFILTER;
+  $('savedViews').onchange=e=>{VIEWFILTER=e.target.value;render();};
 }
 
-// natural-language-ish search -> loose predicate
-function nlMatch(p,qraw){
-  const q=qraw.toLowerCase();const blob=(p.full_name+' '+(p.last_role||'')+' '+(p.current_employer||'')+' '+(p.current_role||'')+' '+p._fn+' '+p.seniority).toLowerCase();
-  let ok=true;
-  const fnHit=FUNCTIONS.find(f=>q.includes(f.toLowerCase())|| (f==='Finance'&&/financ|cfo/.test(q)) || (f==='Technology'&&/tech|product|data|engineer/.test(q)) || (f==='Marketing'&&/market|brand|growth/.test(q)) || (f==='Supply Chain'&&/supply|procure|sourc|vendor/.test(q)) || (f==='Operations'&&/ops|operation|logistic|store/.test(q)));
-  if(fnHit)ok=ok&&p._fn===fnHit;
-  if(/leader|senior|head|chief|exec/.test(q))ok=ok&&(p.score>=60);
-  if(/close to (the )?ceo|ceo|founder|c-suite|c suite/.test(q))ok=ok&&['founder','clevel'].includes(p.seniority);
-  if(/tier 1|tier1/.test(q))ok=ok&&p._tier===1;
-  if(/tier 2|tier2/.test(q))ok=ok&&p._tier<=2;
-  if(/reachable/.test(q))ok=ok&&p._reach>=70;
-  if(/recently|recent|left recently|fresh/.test(q))ok=ok&&Number(p.is_current)===0;
-  // if no structured token hit, fall back to text contains
-  const structured=fnHit||/leader|senior|head|chief|ceo|founder|tier|reachable|recent|close to/.test(q);
-  if(!structured)ok=blob.includes(q);
-  return ok;
+function stypePass(p){
+  if(STYPE==='all')return true;
+  if(STYPE==='finance')return p._fn==='Finance';
+  if(STYPE==='ops')return p._fn==='Operations'||p._fn==='Supply Chain';
+  if(STYPE==='ceo')return ['founder','clevel'].includes(p.seniority);
+  if(STYPE==='left')return Number(p.is_current)===0;
+  return true;
 }
-
+function lensScore(p){
+  const b=p.score||0;
+  if(LENS==='leadership')return b+(['founder','clevel'].includes(p.seniority)?25:p.seniority==='vp'?10:0);
+  if(LENS==='operations')return b+((p._fn==='Operations'||p._fn==='Supply Chain')?30:0);
+  if(LENS==='finance')return b+(p._fn==='Finance'?40:0);
+  if(LENS==='fresh')return b+(Number(p.is_current)===0?20:0);
+  if(LENS==='reach')return p._reach*1.2+b*0.3;
+  return b;
+}
 function applyFilters(list){
-  const q=$('q').value.trim();const fn=$('fFunction').value;const minS=+$('fSeniority').value;const st=$('fStatus').value;
+  const q=$('q').value.trim().toLowerCase();
   let r=list.filter(p=>{
-    if(fn&&p._fn!==fn)return false;
-    if(minS&&(p.score||0)<minS)return false;
-    if(st==='__saved'){if(!p._saved)return false;}else if(st&&p.contacted!==st)return false;
-    if(q&&!nlMatch(p,q))return false;
+    if(!stypePass(p))return false;
+    if(VIEWFILTER==='__saved'){if(!p._saved)return false;}else if(VIEWFILTER&&p.contacted!==VIEWFILTER)return false;
+    if(q){const blob=(p.full_name+' '+(p.last_role||'')+' '+(p.current_employer||'')+' '+(p.current_role||'')+' '+p._fn).toLowerCase();if(!blob.includes(q))return false;}
     return true;
   });
-  const k=SORT.key,dir=SORT.dir;
-  r.sort((a,b)=>{let va,vb;if(k==='score'){va=+a.score||0;vb=+b.score||0;}else if(k==='reach'){va=a._reach;vb=b._reach;}else{va=(a[k]||'').toString().toLowerCase();vb=(b[k]||'').toString().toLowerCase();}return va<vb?-dir:va>vb?dir:0;});
+  r.sort((a,b)=>lensScore(b)-lensScore(a));
   return r;
 }
 
-// ---- render pieces ----
-function renderStats(list){
-  const senior=list.filter(p=>p.score>=75).length;
-  const comp=list.filter(p=>p.relationship==='competitor_ex').length;
-  const fnsCovered=new Set(list.map(p=>p._fn)).size;
-  const coverage=Math.round(fnsCovered/FUNCTIONS.length*100);
-  const avgConf=list.length?Math.round(list.reduce((a,p)=>a+confidence(p),0)/list.length):0;
-  const reachable=list.filter(p=>p._reach>=70).length;
-  const readiness=Math.min(100,Math.round(coverage*0.5 + Math.min(senior,8)/8*30 + Math.min(reachable,8)/8*20));
-  const S=[['Total sources',list.length,''],['High-value contacts',senior,pct(senior,list.length)],['Competitor contacts',comp,pct(comp,list.length)],['Research coverage',coverage+'%',coverage],['AI confidence',avgConf+'%',avgConf],['Research readiness',readiness+'%',readiness]];
-  $('stats').innerHTML=S.map(([l,n,b])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div>${typeof b==='number'?`<div class="bar"><i style="width:${b}%"></i></div>`:''}</div>`).join('');
-}
+// KPIs
 function pct(a,b){return b?Math.round(a/b*100):0;}
 function confidence(p){let c=30;if(p.last_role)c+=25;if(p.current_employer)c+=20;if(p.linkedin_url)c+=15;if(p.seniority&&p.seniority!=='other')c+=10;return Math.min(100,c);}
+function renderKPIs(list){
+  const senior=list.filter(p=>p.score>=75).length;
+  const cov=Math.round(new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100);
+  const conf=list.length?Math.round(list.reduce((a,p)=>a+confidence(p),0)/list.length):0;
+  const K=[['📄',list.length,'Mapped sources',Math.min(100,list.length*2)],['⭐',senior,'High-value contacts',pct(senior,list.length)],['◎',cov+'%','Research coverage',cov],['🛡',conf+'%','AI confidence',conf]];
+  $('kpis').innerHTML=K.map(([ic,n,l,b])=>`<div class="kpi"><div class="ic">${ic}</div><div style="flex:1"><div class="n">${n}</div><div class="l">${l}</div><div class="bar"><i style="width:${b}%"></i></div></div></div>`).join('');
+  $('kpis').querySelectorAll('.kpi').forEach(k=>k.onclick=openInsights);
+}
 
-function renderCI(list){
-  // Minimal: only show the company brief when a company is selected.
-  if(!COMPANY){$('ciCard').style.display='none';return;}
-  $('ciCard').style.display='';
+function renderBrief(list){
+  if(!COMPANY){$('brief').style.display='none';return;}
+  $('brief').style.display='';
   const label=list[0]?.company_label||COMPANY;const intel=CO_INTEL[COMPANY]||{industry:'—',employees:'—',comps:[]};
   const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);
-  const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const covered=FUNCTIONS.length-gaps.length;const covPct=Math.round(covered/FUNCTIONS.length*100);
+  const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);const covered=FUNCTIONS.length-gaps.length;const covPct=Math.round(covered/FUNCTIONS.length*100);
   const strongest=FUNCTIONS.slice().sort((a,b)=>fnCount[b]-fnCount[a])[0];
-  const stage=stageOf(covPct);
-  const summary=`Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}`;
-  $('ciCard').innerHTML=`
-    <div class="ci-top">
-      <div class="ci-logo" style="background:${avColor(label)}">${esc(initials(label))}</div>
-      <div style="flex:1;min-width:0"><div class="ci-name">${esc(label)}</div><div class="ci-sector">${esc(intel.industry)}</div></div>
-      <div class="ci-stage"><span class="sb" style="color:${stage.c};background:${stage.bg}">${stage.s}</span><div class="st">${stage.t}</div></div>
+  const stage=covPct>=83?['Stage 2','#067647','#ecfdf3']:covPct>=50?['Stage 1 → 2','#b54708','#fef3e6']:['Stage 1','#6d28d9','#efe6ff'];
+  $('brief').innerHTML=`<div class="bt"><div class="blogo" style="background:${avColor(label)}">${esc(initials(label))}</div>
+    <div><div class="bn">${esc(label)}</div><div class="bs">${esc(intel.industry)}</div></div>
+    <span class="bstage" style="color:${stage[1]};background:${stage[2]}">${stage[0]}</span></div>
+    <div class="bfacts">
+      <div><span class="k">Employees</span><b>${esc(intel.employees)}</b></div>
+      <div><span class="k">Sources</span><b>${list.length}</b></div>
+      <div><span class="k">Coverage</span><b>${covPct}%</b></div>
+      <div style="flex:1"><span class="k">Competitors</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">${(intel.comps||[]).map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')}</div></div>
     </div>
-    <div class="ci-grid">
-      <div class="ci-fact"><span class="cil">Industry</span><span class="civ" style="font-size:13px">${esc(intel.industry)}</span></div>
-      <div class="ci-fact"><span class="cil">Employees</span><span class="civ">${esc(intel.employees)}</span></div>
-      <div class="ci-fact"><span class="cil">Sources mapped</span><span class="civ">${list.length}</span></div>
-      <div class="ci-fact"><span class="cil">Coverage</span><span class="civ">${covPct}%</span><div class="cov-wrap"><div class="cov-track"><i style="width:${covPct}%"></i></div></div></div>
-      <div class="ci-fact full"><span class="cil">Competitors</span><div class="chips" style="margin-top:6px">${(intel.comps||[]).map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')||'—'}</div></div>
-    </div>
-    <div class="ci-summary"><span class="ai-tag">AI SUMMARY</span> ${summary}</div>
-    ${gaps.length?`<div class="chips" style="margin-top:10px"><span style="font-size:11.5px;color:var(--muted);font-weight:600;align-self:center">Coverage gaps:</span>${gaps.map(g=>`<span class="chip gap">⚠ ${g}</span>`).join('')}</div>`:''}`;
+    <div class="bsum"><span class="ai">AI SUMMARY</span> Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}</div>`;
 }
 
-function renderRtabs(list){
-  $('rtabs').innerHTML=RTABS.map(([k,l])=>{const n=relCount(list,k);return `<button class="rtab ${RTAB===k?'active':''}" data-r="${k}">${l} <span class="c">${n}</span></button>`;}).join('');
-  document.querySelectorAll('.rtab').forEach(t=>t.onclick=()=>{RTAB=t.dataset.r;render();});
-}
+function sigBars(score){const lvl=Math.max(1,Math.min(4,Math.ceil((score||0)/33)));let h='';for(let i=1;i<=4;i++)h+=`<i style="height:${3+i*2.5}px;opacity:${i<=lvl?1:.22}"></i>`;return `<span class="sig">${h}</span>`;}
 
-function stars(t){return '★★★★★'.slice(0,6-t)+'☆☆☆☆☆'.slice(0,t-1);}
-function reachLabel(r){return r>=70?'High':r>=45?'Medium':'Low';}
-function reachColor(r){return r>=70?'#12b76a':r>=45?'#f79009':'#98a2b3';}
-
-function pcard(p){
-  const sen=p.seniority||'other';const cur=Number(p.is_current)===1;
-  const status=['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${({no:'○ Not contacted',contacted:'◑ Contacted',replied:'◓ Replied',scheduled:'◕ Scheduled',done:'● Done',skip:'⊘ Skip'})[s]}</option>`).join('');
-  const li=p.linkedin_url?`<a class="li-btn" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg> LinkedIn</a>`:`<span class="li-btn disabled">No link</span>`;
-  // "Now" line: take the first (primary) segment of the noisy LinkedIn headline.
-  let nowRole=(p.current_role||'').split(/\s*[|·]\s*/)[0].trim();
-  if(!nowRole)nowRole=cur?(p.last_role||'Current role'):'—';
-  const curCo=p.current_employer||(cur?(p.company_label||p.company):'—');
-  const showCurCo=curCo&&curCo!=='—'&&!nowRole.toLowerCase().includes(curCo.toLowerCase());
-  const prevCo=p.company_label||p.company;
-  // Guard: sometimes the scraper captured the person's CURRENT role as last_role.
-  // If it looks like their current role (matches it, names the current employer,
-  // or says "currently"), fall back to a neutral label.
-  let prevRole=p.last_role||'Senior role';
-  const lr=prevRole.toLowerCase();
-  if(!p.last_role || (p.current_role&&lr===p.current_role.toLowerCase()) || (p.current_employer&&lr.includes(p.current_employer.toLowerCase())) || /\bcurrent|currently|presently|\bnow\b/.test(lr)) prevRole='Senior role';
-  const tps=topics(p._fn,esc(p.company_label||p.company));
-  return `<div class="pcard">
-    <div class="ph">
-      <div class="avatar" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
-      <div class="who"><div class="nm">${esc(p.full_name)}</div>
-        <div class="sub" style="margin-top:4px">${cur?'<span class="badge b-cur">Still there</span> ':''}<span class="badge b-${sen}">${SENLABEL[sen]}</span> <span class="badge b-fn">${p._fn}</span></div></div>
+function rowHtml(p){
+  const sen=p.seniority||'other';
+  const bf=bestFor(p).map(b=>`<span class="bchip">${esc(b)}</span>`).join('');
+  return `<div class="row" data-id="${p.id}">
+    <div class="rl">
+      <div class="rav" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="rid">
+        <div class="rtop"><div class="rname">${esc(p.full_name)}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
+        <div class="rrole">${esc(roleTitle(p))}</div>
+        <div class="rco">${esc(p.current_employer||(Number(p.is_current)===1?(p.company_label||''):'—'))}</div>
+        <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${p._fn}</span></div>
+      </div>
     </div>
-    <div class="cinfo">
-      <div class="line"><span class="lb">Now</span>${esc(nowRole)}${showCurCo?` · <b>${esc(curCo)}</b>`:''}</div>
-      <div class="line"><span class="lb">Ex</span>${esc(prevRole)} · <b>${esc(prevCo)}</b>${cur?' <span style="color:#b54708">· current</span>':''}</div>
+    <div class="rm">
+      <div class="rnet ${p._in?'in':'out'}">${p._in?'● In network':'▲ Out of network'}</div>
+      <div class="rbest"><span class="klab">BEST FOR</span>${bf}</div>
+      <div class="rwhy"><span class="klab">WHY THEY MATTER</span><div class="t">${esc(shortWhy(p))}</div></div>
+      <div class="rmetrics">
+        <div class="metric"><div class="mlab">SOURCE SIGNAL</div><div class="mv">${sigBars(p.score)} ${p.score||0}</div></div>
+        <div class="metric"><div class="mlab">REACHABILITY</div><div class="mv"><span class="dot" style="background:${p._reach>=70?'var(--green)':p._reach>=45?'var(--amber)':'var(--faint)'}"></span>${p._reach>=70?'High':p._reach>=45?'Medium':'Low'}</div></div>
+        <div class="metric"><div class="mlab">LAST SYNCED</div><div class="mv">${ago(p.updated_at||p.created_at)}</div></div>
+        <div class="metric"><div class="mlab">TIER</div><div class="mv" style="color:var(--gold)">${'★'.repeat(6-p._tier)}</div></div>
+      </div>
     </div>
-    <div class="cdiv"></div>
-    <div class="tierrow"><div class="stars">${stars(p._tier)}</div><div class="tierlab t${p._tier}">TIER ${p._tier}</div>
-      <span style="margin-left:auto;font-size:11px;color:var(--faint);font-weight:700">PRIORITY</span></div>
-    <div class="meters">
-      <div class="meter"><div class="ml"><span>AI Signal</span><span>${p.score||0}</span></div><div class="track"><i style="width:${Math.min(100,(p.score||0)/1.3)}%;background:linear-gradient(90deg,#8b5cf6,#6d28d9)"></i></div></div>
+    <div class="rr">
+      <div class="ractions">
+        ${p.linkedin_url?`<a class="vprofile" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener" data-noopen>View profile ↗</a>`:`<span class="vprofile" style="opacity:.5" data-noopen>No link</span>`}
+        <button class="iconbtn ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'🔖'}</button>
+        <button class="iconbtn" data-act="menu" data-id="${p.id}" title="More">⋯</button>
+      </div>
+      <div class="rrat"><span class="klab">RATIONALE</span><div class="t">${esc(rationale(p))}</div></div>
     </div>
-    <div class="cdiv"></div>
-    <div class="ai-box"><span class="lbl">✨ Why this person matters</span>${esc(whyMatters(p))}</div>
-    <div class="ai-box"><span class="lbl">💬 Discussion topics</span>${tps.slice(0,3).map(k=>'• '+esc(k)).join('<br>')}
-      <details style="margin-top:6px"><summary style="cursor:pointer;color:#6d28d9;font-size:11.5px;font-weight:650">＋ Likely knowledge areas</summary>${knowledge(p._fn).map(k=>'• '+esc(k)).join('<br>')}</details></div>
-    <div class="cdiv"></div>
-    <div class="pfoot">${li}
-      <button class="icon-btn ${p._saved?'saved':''}" data-act="save" data-id="${p.id}">${p._saved?'★ Saved':'☆ Save'}</button>
-      <select class="status" data-act="status" data-id="${p.id}">${status}</select></div>
-    <textarea class="notes" data-act="notes" data-id="${p.id}" placeholder="Notes — angle, mutual connection, call summary…">${esc(p.notes||'')}</textarea>
   </div>`;
 }
-function prow(p){return `<tr>
-  <td><div class="stars">${stars(p._tier)}</div></td>
-  <td><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td>
-  <td>${esc(p.last_role||'—')}</td><td>${esc(p.current_employer||'—')}</td>
-  <td>${p.score||0}</td>
-  <td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank">Profile ↗</a>`:'—'}</td>
-  <td><select class="status" data-act="status" data-id="${p.id}">${['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;}
-
+function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td>${'★'.repeat(6-p._tier)}</td><td><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(p.current_role||'—')}</td><td>${esc(p.current_employer||'—')}</td><td>${p.score||0}</td><td><span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'In':'Out'}</span></td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
 
 function render(){
-  renderCopills([...new Set(RAW.map(p=>p.company))].map(c=>({company:c,label:RAW.find(x=>x.company===c).company_label,n:RAW.filter(x=>x.company===c).length})).sort((a,b)=>b.n-a.n));
   const scope=scopeList();
-  renderStats(scope);
-  renderCI(scope);
+  renderKPIs(scope);renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
   $('empty').style.display=has?'none':'block';
-  $('cards').style.display=(VIEW==='cards'&&has)?'grid':'none';
+  $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
-  if(VIEW==='cards')$('cards').innerHTML=rows.map(pcard).join('');
-  else $('tableWrap').innerHTML=`<div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${['Tier','Name','Role at target','Now at','Signal','Link','Status'].map(h=>`<th style="text-align:left;padding:11px 13px;font-size:11px;text-transform:uppercase;color:var(--muted);background:#fafbfc;border-bottom:1px solid var(--line2)">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(prow).join('')}</tbody></table></div>`;
+  if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
+  else $('tableWrap').innerHTML=`<table><thead><tr>${['Tier','Name','Current role','Now at','Signal','Network','Link'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table>`;
 }
 
-// ---- edits ----
-async function patch(id,body){if(!TOKEN){setKey();if(!TOKEN)return;}const r=await fetch('/api/people/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401)alert('Wrong password — click 🔑.');}
-function setKey(){const k=prompt('Enter your edit password to unlock editing / research.',TOKEN||'');if(k!==null){TOKEN=k.trim();localStorage.setItem('lx_token',TOKEN);}}
-document.addEventListener('change',e=>{const t=e.target;if(t.dataset.act!=='status')return;const p=RAW.find(x=>x.id===t.dataset.id);if(p)p.contacted=t.value;patch(t.dataset.id,{contacted:t.value});renderStats(scopeList());});
-document.addEventListener('focusout',e=>{const t=e.target;if(t.dataset.act!=='notes')return;const p=RAW.find(x=>x.id===t.dataset.id);if(p&&p.notes!==t.value){p.notes=t.value;patch(t.dataset.id,{notes:t.value});}});
-document.addEventListener('click',e=>{const t=e.target.closest('[data-act="save"]');if(!t)return;const p=RAW.find(x=>x.id===t.dataset.id);if(!p)return;p._saved=!p._saved;if(p._saved)SAVED.add(p.id);else SAVED.delete(p.id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));render();});
+// ---- interactions ----
+function patch(id,body){if(!TOKEN){setKey();if(!TOKEN)return;}return fetch('/api/people/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)}).then(r=>{if(r.status===401)alert('Wrong password — click the avatar → Set password.');});}
+function setKey(){const k=prompt('Enter your edit password to unlock editing.',TOKEN||'');if(k!==null){TOKEN=k.trim();localStorage.setItem('lx_token',TOKEN);}}
+function toggleSave(id){const p=RAW.find(x=>x.id===id);if(!p)return;p._saved=!p._saved;if(p._saved)SAVED.add(id);else SAVED.delete(id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));render();}
 
-// controls
-['q','fFunction','fSeniority','fStatus'].forEach(id=>$(id).addEventListener('input',render));
-$('sort').addEventListener('change',()=>{const v=$('sort').value;SORT.key=v;SORT.dir=(v==='full_name'||v==='current_employer')?1:-1;render();});
+document.addEventListener('click',e=>{
+  const save=e.target.closest('[data-act="save"]');if(save){e.stopPropagation();toggleSave(save.dataset.id);return;}
+  const menu=e.target.closest('[data-act="menu"]');if(menu){e.stopPropagation();openMenu(menu);return;}
+  if(e.target.closest('[data-noopen]'))return;
+  const row=e.target.closest('.row[data-id],tr[data-id]');if(row){openDrawer(row.dataset.id);}
+  document.querySelectorAll('.menu').forEach(m=>m.remove());
+});
+
+function openMenu(btn){
+  document.querySelectorAll('.menu').forEach(m=>m.remove());
+  const id=btn.dataset.id;const p=RAW.find(x=>x.id===id);
+  const m=document.createElement('div');m.className='menu';
+  const r=btn.getBoundingClientRect();m.style.top=(r.bottom+window.scrollY+4)+'px';m.style.left=(r.right+window.scrollX-180)+'px';
+  const opts=[['Open details',()=>openDrawer(id)],['Copy outreach draft',()=>{navigator.clipboard&&navigator.clipboard.writeText(outreachDraft(p));}],['Mark contacted',()=>{p.contacted='contacted';patch(id,{contacted:'contacted'});render();}],['Shortlist ★',()=>toggleSave(id)]];
+  m.innerHTML=opts.map((o,i)=>`<button data-i="${i}">${o[0]}</button>`).join('');
+  document.body.appendChild(m);
+  m.querySelectorAll('button').forEach((b,i)=>b.onclick=(ev)=>{ev.stopPropagation();m.remove();opts[i][1]();});
+}
+
+// ---- drawer ----
+function openDrawer(id){
+  const p=RAW.find(x=>x.id===id);if(!p)return;
+  const co=p.company_label||p.company;
+  const status=['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${({no:'Not contacted',contacted:'Contacted',replied:'Replied',scheduled:'Scheduled',done:'Done',skip:'Skip'})[s]}</option>`).join('');
+  $('drawer').innerHTML=`
+    <div class="dhead">
+      <button class="close" id="dClose">✕</button>
+      <div class="dav" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="dn">${esc(p.full_name)}</div>
+      <div class="dr">${esc(roleTitle(p))}${p.current_employer?' · '+esc(p.current_employer):''}</div>
+      <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
+        <span class="tag tg-${p.seniority||'other'}">${SENLABEL[p.seniority||'other']}</span>
+        <span class="tag tg-fn">${p._fn}</span>
+        <span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'● In network':'▲ Out of network'}</span>
+        <span class="tag" style="background:rgba(245,158,11,.9);color:#fff">Tier ${p._tier}</span>
+      </div>
+    </div>
+    <div class="dsec"><h4>🧠 AI reasoning</h4><p>${esc(shortWhy(p))} ${esc(rationale(p))}</p></div>
+    <div class="dsec"><h4>💬 Discussion questions</h4><ul>${discussionQs(p).map(q=>`<li>${esc(q)}</li>`).join('')}</ul></div>
+    <div class="dsec"><h4>🧾 Source trail</h4><p style="color:var(--muted)">Found via <b>${esc(p.source||'search')}</b>${p.linkedin_url?` · <a href="${esc(p.linkedin_url)}" target="_blank">LinkedIn profile ↗</a>`:''}${p.source_detail&&/^https?:/.test(p.source_detail)?` · <a href="${esc(p.source_detail)}" target="_blank">source ↗</a>`:''}</p></div>
+    <div class="dsec"><h4>✅ Status & notes</h4>
+      <div class="drow2" style="margin-bottom:8px"><select class="dstat" id="dStatus">${status}</select></div>
+      <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…">${esc(p.notes||'')}</textarea></div>
+    <div class="dsec"><h4>✉️ Outreach draft</h4><textarea id="dOut" style="min-height:150px">${esc(outreachDraft(p))}</textarea>
+      <div class="drow2" style="margin-top:8px"><button class="btn primary sm" id="dCopy">Copy draft</button></div></div>`;
+  $('drawer').classList.add('show');$('drawerBg').classList.add('show');
+  $('dClose').onclick=closeDrawer;
+  $('dStatus').onchange=e=>{p.contacted=e.target.value;patch(id,{contacted:e.target.value});render();};
+  $('dNotes').addEventListener('focusout',()=>{if(p.notes!==$('dNotes').value){p.notes=$('dNotes').value;patch(id,{notes:p.notes});}});
+  $('dCopy').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText($('dOut').value);$('dCopy').textContent='Copied ✓';setTimeout(()=>$('dCopy').textContent='Copy draft',1500);};
+}
+function closeDrawer(){$('drawer').classList.remove('show');$('drawerBg').classList.remove('show');}
+$('drawerBg').onclick=closeDrawer;
+
+// ---- filters ----
+$('sourceType').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('sourceType').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');STYPE=b.dataset.st;render();});
+$('lens').onchange=e=>{LENS=e.target.value;render();};
+$('q').addEventListener('input',render);
 $('viewCards').onclick=()=>{VIEW='cards';$('viewCards').classList.add('on');$('viewTable').classList.remove('on');render();};
 $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('viewCards').classList.remove('on');render();};
-document.querySelectorAll('.nlchip').forEach(c=>c.onclick=()=>{$('q').value=c.dataset.nl;render();});
-$('keyBtn').onclick=setKey;
-$('exportBtn').onclick=openExport;
-$('outreachBtn').onclick=openOutreach;
-function banner(m){const b=$('banner');b.textContent=m;b.style.display='block';}
 
-// add modal
+// ---- header actions ----
+$('avatarBtn').onclick=()=>{document.querySelectorAll('.menu').forEach(m=>m.remove());const m=document.createElement('div');m.className='menu';const r=$('avatarBtn').getBoundingClientRect();m.style.top=(r.bottom+window.scrollY+6)+'px';m.style.left=(r.right+window.scrollX-180)+'px';m.innerHTML='<button>🔑 Set edit password</button>';document.body.appendChild(m);m.querySelector('button').onclick=(ev)=>{ev.stopPropagation();m.remove();setKey();};};
+$('exportBtn').onclick=openExport;
+$('insightsBtn').onclick=openInsights;
+
+// add source modal
 $('addBtn').onclick=()=>{$('m_company').value=(COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'');$('modalBg').style.display='flex';};
 $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
-$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password — 🔑.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
+$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
+
+// add company (kick off research)
+async function addCompany(){const c=prompt('Add a company to research (the engine will map its senior ex-employees):','');if(!c||!c.trim())return;if(!TOKEN){setKey();if(!TOKEN)return;}const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:c.trim()})});const d=await r.json();if(r.status===401){alert('Wrong password.');return;}alert(d.dispatched?`Research started for “${c.trim()}”. Results appear in a few minutes — refresh then.`:`Logged “${c.trim()}”. Trigger it from GitHub → Actions → Research.`);}
 
 // generic modal
 function openModal(html){$('genModal').innerHTML=html;$('genBg').style.display='flex';}
 $('genBg').onclick=e=>{if(e.target===$('genBg'))$('genBg').style.display='none';};
 
-// ----- Generate outreach list -----
-function outreachRank(list){
-  // Greedy: maximise strategic value + diversity across functions.
-  const pool=[...list].filter(p=>p.contacted!=='skip');
-  const chosen=[];const fnUsed={};
-  const scoreOf=p=>{
-    let s=p.score*1.0;                       // strategic knowledge / seniority
-    s+=(['founder','clevel'].includes(p.seniority)?15:0);   // leadership exposure
-    s+=(Number(p.is_current)===0?10:0);      // information freshness
-    s+=p._reach*0.25;                        // reachability
-    s-=(fnUsed[p._fn]||0)*14;                // diversity of perspective
-    if(p.relationship==='competitor_ex')s+=6;
-    return s;
-  };
-  while(chosen.length<Math.min(10,pool.length)){
-    let best=null,bs=-1e9;
-    for(const p of pool){if(chosen.includes(p))continue;const s=scoreOf(p);if(s>bs){bs=s;best=p;}}
-    if(!best)break;chosen.push(best);fnUsed[best._fn]=(fnUsed[best._fn]||0)+1;
-  }
-  return chosen.map(p=>({p,why:outreachWhy(p,fnUsed)}));
+// More insights modal (kept off the main screen)
+function openInsights(){
+  const list=scopeList();const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);
+  const max=Math.max(1,...Object.values(fnCount));const seq=['#f2f4f7','#efe8ff','#d9c6ff','#b79bf3','#8b5cf6','#6d28d9'];
+  const heat=FUNCTIONS.map(f=>{const n=fnCount[f];const lvl=n===0?0:Math.min(5,Math.ceil(n/max*5));return `<div class="hmrow"><div class="fn">${f}</div><div class="cell" style="background:${seq[lvl]};color:${lvl>=3?'#fff':'#475467'}">${n} ${n===1?'contact':'contacts'}</div></div>`;}).join('');
+  const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
+  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${p.current_employer?' · now '+esc(p.current_employer):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
+  const movers=[...new Set(list.filter(p=>p.current_employer&&Number(p.is_current)===0).map(p=>p.current_employer))].slice(0,10);
+  openModal(`<h3>📊 Research insights ${COMPANY?'· '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''}</h3>
+    <div class="mnote">A quick read on your coverage and best leads. Kept off the main screen for clarity.</div>
+    <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:.5px;color:var(--brand)">COVERAGE BY FUNCTION</h4>${heat}
+    ${gaps.length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${gaps.map(g=>`<span class="chip gap">⚠ ${g} — no coverage</span>`).join('')}</div>`:''}
+    <h4 style="margin:18px 0 4px;font-size:12px;letter-spacing:.5px;color:var(--brand)">TOP CONTACTS</h4>${top||'<div class="mnote">None yet.</div>'}
+    <h4 style="margin:18px 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">WHERE ALUMNI LANDED</h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${movers.map(m=>`<span class="chip comp">${esc(m)}</span>`).join('')||'<span class="mnote">No destinations captured.</span>'}</div>
+    <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="openOutreach()">✨ Generate outreach list</button></div>`);
 }
-function outreachWhy(p,fnUsed){
-  const bits=[];
-  if(['founder','clevel'].includes(p.seniority))bits.push('top-level strategic view');
-  else if(p.score>=70)bits.push(`senior ${p._fn.toLowerCase()} insight`);
-  else bits.push(`${p._fn.toLowerCase()} perspective`);
-  if(Number(p.is_current)===0)bits.push('can speak candidly (has left)');
-  if(p._reach>=70)bits.push('easy to reach');
-  return bits.join(' · ');
-}
+
+// outreach list
 function openOutreach(){
-  const list=applyFilters(scopeList());const ranked=outreachRank(list);
-  const rowsH=ranked.map((r,i)=>`<div class="rank"><div class="rn">${i+1}</div><div class="ri"><div class="rname">${esc(r.p.full_name)} <span class="stars" style="font-size:11px">${stars(r.p._tier)}</span></div><div class="rmeta">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:#6d28d9;margin-top:2px">✨ ${esc(r.why)}</div></div><div class="rs">${r.p.score}</div></div>`).join('');
-  window.__outreach=ranked;
-  openModal(`<h3>✨ Recommended outreach list <span class="tag-ai">AI RANKED</span></h3>
-    <div class="mnote">Top ${ranked.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'across the portfolio'} — optimised for strategic knowledge, leadership exposure, freshness, reachability and diversity of perspectives.</div>
-    ${rowsH||'<div class="hint">No candidates in the current view.</div>'}
+  $('genBg').style.display='none';
+  const list=applyFilters(scopeList());const pool=list.filter(p=>p.contacted!=='skip');const chosen=[];const fnUsed={};
+  const sc=p=>{let s=(p.score||0)*1.0;s+=(['founder','clevel'].includes(p.seniority)?15:0);s+=(Number(p.is_current)===0?10:0);s+=p._reach*0.25;s-=(fnUsed[p._fn]||0)*14;if(p.relationship==='competitor_ex')s+=6;return s;};
+  while(chosen.length<Math.min(10,pool.length)){let best=null,bs=-1e9;for(const p of pool){if(chosen.includes(p))continue;const s=sc(p);if(s>bs){bs=s;best=p;}}if(!best)break;chosen.push(best);fnUsed[best._fn]=(fnUsed[best._fn]||0)+1;}
+  const why=p=>{const b=[];if(['founder','clevel'].includes(p.seniority))b.push('top-level strategic view');else if(p.score>=70)b.push(`senior ${p._fn.toLowerCase()} insight`);else b.push(`${p._fn.toLowerCase()} perspective`);if(Number(p.is_current)===0)b.push('can speak candidly');if(p._reach>=70)b.push('easy to reach');return b.join(' · ');};
+  window.__outreach=chosen.map(p=>({p,why:why(p)}));
+  const rowsH=window.__outreach.map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div><b style="color:#067647">${r.p.score}</b></div>`).join('');
+  openModal(`<h3>✨ Recommended outreach list</h3><div class="mnote">Top ${window.__outreach.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''} — ranked by strategic value, freshness, reachability and diversity of perspective.</div>${rowsH||'<div class="mnote">No candidates in view.</div>'}
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
 }
-window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];
-  const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,x.p.current_employer||'',x.p.score,x.why,x.p.linkedin_url||'']);
-  downloadCSV('outreach-list.csv',cols,rows);};
+window.openOutreach=openOutreach;
+window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,x.p.current_employer||'',x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
 
-// ----- Network graph (SVG radial) — kept for later, not wired to any button -----
-const _networkHandler=()=>{
-  const list=scopeList();const cx=380,cy=300,R=230;
-  const groups={};list.forEach(p=>{(groups[p.relationship||'ex_employee']=groups[p.relationship||'ex_employee']||[]).push(p);});
-  const relColors={ex_employee:'#6941c6',competitor_ex:'#b42318',franchise_partner:'#026aa2',vendor:'#b54708',consultant:'#0e7090',board:'#3538cd',investor:'#067647',expert:'#c11574'};
-  const pts=list.slice(0,60);const n=pts.length||1;
-  const nodes=pts.map((p,i)=>{const a=(i/n)*Math.PI*2-Math.PI/2;const rr=R*(0.62+0.38*((i%3)/2));return{p,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr};});
-  const edges=nodes.map(nd=>`<line x1="${cx}" y1="${cy}" x2="${nd.x.toFixed(0)}" y2="${nd.y.toFixed(0)}" stroke="${relColors[nd.p.relationship||'ex_employee']||'#98a2b3'}" stroke-opacity="0.28" stroke-width="1.5"/>`).join('');
-  const dots=nodes.map(nd=>`<g><circle cx="${nd.x.toFixed(0)}" cy="${nd.y.toFixed(0)}" r="${6+nd.p._tier<=2?9:6}" fill="${relColors[nd.p.relationship||'ex_employee']||'#98a2b3'}"><title>${esc(nd.p.full_name)} — ${esc(nd.p.last_role||SENLABEL[nd.p.seniority])}</title></circle><text x="${nd.x.toFixed(0)}" y="${(nd.y+18).toFixed(0)}" font-size="9" text-anchor="middle" fill="#475467">${esc(nd.p.full_name.split(' ')[0])}</text></g>`).join('');
-  const center=COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'Portfolio';
-  const legend=Object.entries(relColors).filter(([k])=>groups[k]).map(([k,c])=>`<span class="chip" style="border-color:${c}"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:5px"></span>${RELLABEL[k]}</span>`).join('');
-  openModal(`<h3>🕸 Relationship network</h3><div class="mnote">${center} at the centre, connected to ${pts.length} sources by type. Hover a node for details.</div>
-    <div class="chips" style="margin-bottom:8px">${legend}</div>
-    <svg viewBox="0 0 760 600" style="width:100%;height:auto;background:#fbfaff;border-radius:12px;border:1px solid var(--line2)">
-      ${edges}${dots}
-      <circle cx="${cx}" cy="${cy}" r="34" fill="#6d28d9"/><text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${esc(center.slice(0,14))}</text>
-    </svg>
-    <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button></div>`);
-};
-
-// ----- Company comparison — kept for later, not wired to any button -----
-const _compareHandler=()=>{
-  const cos=[...new Set(RAW.map(p=>p.company))];
-  const data=cos.map(c=>{const l=RAW.filter(p=>p.company===c);const cov=new Set(l.map(p=>p._fn)).size;
-    return{name:RAW.find(p=>p.company===c).company_label||c,total:l.length,senior:l.filter(p=>p.score>=75).length,cov:Math.round(cov/FUNCTIONS.length*100),reach:l.filter(p=>p._reach>=70).length};}).sort((a,b)=>b.total-a.total);
-  const max=Math.max(1,...data.map(d=>d.total));
-  const bars=data.map(d=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:650"><span>${esc(d.name)}</span><span style="color:var(--muted)">${d.total} sources · ${d.senior} senior · ${d.cov}% coverage · ${d.reach} reachable</span></div>
-    <div style="height:10px;background:#eef0f3;border-radius:5px;margin-top:5px;overflow:hidden"><i style="display:block;height:100%;width:${d.total/max*100}%;background:linear-gradient(90deg,#8b5cf6,#6d28d9);border-radius:5px"></i></div></div>`).join('');
-  openModal(`<h3>📊 Company comparison</h3><div class="mnote">Research depth across your tracked companies — where are you Stage-2 ready?</div>${bars||'<div class="hint">No companies yet.</div>'}
-    <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button></div>`);
-};
-
-// ----- Export hub -----
-function openExport(){
-  openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
-    <div class="acts" style="justify-content:flex-start">
-      <button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button>
-      <button class="btn" onclick="window.print();">Print / PDF</button>
-      <button class="btn" onclick="exportSummary()">AI summary (text)</button>
-    </div>
-    <div class="hint" style="margin-top:12px">Tip: “Print / PDF” → choose “Save as PDF” for a client-ready brief.</div>`);
-}
-window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Status','LinkedIn','Notes'];
-  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,p.current_employer||'',p.current_role||'',p.score,'Tier '+p._tier,p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+// export
+function openExport(){openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
+  <div class="acts" style="justify-content:flex-start"><button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="openOutreach()">✨ Outreach list</button></div>`);}
+window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Network','Status','LinkedIn','Notes'];
+  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,p.current_employer||'',p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
-window.exportSummary=function(){const list=scopeList();const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5);
-  const txt=`SCUTTLEBUTT RESEARCH BRIEF — ${COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'Portfolio'}\n\n`+
-    `Sources mapped: ${list.length}\nFunction coverage: ${FUNCTIONS.length-gaps.length}/${FUNCTIONS.length}${gaps.length?' (gaps: '+gaps.join(', ')+')':''}\n\n`+
-    `TOP CONTACTS:\n`+top.map((p,i)=>`${i+1}. ${p.full_name} — ${p.last_role||SENLABEL[p.seniority]} (${p._fn}) ${p.current_employer?'· now '+p.current_employer:''} [Signal ${p.score}]\n   ${whyMatters(p)}`).join('\n')+
-    `\n\nCoverage by function:\n`+FUNCTIONS.map(f=>`  ${f}: ${fnCount[f]}`).join('\n');
-  downloadText((COMPANY||'all')+'-brief.txt',txt);};
-function downloadCSV(name,cols,rows){const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(esc).join(','))].join('\n');downloadText(name,csv);}
-function downloadText(name,text){const b=new Blob([text],{type:'text/plain'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(es).join(','))].join('\n');const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 
-
-// init
 loadAll();
 </script>
 </body>
