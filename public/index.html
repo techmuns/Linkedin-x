@@ -307,6 +307,16 @@ function avColor(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;r
 function avGrad(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;const base=228+(h%54);return `linear-gradient(135deg,hsl(${base},74%,64%),hsl(${base-34},70%,52%))`;}
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
 function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
+// Clean the "now at" value: reject leftover "Ex…" fragments and role phrases
+// that the scraper mistook for a current company.
+function cleanEmployer(e){
+  if(!e)return '';const s=e.trim();const low=s.toLowerCase();
+  if(s.length<2)return '';
+  if(/^(ex(\b|[-\s])|former|formerly|previously|past\b|self\b|freelance|open to|looking|seeking)/i.test(low))return '';
+  if(s.split(/\s+/).length>=3 && /\b(architect|architecting|manager|director|\bhead\b|officer|engineer|analyst|consultant|specialist|coordinator|associate|intern|professional|logistics|supply\s*chain|operations|marketing|strategy|business development|transformation)\b/i.test(low))return '';
+  if(s.split(/\s+/).length>6)return '';
+  return s;
+}
 function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))return '—';const days=Math.floor((Date.now()-d)/86400000);if(days<=0)return 'today';if(days===1)return '1 day ago';if(days<30)return days+' days ago';const m=Math.floor(days/30);return m+' mo ago';}
 
 // enrichment
@@ -440,7 +450,7 @@ function rowHtml(p){
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
-        <div class="rco">${esc(p.current_employer||(Number(p.is_current)===1?(p.company_label||''):'—'))}</div>
+        <div class="rco">${esc(cleanEmployer(p.current_employer)||(Number(p.is_current)===1?(p.company_label||''):'—'))}</div>
         <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${p._fn}</span></div>
       </div>
     </div>
@@ -465,7 +475,7 @@ function rowHtml(p){
     </div>
   </div>`;
 }
-function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td>${'★'.repeat(6-p._tier)}</td><td><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(p.current_role||'—')}</td><td>${esc(p.current_employer||'—')}</td><td>${p.score||0}</td><td><span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'In':'Out'}</span></td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
+function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td>${'★'.repeat(6-p._tier)}</td><td><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td>${p.score||0}</td><td><span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'In':'Out'}</span></td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
 
 function render(){
   const scope=scopeList();
@@ -513,7 +523,7 @@ function openDrawer(id){
       <button class="close" id="dClose">✕</button>
       <div class="dav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="dn">${esc(p.full_name)}</div>
-      <div class="dr">${esc(roleTitle(p))}${p.current_employer?' · '+esc(p.current_employer):''}</div>
+      <div class="dr">${esc(roleTitle(p))}${cleanEmployer(p.current_employer)?' · '+esc(cleanEmployer(p.current_employer)):''}</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
         <span class="tag tg-${p.seniority||'other'}">${SENLABEL[p.seniority||'other']}</span>
         <span class="tag tg-fn">${p._fn}</span>
@@ -569,8 +579,8 @@ function openInsights(){
   const max=Math.max(1,...Object.values(fnCount));const seq=['#f2f4f7','#efe8ff','#d9c6ff','#b79bf3','#8b5cf6','#6d28d9'];
   const heat=FUNCTIONS.map(f=>{const n=fnCount[f];const lvl=n===0?0:Math.min(5,Math.ceil(n/max*5));return `<div class="hmrow"><div class="fn">${f}</div><div class="cell" style="background:${seq[lvl]};color:${lvl>=3?'#fff':'#475467'}">${n} ${n===1?'contact':'contacts'}</div></div>`;}).join('');
   const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${p.current_employer?' · now '+esc(p.current_employer):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
-  const movers=[...new Set(list.filter(p=>p.current_employer&&Number(p.is_current)===0).map(p=>p.current_employer))].slice(0,10);
+  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${cleanEmployer(p.current_employer)?' · now '+esc(cleanEmployer(p.current_employer)):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
+  const movers=[...new Set(list.filter(p=>Number(p.is_current)===0).map(p=>cleanEmployer(p.current_employer)).filter(Boolean))].slice(0,10);
   openModal(`<h3>📊 Research insights ${COMPANY?'· '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''}</h3>
     <div class="mnote">A quick read on your coverage and best leads. Kept off the main screen for clarity.</div>
     <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:.5px;color:var(--brand)">COVERAGE BY FUNCTION</h4>${heat}
@@ -594,13 +604,13 @@ function openOutreach(){
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
 }
 window.openOutreach=openOutreach;
-window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,x.p.current_employer||'',x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
+window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,cleanEmployer(x.p.current_employer),x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
 
 // export
 function openExport(){openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
   <div class="acts" style="justify-content:flex-start"><button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="openOutreach()">✨ Outreach list</button></div>`);}
 window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Network','Status','LinkedIn','Notes'];
-  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,p.current_employer||'',p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,cleanEmployer(p.current_employer),p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
 function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(es).join(','))].join('\n');const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 

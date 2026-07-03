@@ -74,9 +74,23 @@ export function cleanLinkedInUrl(url) {
 export function employerFromHeadline(headline) {
   if (!headline) return null;
   const m = headline.match(/\bat\s+([A-Z][\w&.,'’\- ]{1,60})/);
-  if (m) return m[1].replace(/[.,]\s*$/, '').trim();
+  if (m) return cleanEmployerName(m[1]);
   // "· Reliance" style
   const dot = headline.split('·').map(s => s.trim()).filter(Boolean);
-  if (dot.length >= 2) return dot[dot.length - 1];
+  if (dot.length >= 2) return cleanEmployerName(dot[dot.length - 1]);
   return null;
+}
+
+// Reject leftover "Ex…"/"Former…" fragments and role phrases that aren't a
+// real current employer.
+export function cleanEmployerName(raw) {
+  if (!raw) return null;
+  const s = raw.replace(/[.,]\s*$/, '').trim();
+  const low = s.toLowerCase();
+  if (s.length < 2) return null;
+  if (/^(ex(\b|[-\s])|former|formerly|previously|past\b|self\b|freelance|open to|looking|seeking)/i.test(low)) return null;
+  if (s.split(/\s+/).length >= 3 &&
+      /\b(architect|architecting|manager|director|\bhead\b|officer|engineer|analyst|consultant|specialist|coordinator|associate|intern|professional|logistics|supply\s*chain|operations|marketing|strategy|transformation)\b/i.test(low)) return null;
+  if (s.split(/\s+/).length > 6) return null;
+  return s;
 }
