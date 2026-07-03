@@ -111,11 +111,13 @@
 
   /* ---------- CONTACT ROWS ---------- */
   .rows{margin-top:14px;display:flex;flex-direction:column;gap:12px}
-  .row{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  .row{position:relative;background:linear-gradient(120deg,#f3f0fe 0%,#f6f5ff 7%,#ffffff 32%);
+    border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
     display:grid;grid-template-columns:284px 1fr 292px;cursor:pointer;transition:.14s;overflow:hidden}
-  .row:hover{box-shadow:var(--shadow-lg);border-color:#e0d6fb}
-  .rl{padding:16px 18px;display:flex;gap:13px}
-  .rav{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:17px;flex:none}
+  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#8b5cf6,#6366f1,#3b82f6)}
+  .row:hover{box-shadow:var(--shadow-lg);border-color:#dcd2fb;transform:translateY(-1px)}
+  .rl{padding:16px 18px 16px 20px;display:flex;gap:13px}
+  .rav{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:17px;flex:none;box-shadow:0 6px 16px rgba(99,102,241,.35)}
   .rid{min-width:0;flex:1}
   .rtop{display:flex;align-items:flex-start;gap:8px}
   .rname{font-weight:750;font-size:16px;line-height:1.2}
@@ -168,7 +170,7 @@
   .drawer.show{transform:none}
   .dhead{background:linear-gradient(120deg,var(--hd1),var(--hd3));color:#fff;padding:22px 22px 18px;position:relative}
   .dhead .close{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px}
-  .dhead .dav{width:56px;height:56px;border-radius:15px;display:grid;place-items:center;color:#fff;font-weight:750;font-size:20px;margin-bottom:10px}
+  .dhead .dav{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:20px;margin-bottom:10px;box-shadow:0 6px 18px rgba(99,102,241,.45)}
   .dhead .dn{font-size:20px;font-weight:750}
   .dhead .dr{color:#ccc2f0;font-size:13px;margin-top:2px}
   .dsec{padding:16px 22px;border-bottom:1px solid var(--line2)}
@@ -301,6 +303,8 @@ function authHeaders(){const h={'content-type':'application/json'};if(TOKEN)h.au
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function initials(n){return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
 function avColor(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;return AV[h%AV.length];}
+// Soft purple→blue gradient for avatars, subtly varied per person.
+function avGrad(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;const base=228+(h%54);return `linear-gradient(135deg,hsl(${base},74%,64%),hsl(${base-34},70%,52%))`;}
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
 function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
 function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))return '—';const days=Math.floor((Date.now()-d)/86400000);if(days<=0)return 'today';if(days===1)return '1 day ago';if(days<30)return days+' days ago';const m=Math.floor(days/30);return m+' mo ago';}
@@ -432,7 +436,7 @@ function rowHtml(p){
   const bf=bestFor(p).map(b=>`<span class="bchip">${esc(b)}</span>`).join('');
   return `<div class="row" data-id="${p.id}">
     <div class="rl">
-      <div class="rav" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="rav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
@@ -507,7 +511,7 @@ function openDrawer(id){
   $('drawer').innerHTML=`
     <div class="dhead">
       <button class="close" id="dClose">✕</button>
-      <div class="dav" style="background:${avColor(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="dav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="dn">${esc(p.full_name)}</div>
       <div class="dr">${esc(roleTitle(p))}${p.current_employer?' · '+esc(p.current_employer):''}</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
