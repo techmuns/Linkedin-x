@@ -196,6 +196,13 @@
   .hmrow{display:flex;align-items:center;gap:9px;margin-bottom:6px}
   .hmrow .fn{width:100px;font-size:12px;color:var(--muted)}
   .hmrow .cell{flex:1;height:24px;border-radius:7px;display:flex;align-items:center;padding:0 9px;font-size:11.5px;font-weight:700}
+  .vchk{color:var(--green);font-weight:800;font-size:12px}
+  .newb{background:#ecfdf3;color:#067647;font-size:9px;font-weight:800;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:2px;letter-spacing:.5px}
+  .refresh-note{color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-right:14px}
+  .copick{padding:10px 12px;border-radius:9px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600}
+  .copick:hover{background:#f5f3ff}
+  .copick.add{color:var(--brand)}
+  .copick .trk{color:var(--green);font-size:11px;font-weight:700}
   @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}.rbest{padding-right:0}.rnet{position:static;margin-bottom:8px}}
   @media print{header .hactions,.fpanel,.pillrow .savedviews,.ractions{display:none!important}body{background:#fff}}
 </style>
@@ -358,8 +365,11 @@ function outreachDraft(p){
 }
 
 // data
+let COMPANY_DIR=[];
+function isNew(p){const t=Date.parse(p.created_at);return !isNaN(t)&&(Date.now()-t)<7*86400000;}
 async function loadAll(){
   const r=await fetch('/api/people');RAW=((await r.json()).people||[]).map(enrich);
+  if(!COMPANY_DIR.length){try{COMPANY_DIR=await(await fetch('/companies.json')).json();}catch{COMPANY_DIR=[];}}
   renderPills();render();
 }
 function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
@@ -369,7 +379,9 @@ function renderPills(){
   const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
     .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span></div>`))
     .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
-  $('pillrow').innerHTML=pills.join('')+`<div class="savedviews"><select class="sv" id="savedViews">
+  const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
+  const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
+  $('pillrow').innerHTML=pills.join('')+`<div class="savedviews">${rnote}<select class="sv" id="savedViews">
     <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
     <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
   document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
@@ -448,7 +460,7 @@ function rowHtml(p){
     <div class="rl">
       <div class="rav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="rid">
-        <div class="rtop"><div class="rname">${esc(p.full_name)}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
+        <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${esc(cleanEmployer(p.current_employer)||(Number(p.is_current)===1?(p.company_label||''):'—'))}</div>
         <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${p._fn}</span></div>
@@ -566,8 +578,38 @@ $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
 $('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
 
-// add company (kick off research)
-async function addCompany(){const c=prompt('Add a company to research (the engine will map its senior ex-employees):','');if(!c||!c.trim())return;if(!TOKEN){setKey();if(!TOKEN)return;}const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:c.trim()})});const d=await r.json();if(r.status===401){alert('Wrong password.');return;}alert(d.dispatched?`Research started for “${c.trim()}”. Results appear in a few minutes — refresh then.`:`Logged “${c.trim()}”. Trigger it from GitHub → Actions → Research.`);}
+// add company — searchable dropdown over the Indian listed-company directory
+function addCompany(){
+  const tracked=new Set(RAW.map(p=>(p.company||'').toLowerCase()));
+  openModal(`<h3>Add a company</h3><div class="mnote">Search the Indian listed-company universe, or type any name. We'll map its senior ex-employees and refresh daily.</div>
+    <input id="coSearch" placeholder="Search companies… e.g. Delhivery, Kalyan Jewellers" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
+    <div id="coList" style="max-height:340px;overflow:auto;margin-top:8px"></div>`);
+  const inp=$('coSearch'),list=$('coList');
+  function draw(){
+    const q=inp.value.trim().toLowerCase();
+    let items=COMPANY_DIR.filter(c=>!q||c.toLowerCase().includes(q));
+    items.sort((a,b)=>{const A=a.toLowerCase().startsWith(q)?0:1,B=b.toLowerCase().startsWith(q)?0:1;return A-B||a.localeCompare(b);});
+    items=items.slice(0,50);
+    let html='';
+    if(q && !COMPANY_DIR.some(c=>c.toLowerCase()===q)) html+=`<div class="copick add" data-c="${esc(inp.value.trim())}">➕ Add “${esc(inp.value.trim())}” (custom)</div>`;
+    html+=items.map(c=>`<div class="copick" data-c="${esc(c)}">${esc(c)}${tracked.has(c.toLowerCase())?'<span class="trk">✓ tracked</span>':''}</div>`).join('');
+    list.innerHTML=html||'<div class="mnote">No matches — press enter to add it anyway.</div>';
+    list.querySelectorAll('.copick').forEach(el=>el.onclick=()=>pickCompany(el.dataset.c));
+  }
+  inp.oninput=draw;inp.onkeydown=e=>{if(e.key==='Enter'&&inp.value.trim())pickCompany(inp.value.trim());};
+  draw();setTimeout(()=>inp.focus(),60);
+}
+async function pickCompany(name){
+  if(!name)return;
+  if(!TOKEN){setKey();if(!TOKEN)return;}
+  $('genBg').style.display='none';
+  const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:name})});
+  const d=await r.json();
+  if(r.status===401){alert('Wrong password — click the avatar → Set password.');return;}
+  alert(d.dispatched
+    ?`Research started for “${name}”. Its senior ex-employees will appear here shortly, and refresh automatically every day.`
+    :`“${name}” added to the research queue — it will be picked up on the next daily refresh (or trigger it now from GitHub → Actions → Daily refresh).`);
+}
 
 // generic modal
 function openModal(html){$('genModal').innerHTML=html;$('genBg').style.display='flex';}
