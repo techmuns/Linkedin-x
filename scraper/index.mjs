@@ -105,6 +105,18 @@ async function main() {
   const provider = pickProvider(process.env);
   log(`=== Research engine (${REFRESH_ALL ? 'daily refresh' : 'single'}) | provider: ${provider} | sources: ${SOURCES.join(',')} ===`);
 
+  // The browser (Bing) fallback isn't installed in CI, and search engines block
+  // datacenter IPs anyway. If no search API key is configured, stop with a clear
+  // message instead of crashing on a missing Playwright browser.
+  if (provider === 'bing') {
+    console.error(
+      'ERROR: no search API key set. Add a SERPER_API_KEY (or GOOGLE_API_KEY + ' +
+      'GOOGLE_CSE_ID) GitHub secret so the refresh can find profiles. ' +
+      '(WORKER_URL and INGEST_TOKEN are also required to upload.)'
+    );
+    process.exit(1);
+  }
+
   let browser = null;
   if (provider === 'bing') {
     const launchOpts = { headless: true, args: ['--no-sandbox'] };
