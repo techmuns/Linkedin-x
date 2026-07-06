@@ -176,6 +176,37 @@ async function handleApi(request, env, url) {
     return json({ people: results });
   }
 
+  // GET /api/stock-search?q=... -> proxy the muns stock search (keeps the token
+  // server-side). Returns a flat list of { ticker, country, name, sector }.
+  if (path === '/api/stock-search' && method === 'GET') {
+    const q = (url.searchParams.get('q') || '').trim();
+    if (!q) return json({ results: [] });
+    if (!env.MUNS_TOKEN) return json({ results: [], error: 'MUNS_TOKEN not configured' });
+    try {
+      const resp = await fetch('https://birdnest.muns.io/stock/search', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${env.MUNS_TOKEN}`,
+          'content-type': 'application/json',
+          'accept': '*/*',
+        },
+        body: JSON.stringify({ query: q, user_index: 124 }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data) return json({ results: [], error: `upstream ${resp.status}` });
+      const r = (data && data.data && data.data.results) || {};
+      const results = Object.entries(r).map(([ticker, v]) => ({
+        ticker,
+        country: Array.isArray(v) ? v[0] : null,
+        name: Array.isArray(v) ? v[1] : ticker,
+        sector: Array.isArray(v) ? v[2] : null,
+      }));
+      return json({ results });
+    } catch (e) {
+      return json({ results: [], error: String((e && e.message) || e) });
+    }
+  }
+
   // GET /api/companies -> distinct companies with counts
   if (path === '/api/companies' && method === 'GET') {
     const { results } = await env.DB.prepare(

@@ -578,28 +578,45 @@ $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
 $('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
 
-// add company — searchable dropdown over the Indian listed-company directory
+// add company — live stock search (proxied through the Worker); local directory
+// is a fallback if the API is unavailable.
 function addCompany(){
   const tracked=new Set(RAW.map(p=>(p.company||'').toLowerCase()));
-  openModal(`<h3>Add a company</h3><div class="mnote">Search the Indian listed-company universe, or type any name. We'll map its senior ex-employees and refresh daily.</div>
-    <input id="coSearch" placeholder="Search companies… e.g. Delhivery, Kalyan Jewellers" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
-    <div id="coList" style="max-height:340px;overflow:auto;margin-top:8px"></div>`);
+  openModal(`<h3>Add a company</h3><div class="mnote">Search listed companies by name or ticker, or type any name.</div>
+    <input id="coSearch" placeholder="Search companies… e.g. RELIAN, Kalyan, Delhivery" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
+    <div id="coList" style="max-height:360px;overflow:auto;margin-top:8px"></div>`);
   const inp=$('coSearch'),list=$('coList');
-  function draw(){
-    const q=inp.value.trim().toLowerCase();
-    let items=COMPANY_DIR.filter(c=>!q||c.toLowerCase().includes(q));
-    items.sort((a,b)=>{const A=a.toLowerCase().startsWith(q)?0:1,B=b.toLowerCase().startsWith(q)?0:1;return A-B||a.localeCompare(b);});
-    items=items.slice(0,50);
-    let html='';
-    if(q && !COMPANY_DIR.some(c=>c.toLowerCase()===q)) html+=`<div class="copick add" data-c="${esc(inp.value.trim())}">➕ Add “${esc(inp.value.trim())}” (custom)</div>`;
-    html+=items.map(c=>`<div class="copick" data-c="${esc(c)}">${esc(c)}${tracked.has(c.toLowerCase())?'<span class="trk">✓ tracked</span>':''}</div>`).join('');
-    list.innerHTML=html||'<div class="mnote">No matches — press enter to add it anyway.</div>';
+  let timer=null,seq=0;
+  function trk(name){return tracked.has((name||'').toLowerCase())?'<span class="trk">✓ tracked</span>':'';}
+  function render(items,q,fromApi){
+    let html=`<div class="copick add" data-c="${esc(q)}">➕ Add “${esc(q)}” (custom)</div>`;
+    if(fromApi){
+      html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.ticker)}${c.sector?' · '+esc(c.sector):''}</div></div><span style="font-size:11px;color:var(--faint);white-space:nowrap">${esc(c.country||'')} ${trk(c.name)}</span></div>`).join('');
+    }else{
+      html+=items.map(c=>`<div class="copick" data-c="${esc(c)}">${esc(c)}${trk(c)}</div>`).join('');
+    }
+    list.innerHTML=html;
     list.querySelectorAll('.copick').forEach(el=>el.onclick=()=>pickCompany(el.dataset.c));
   }
-  inp.oninput=draw;inp.onkeydown=e=>{if(e.key==='Enter'&&inp.value.trim())pickCompany(inp.value.trim());};
+  async function draw(){
+    const q=inp.value.trim();
+    if(!q){list.innerHTML='<div class="mnote">Type a company name or ticker to search…</div>';return;}
+    const my=++seq;list.innerHTML='<div class="mnote">Searching…</div>';
+    let res=[];
+    try{const r=await fetch('/api/stock-search?q='+encodeURIComponent(q));res=(await r.json()).results||[];}catch{}
+    if(my!==seq)return;
+    if(res.length){render(res,q,true);return;}
+    // fallback to bundled directory
+    const local=COMPANY_DIR.filter(c=>c.toLowerCase().includes(q.toLowerCase())).slice(0,40);
+    render(local,q,false);
+  }
+  inp.oninput=()=>{clearTimeout(timer);timer=setTimeout(draw,250);};
+  inp.onkeydown=e=>{if(e.key==='Enter'&&inp.value.trim())pickCompany(inp.value.trim());};
   draw();setTimeout(()=>inp.focus(),60);
 }
+function cleanCompanyName(name){return (name||'').replace(/\s*[-–]\s*\$$/,'').replace(/[.,]\s*$/,'').replace(/\s+(ltd|limited|inc|corp|co)\.?$/i,'').trim()||name;}
 async function pickCompany(name){
+  name=cleanCompanyName(name);
   if(!name)return;
   if(!TOKEN){setKey();if(!TOKEN)return;}
   $('genBg').style.display='none';

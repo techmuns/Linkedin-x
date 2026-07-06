@@ -30,4 +30,6 @@
   // Secrets (set with `npx wrangler secret put <NAME>`), not stored here:
   //   INGEST_TOKEN   -> shared password the GitHub Action uses to push results
   //                     and the dashboard uses to edit/add rows.
+  //   MUNS_TOKEN     -> bearer token for the birdnest.muns.io stock search
+  //                     (used by the /api/stock-search proxy for Add-company).
 }
