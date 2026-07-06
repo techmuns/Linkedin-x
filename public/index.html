@@ -289,13 +289,13 @@
 <div class="analysis" id="analysis">
   <div class="acard">
     <div class="ahead">
-      <div class="atag"><span class="d"></span> BUY-SIDE ANALYTICS · MUNS-POWERED</div>
-      <h2>Governance &amp; Forensic Scorecard</h2>
+      <div class="atag"><span class="d"></span> LINKEDIN ALUMNI INTELLIGENCE</div>
+      <h2>Finding senior ex-employees</h2>
     </div>
     <div class="abody">
       <div class="arun">
         <div class="aspin"></div>
-        <div style="flex:1;min-width:0"><div class="alab">RUNNING ANALYSIS</div><div class="aco"><span id="aCoName">Company</span><span class="atk" id="aCoTicker" style="display:none"></span></div></div>
+        <div style="flex:1;min-width:0"><div class="alab">SCANNING LINKEDIN</div><div class="aco"><span id="aCoName">Company</span><span class="atk" id="aCoTicker" style="display:none"></span></div></div>
         <div class="atimer" id="aTimer">00:00</div>
       </div>
       <div class="astage"><span id="aStage">Sending request payload</span><span id="aPct">5%</span></div>
@@ -659,7 +659,7 @@ async function pickCompany(name,ticker){
 
 // ---- full-screen analysis takeover ----
 let AN={timer:null,poll:null,seconds:0,pct:5,done:false,company:'',baseline:0};
-const STAGES=['Sending request payload','Querying professional graph','Screening senior alumni','Scoring & ranking signals','Compiling governance scorecard'];
+const STAGES=['Searching LinkedIn profiles','Filtering for ex-employees','Screening for senior roles','Verifying who left the company','Ranking by seniority'];
 function refreshesGet(){try{return JSON.parse(localStorage.getItem('lx_refreshes')||'[]');}catch{return [];}}
 function refreshesSet(a){localStorage.setItem('lx_refreshes',JSON.stringify(a.slice(0,8)));}
 function refreshRecord(name,ticker,status){let a=refreshesGet().filter(x=>x.name.toLowerCase()!==name.toLowerCase());a.unshift({name,ticker:ticker||'',status,ts:Date.now()});refreshesSet(a);}
@@ -694,19 +694,25 @@ async function pollAnalysis(){
     if(cnt>AN.baseline)return landAnalysis();
     const s=await (await fetch('/api/searches')).json();
     const rec=(s.searches||[]).find(x=>(x.company||'').toLowerCase()===AN.company);
-    if(rec&&rec.status==='done'&&(rec.found>0||cnt>0))return landAnalysis();
+    if(rec&&rec.status==='done')return (rec.found>0||cnt>0)?landAnalysis():landEmpty();
     if(rec&&rec.status==='error')return failAnalysis(rec.message);
   }catch{}
 }
+function landEmpty(){
+  if(AN.done)return;AN.done=true;clearTimers();setBar(100);
+  $('aStage').textContent='No public ex-employees found';
+  $('aNote').textContent='Search finished, but no senior person on public LinkedIn is labelled “ex/former '+$('aCoName').textContent+'”. Smaller or regional companies often have none — the only public profiles are current staff. Close and try another company.';
+  refreshUpdate($('aCoName').textContent,'done');renderRecent();
+}
 function landAnalysis(){
   if(AN.done)return;AN.done=true;clearTimers();
-  setBar(100);$('aStage').textContent='Analysis complete';
+  setBar(100);$('aStage').textContent='Scan complete';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
   setTimeout(async()=>{$('analysis').style.display='none';COMPANY=AN.company;await loadAll();},900);
 }
 function failAnalysis(msg){
   if(AN.done)return;AN.done=true;clearTimers();
-  $('aStage').textContent='Analysis could not complete';
+  $('aStage').textContent='Scan could not complete';
   $('aNote').textContent=(msg||'Something went wrong')+' — you can close and retry.';
   refreshUpdate($('aCoName').textContent,'failed');renderRecent();
 }

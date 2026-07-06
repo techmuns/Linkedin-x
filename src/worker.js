@@ -10,6 +10,8 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
+import { researchCompany, hasSearchKey } from './research.js';
+
 const SENIORITY_RANK = {
   founder: 100,
   clevel: 90,
@@ -147,9 +149,39 @@ async function upsertPerson(env, input) {
   return { ok: true, id, created: true };
 }
 
+// ---- Research jobs (run inside the Worker) -------------------------------
+
+async function setSearch(env, id, status, found, message) {
+  try {
+    await env.DB.prepare(
+      'UPDATE searches SET status=?, found=?, message=?, updated_at=? WHERE id=?'
+    ).bind(status, found || 0, message || null, new Date().toISOString(), id).run();
+  } catch { /* best effort */ }
+}
+
+// Research a company and store the senior ex-employees found. Updates the
+// searches row so the dashboard can show progress / completion.
+async function runResearchJob(env, id, company) {
+  try {
+    const people = await researchCompany(env, company);
+    let created = 0, updated = 0;
+    for (const p of people) {
+      const r = await upsertPerson(env, p);
+      if (r.ok && r.created) created++;
+      else if (r.ok) updated++;
+    }
+    await setSearch(env, id, 'done', people.length,
+      `${people.length} ex-employees (created ${created}, updated ${updated})`);
+    return { people: people.length, created, updated };
+  } catch (e) {
+    await setSearch(env, id, 'error', 0, String((e && e.message) || e));
+    return { error: String((e && e.message) || e) };
+  }
+}
+
 // ---- Routing -------------------------------------------------------------
 
-async function handleApi(request, env, url) {
+async function handleApi(request, env, url, ctx) {
   const path = url.pathname;
   const method = request.method;
 
@@ -292,9 +324,10 @@ async function handleApi(request, env, url) {
     return json({ ok: true });
   }
 
-  // POST /api/search -> record intent to research a company. Actual scraping
-  // runs in GitHub Actions; this just logs the job so the UI can show it and
-  // (optionally) fires a repository_dispatch if a GitHub token is configured.
+  // POST /api/search -> research a company right here in the Worker. We log the
+  // job, then (in the background) call the search API, keep only genuine senior
+  // ex-employees, and upsert them — so the dashboard's analysis screen lands
+  // with real data without depending on GitHub Actions.
   if (path === '/api/search' && method === 'POST') {
     if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
     const { company } = await request.json();
@@ -303,25 +336,17 @@ async function handleApi(request, env, url) {
     const now = new Date().toISOString();
     await env.DB.prepare(
       'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES (?,?,?,?,?)'
-    ).bind(id, normCompany(company), 'queued', now, now).run();
+    ).bind(id, normCompany(company), hasSearchKey(env) ? 'running' : 'queued', now, now).run();
 
-    let dispatched = false;
-    if (env.GH_TOKEN && env.GH_REPO) {
-      try {
-        const resp = await fetch(`https://api.github.com/repos/${env.GH_REPO}/dispatches`, {
-          method: 'POST',
-          headers: {
-            'authorization': `Bearer ${env.GH_TOKEN}`,
-            'accept': 'application/vnd.github+json',
-            'user-agent': 'linkedin-x-worker',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ event_type: 'research', client_payload: { company, search_id: id } }),
-        });
-        dispatched = resp.ok;
-      } catch (_) { /* best effort */ }
+    if (!hasSearchKey(env)) {
+      await setSearch(env, id, 'error', 0, 'No search API key configured (set SERPER_API_KEY).');
+      return json({ ok: true, id, ran: false, error: 'no_search_key' });
     }
-    return json({ ok: true, id, dispatched });
+    // Run in the background so the request returns immediately; the dashboard
+    // polls /api/searches + /api/people and reveals results when they land.
+    const job = runResearchJob(env, id, company);
+    if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+    return json({ ok: true, id, ran: true });
   }
 
   // GET /api/searches -> recent jobs
@@ -347,16 +372,42 @@ async function handleApi(request, env, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       try {
-        return await handleApi(request, env, url);
+        return await handleApi(request, env, url, ctx);
       } catch (err) {
         return json({ error: 'server_error', detail: String(err && err.message || err) }, { status: 500 });
       }
     }
     // Everything else is the static dashboard.
     return env.ASSETS.fetch(request);
+  },
+
+  // Daily cron (configured in wrangler.jsonc): re-research every company already
+  // in the dashboard so newly-surfaced senior ex-employees are added
+  // automatically. Runs entirely in the Worker — no GitHub Actions needed.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      if (!hasSearchKey(env)) return;
+      const names = new Map();
+      try {
+        const { results } = await env.DB.prepare(
+          'SELECT company, company_label FROM people GROUP BY company'
+        ).all();
+        for (const r of (results || [])) names.set(r.company, r.company_label || r.company);
+      } catch { /* nothing to refresh */ }
+      for (const [company] of names) {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        try {
+          await env.DB.prepare(
+            'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES (?,?,?,?,?)'
+          ).bind(id, company, 'running', now, now).run();
+        } catch { /* ignore */ }
+        await runResearchJob(env, id, company);
+      }
+    })());
   },
 };
