@@ -261,7 +261,7 @@ async function handleApi(request, env, url) {
       `DELETE FROM people
          WHERE company = ?
            AND source != 'manual'
-           AND (contacted IS NULL OR contacted = 0 OR contacted = '')
+           AND (contacted IS NULL OR contacted = 0 OR contacted = '' OR contacted = 'no')
            AND (notes IS NULL OR notes = '')`
     ).bind(company).run();
     return json({ ok: true, deleted: (res.meta && res.meta.changes) || 0 });
