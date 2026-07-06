@@ -130,7 +130,7 @@ function classify(r, company) {
   // Strict ex-only: "ex/former/previously" must sit right next to the company.
   const cEsc = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const exSignal = new RegExp(
-    `\\b(ex[-\\s]+|former(ly)?\\s+|previously\\s+(at\\s+)?|retired\\s+from\\s+)${cEsc}\\b`
+    `\\b(ex[-.\\s]+|former(ly)?[-.\\s]+|previously\\s+(at\\s+)?|retired\\s+from\\s+)${cEsc}\\b`
   ).test(blob);
   if (!exSignal) return null;
 

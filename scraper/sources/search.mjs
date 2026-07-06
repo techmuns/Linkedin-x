@@ -48,7 +48,7 @@ function classify(r, company) {
   // present job) out of the list.
   const cEsc = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const exSignal = new RegExp(
-    `\\b(ex[-\\s]+|former(ly)?\\s+|previously\\s+(at\\s+)?|retired\\s+from\\s+)${cEsc}\\b`
+    `\\b(ex[-.\\s]+|former(ly)?[-.\\s]+|previously\\s+(at\\s+)?|retired\\s+from\\s+)${cEsc}\\b`
   ).test(blob);
   if (!exSignal) return null;
 
