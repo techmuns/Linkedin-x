@@ -15,11 +15,7 @@ function buildQueries(company, hint = '') {
   // mention the company or who happen to be surnamed like it.
   return [
     `site:linkedin.com/in ("ex ${company}" OR "ex-${company}" OR "former ${company}" OR "formerly ${company}")${h} ${SENIOR_TERMS}`,
-    `site:linkedin.com/in ("previously at ${company}" OR "ex ${company}" OR "former ${company}")${h} (Founder OR "Co-Founder" OR CEO OR CFO OR CTO OR COO OR President OR "Vice President" OR Director OR Head)`,
-    // Broad net: anyone senior whose profile mentions the company. classify()
-    // then keeps only those who have since moved to a DIFFERENT employer (so we
-    // catch ex-employees who never wrote the word "ex").
-    `site:linkedin.com/in "${company}"${h} ${SENIOR_TERMS}`,
+    `site:linkedin.com/in ("previously at ${company}" OR "ex ${company}" OR "former ${company}" OR "formerly ${company}")${h} (Founder OR "Co-Founder" OR CEO OR CFO OR CTO OR COO OR President OR "Vice President" OR Director OR Head)`,
   ];
 }
 
@@ -45,11 +41,16 @@ function classify(r, company) {
   const stillThere = employer && employer.toLowerCase().includes(c);
   if (stillThere) return null;   // currently AT the target -> a current employee, skip
 
-  // Treat as an ex-employee if EITHER they explicitly say ex/former, OR we can
-  // see a different current employer (they moved on). Skip the truly ambiguous
-  // case where there's neither signal nor a known current employer.
-  const exSignal = /\b(ex[-\s]?|former(ly)?|previously|past|retired|left)\b/.test(blob);
-  if (!exSignal && !employer) return null;
+  // Strict ex-only rule: the profile must say they are EX / FORMER / PREVIOUSLY
+  // *of this specific company*. A stray "ex" or "former" somewhere in the
+  // headline is not enough — it has to sit right next to the company name.
+  // This is what keeps current employees (who merely list the company as their
+  // present job) out of the list.
+  const cEsc = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exSignal = new RegExp(
+    `\\b(ex[-\\s]+|former(ly)?\\s+|previously\\s+(at\\s+)?|retired\\s+from\\s+)${cEsc}\\b`
+  ).test(blob);
+  if (!exSignal) return null;
 
   const lastRole = roleAtCompany(parsed.headline, blob, company);
 

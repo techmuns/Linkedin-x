@@ -249,6 +249,24 @@ async function handleApi(request, env, url) {
     return json({ ok: true, created, updated, skipped });
   }
 
+  // DELETE /api/people?company=X -> purge the auto-scraped rows for one company
+  // (used to clean out wrongly-included current employees before a strict
+  // ex-only re-scrape). Manually-added rows (source='manual') and anything the
+  // user has touched (contacted, or with notes) are kept.
+  if (path === '/api/people' && method === 'DELETE') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const company = normCompany(url.searchParams.get('company'));
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const res = await env.DB.prepare(
+      `DELETE FROM people
+         WHERE company = ?
+           AND source != 'manual'
+           AND (contacted IS NULL OR contacted = 0 OR contacted = '')
+           AND (notes IS NULL OR notes = '')`
+    ).bind(company).run();
+    return json({ ok: true, deleted: (res.meta && res.meta.changes) || 0 });
+  }
+
   // PATCH /api/people/:id -> update contacted/notes (and other editable fields)
   const m = path.match(/^\/api\/people\/([^/]+)$/);
   if (m && method === 'PATCH') {
