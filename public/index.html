@@ -135,7 +135,7 @@
   .rnet{position:absolute;right:16px;top:14px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
   .rnet.in{background:#ecfdf3;color:#067647}.rnet.out{background:#fffaeb;color:#b54708}
   .klab{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--faint)}
-  .rbest{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-right:96px}
+  .rbest{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .bchip{font-size:11px;font-weight:650;background:#f5f3ff;color:#5b21b6;border:1px solid #e9d7fe;border-radius:8px;padding:3px 9px}
   .rwhy{margin-top:11px}
   .rwhy .t{font-size:13px;color:var(--ink);margin-top:3px;line-height:1.45}
@@ -203,6 +203,37 @@
   .copick:hover{background:#f5f3ff}
   .copick.add{color:var(--brand)}
   .copick .trk{color:var(--green);font-size:11px;font-weight:700}
+  /* full-screen analysis takeover */
+  .analysis{position:fixed;inset:0;z-index:80;background:radial-gradient(1200px 600px at 50% -10%,#e9ecf5,#f3f4f9 60%);display:none;align-items:center;justify-content:center;padding:22px}
+  .acard{width:min(640px,96vw);background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.28);overflow:hidden}
+  .ahead{background:linear-gradient(120deg,#0b302b,#123f37 55%,#17564173);padding:22px 26px 24px;color:#fff;position:relative;overflow:hidden}
+  .ahead::after{content:"";position:absolute;right:-40px;top:-50px;width:220px;height:220px;background:radial-gradient(circle,rgba(52,211,153,.28),transparent 70%)}
+  .ahead .atag{color:#5eead4;font-size:11px;font-weight:800;letter-spacing:1.2px;display:flex;align-items:center;gap:7px}
+  .ahead .atag .d{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399}
+  .ahead h2{margin:8px 0 0;font-size:23px;font-weight:750;font-family:Georgia,serif}
+  .abody{padding:22px 26px 24px}
+  .arun{display:flex;align-items:center;gap:14px}
+  .aspin{width:30px;height:30px;border-radius:50%;border:3px solid #d1fae5;border-top-color:#10b981;animation:aspin 0.9s linear infinite;flex:none}
+  @keyframes aspin{to{transform:rotate(360deg)}}
+  .alab{color:#0f766e;font-size:10.5px;font-weight:800;letter-spacing:1px}
+  .aco{font-size:18px;font-weight:750;margin-top:2px}
+  .atk{font-size:11px;font-weight:700;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:middle}
+  .atimer{margin-left:auto;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;font-size:15px}
+  .astage{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:18px}
+  .abar{display:flex;gap:5px;margin-top:8px}
+  .abar i{flex:1;height:8px;border-radius:3px;background:#e5e9f0;transition:.3s}
+  .abar i.on{background:linear-gradient(90deg,#10b981,#059669)}
+  .afoot{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:16px}
+  .anote{color:var(--muted);font-size:12.5px}
+  .arecent{margin-top:20px;border-top:1px solid var(--line2);padding-top:14px}
+  .arh{display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;letter-spacing:.6px;color:var(--faint);margin-bottom:6px}
+  .arow{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line2)}
+  .arow:last-child{border-bottom:none}
+  .arow .ist{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;flex:none}
+  .arow .ist.ok{background:#ecfdf5;color:#059669}.arow .ist.run{background:#eff6ff;color:#2563eb}.arow .ist.err{background:#fef2f2;color:#dc2626}
+  .arow .rn{font-weight:650;font-size:13.5px}
+  .arow .rtk{font-size:10.5px;color:var(--faint);background:#f2f4f7;border-radius:5px;padding:1px 6px;margin-left:6px}
+  .arow .rt{margin-left:auto;color:var(--faint);font-size:11.5px}
   @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}.rbest{padding-right:0}.rnet{position:static;margin-bottom:8px}}
   @media print{header .hactions,.fpanel,.pillrow .savedviews,.ractions{display:none!important}body{background:#fff}}
 </style>
@@ -224,7 +255,6 @@
     <span class="txt">Tracking senior operators and domain experts across priority sectors.</span>
     <button class="more" id="insightsBtn">📊 More insights ›</button>
   </div>
-  <div class="kpis" id="kpis"></div>
 </header>
 
 <div class="wrap">
@@ -243,16 +273,6 @@
         <button data-st="left">🕒 Recently left</button>
       </div>
     </div>
-    <div class="fgroup">
-      <div class="glab">RESEARCH LENS</div>
-      <div class="lens">◎ <select id="lens">
-        <option value="leadership">Leadership influence</option>
-        <option value="operations">Operational depth</option>
-        <option value="finance">Financial insight</option>
-        <option value="fresh">Recent exits</option>
-        <option value="reach">Reachability</option>
-      </select></div>
-    </div>
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
@@ -263,6 +283,31 @@
   <div class="rows" id="rows"></div>
   <div id="tableWrap" style="display:none"></div>
   <div class="empty" id="empty" style="display:none"><div class="big">🔍</div><div>No sources match. Adjust filters or add a company.</div></div>
+</div>
+
+<!-- Full-screen analysis takeover -->
+<div class="analysis" id="analysis">
+  <div class="acard">
+    <div class="ahead">
+      <div class="atag"><span class="d"></span> BUY-SIDE ANALYTICS · MUNS-POWERED</div>
+      <h2>Governance &amp; Forensic Scorecard</h2>
+    </div>
+    <div class="abody">
+      <div class="arun">
+        <div class="aspin"></div>
+        <div style="flex:1;min-width:0"><div class="alab">RUNNING ANALYSIS</div><div class="aco"><span id="aCoName">Company</span><span class="atk" id="aCoTicker" style="display:none"></span></div></div>
+        <div class="atimer" id="aTimer">00:00</div>
+      </div>
+      <div class="astage"><span id="aStage">Sending request payload</span><span id="aPct">5%</span></div>
+      <div class="abar" id="aBar"></div>
+      <div class="afoot"><div class="anote" id="aNote">Leave this tab open — the dashboard will appear automatically when the analysis lands.</div>
+        <button class="btn" id="aCancel">✕ Cancel</button></div>
+      <div class="arecent">
+        <div class="arh"><span>RECENT REFRESHES</span><span id="aStored">0 STORED LOCALLY</span></div>
+        <div id="aRecentList"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Detail drawer -->
@@ -292,7 +337,7 @@
 const $=id=>document.getElementById(id);
 let TOKEN=localStorage.getItem('lx_token')||'';
 let SAVED=new Set(JSON.parse(localStorage.getItem('lx_saved')||'[]'));
-let RAW=[];let COMPANY='';let STYPE='all';let LENS='leadership';let VIEW='cards';let VIEWFILTER='';
+let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';
 
 const RELLABEL={ex_employee:'Ex-employee',competitor_ex:'Competitor exec',franchise_partner:'Franchise partner',vendor:'Supplier / vendor',consultant:'Consultant',board:'Board member',investor:'Investor',expert:'Industry expert',other:'Stakeholder'};
 const SENLABEL={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director / Head',manager:'Manager',other:'Professional'};
@@ -398,15 +443,6 @@ function stypePass(p){
   if(STYPE==='left')return Number(p.is_current)===0;
   return true;
 }
-function lensScore(p){
-  const b=p.score||0;
-  if(LENS==='leadership')return b+(['founder','clevel'].includes(p.seniority)?25:p.seniority==='vp'?10:0);
-  if(LENS==='operations')return b+((p._fn==='Operations'||p._fn==='Supply Chain')?30:0);
-  if(LENS==='finance')return b+(p._fn==='Finance'?40:0);
-  if(LENS==='fresh')return b+(Number(p.is_current)===0?20:0);
-  if(LENS==='reach')return p._reach*1.2+b*0.3;
-  return b;
-}
 function applyFilters(list){
   const q=$('q').value.trim().toLowerCase();
   let r=list.filter(p=>{
@@ -415,7 +451,7 @@ function applyFilters(list){
     if(q){const blob=(p.full_name+' '+(p.last_role||'')+' '+(p.current_employer||'')+' '+(p.current_role||'')+' '+p._fn).toLowerCase();if(!blob.includes(q))return false;}
     return true;
   });
-  r.sort((a,b)=>lensScore(b)-lensScore(a));
+  r.sort((a,b)=>(b.score||0)-(a.score||0));
   return r;
 }
 
@@ -467,14 +503,11 @@ function rowHtml(p){
       </div>
     </div>
     <div class="rm">
-      <div class="rnet ${p._in?'in':'out'}">${p._in?'● In network':'▲ Out of network'}</div>
       <div class="rbest"><span class="klab">BEST FOR</span>${bf}</div>
       <div class="rwhy"><span class="klab">WHY THEY MATTER</span><div class="t">${esc(shortWhy(p))}</div></div>
       <div class="rmetrics">
-        <div class="metric"><div class="mlab">SOURCE SIGNAL</div><div class="mv">${sigBars(p.score)} ${p.score||0}</div></div>
-        <div class="metric"><div class="mlab">REACHABILITY</div><div class="mv"><span class="dot" style="background:${p._reach>=70?'var(--green)':p._reach>=45?'var(--amber)':'var(--faint)'}"></span>${p._reach>=70?'High':p._reach>=45?'Medium':'Low'}</div></div>
         <div class="metric"><div class="mlab">LAST SYNCED</div><div class="mv">${ago(p.updated_at||p.created_at)}</div></div>
-        <div class="metric"><div class="mlab">TIER</div><div class="mv" style="color:var(--gold)">${'★'.repeat(6-p._tier)}</div></div>
+        <div class="metric"><div class="mlab">SOURCE</div><div class="mv" style="text-transform:capitalize">${esc((p.source||'search').split('+')[0])}</div></div>
       </div>
     </div>
     <div class="rr">
@@ -487,18 +520,18 @@ function rowHtml(p){
     </div>
   </div>`;
 }
-function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td>${'★'.repeat(6-p._tier)}</td><td><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td>${p.score||0}</td><td><span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'In':'Out'}</span></td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
+function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td><b>${esc(p.full_name)}</b>${p.linkedin_url?' <span class="vchk">✓</span>':''}<div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
 
 function render(){
   const scope=scopeList();
-  renderKPIs(scope);renderBrief(scope);
+  renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
   $('empty').style.display=has?'none':'block';
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<table><thead><tr>${['Tier','Name','Current role','Now at','Signal','Network','Link'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table>`;
+  else $('tableWrap').innerHTML=`<table><thead><tr>${['Name','Current role','Now at','Link'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table>`;
 }
 
 // ---- interactions ----
@@ -539,8 +572,6 @@ function openDrawer(id){
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
         <span class="tag tg-${p.seniority||'other'}">${SENLABEL[p.seniority||'other']}</span>
         <span class="tag tg-fn">${p._fn}</span>
-        <span class="rnet ${p._in?'in':'out'}" style="position:static">${p._in?'● In network':'▲ Out of network'}</span>
-        <span class="tag" style="background:rgba(245,158,11,.9);color:#fff">Tier ${p._tier}</span>
       </div>
     </div>
     <div class="dsec"><h4>🧠 AI reasoning</h4><p>${esc(shortWhy(p))} ${esc(rationale(p))}</p></div>
@@ -562,7 +593,6 @@ $('drawerBg').onclick=closeDrawer;
 
 // ---- filters ----
 $('sourceType').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('sourceType').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');STYPE=b.dataset.st;render();});
-$('lens').onchange=e=>{LENS=e.target.value;render();};
 $('q').addEventListener('input',render);
 $('viewCards').onclick=()=>{VIEW='cards';$('viewCards').classList.add('on');$('viewTable').classList.remove('on');render();};
 $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('viewCards').classList.remove('on');render();};
@@ -591,12 +621,12 @@ function addCompany(){
   function render(items,q,fromApi){
     let html=`<div class="copick add" data-c="${esc(q)}">➕ Add “${esc(q)}” (custom)</div>`;
     if(fromApi){
-      html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.ticker)}${c.sector?' · '+esc(c.sector):''}</div></div><span style="font-size:11px;color:var(--faint);white-space:nowrap">${esc(c.country||'')} ${trk(c.name)}</span></div>`).join('');
+      html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}" data-ticker="${esc(c.ticker||'')}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.ticker)}${c.sector?' · '+esc(c.sector):''}</div></div><span style="font-size:11px;color:var(--faint);white-space:nowrap">${esc(c.country||'')} ${trk(c.name)}</span></div>`).join('');
     }else{
       html+=items.map(c=>`<div class="copick" data-c="${esc(c)}">${esc(c)}${trk(c)}</div>`).join('');
     }
     list.innerHTML=html;
-    list.querySelectorAll('.copick').forEach(el=>el.onclick=()=>pickCompany(el.dataset.c));
+    list.querySelectorAll('.copick').forEach(el=>el.onclick=()=>pickCompany(el.dataset.c,el.dataset.ticker||''));
   }
   async function draw(){
     const q=inp.value.trim();
@@ -615,18 +645,73 @@ function addCompany(){
   draw();setTimeout(()=>inp.focus(),60);
 }
 function cleanCompanyName(name){return (name||'').replace(/\s*[-–]\s*\$$/,'').replace(/[.,]\s*$/,'').replace(/\s+(ltd|limited|inc|corp|co)\.?$/i,'').trim()||name;}
-async function pickCompany(name){
+async function pickCompany(name,ticker){
   name=cleanCompanyName(name);
   if(!name)return;
   if(!TOKEN){setKey();if(!TOKEN)return;}
   $('genBg').style.display='none';
-  const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:name})});
-  const d=await r.json();
-  if(r.status===401){alert('Wrong password — click the avatar → Set password.');return;}
-  alert(d.dispatched
-    ?`Research started for “${name}”. Its senior ex-employees will appear here shortly, and refresh automatically every day.`
-    :`“${name}” added to the research queue — it will be picked up on the next daily refresh (or trigger it now from GitHub → Actions → Daily refresh).`);
+  startAnalysis(name,ticker||'');
+  try{
+    const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:name})});
+    if(r.status===401){alert('Wrong password — click the avatar → Set password.');closeAnalysis();return;}
+  }catch{ /* analysis screen keeps polling */ }
 }
+
+// ---- full-screen analysis takeover ----
+let AN={timer:null,poll:null,seconds:0,pct:5,done:false,company:'',baseline:0};
+const STAGES=['Sending request payload','Querying professional graph','Screening senior alumni','Scoring & ranking signals','Compiling governance scorecard'];
+function refreshesGet(){try{return JSON.parse(localStorage.getItem('lx_refreshes')||'[]');}catch{return [];}}
+function refreshesSet(a){localStorage.setItem('lx_refreshes',JSON.stringify(a.slice(0,8)));}
+function refreshRecord(name,ticker,status){let a=refreshesGet().filter(x=>x.name.toLowerCase()!==name.toLowerCase());a.unshift({name,ticker:ticker||'',status,ts:Date.now()});refreshesSet(a);}
+function refreshUpdate(name,status){let a=refreshesGet();const x=a.find(y=>y.name.toLowerCase()===name.toLowerCase());if(x){x.status=status;x.ts=Date.now();}refreshesSet(a);}
+function relTime(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return 'just now';const m=Math.floor(s/60);if(m<60)return m+' min ago';const h=Math.floor(m/60);if(h<24)return h+' hrs ago';return Math.floor(h/24)+' days ago';}
+function renderRecent(){const a=refreshesGet();$('aStored').textContent=a.length+' STORED LOCALLY';
+  $('aRecentList').innerHTML=a.slice(0,5).map(x=>{const ic=x.status==='done'?['ok','✓']:x.status==='failed'?['err','✕']:['run','●'];
+    const t=x.status==='running'?'Running…':(x.status==='done'?'Refreshed ':'Last attempt failed ')+relTime(x.ts);
+    return `<div class="arow"><div class="ist ${ic[0]}">${ic[1]}</div><div style="flex:1;min-width:0"><span class="rn">${esc(x.name)}</span>${x.ticker?`<span class="rtk">${esc(x.ticker)}</span>`:''}</div><span class="rt">${t}</span></div>`;}).join('')||'<div class="mnote">No recent refreshes yet.</div>';}
+function setBar(pct){const N=10,on=Math.round(pct/100*N);$('aBar').innerHTML=Array.from({length:N},(_,i)=>`<i class="${i<on?'on':''}"></i>`).join('');$('aPct').textContent=Math.round(pct)+'%';}
+function clearTimers(){if(AN.timer)clearInterval(AN.timer);if(AN.poll)clearInterval(AN.poll);AN.timer=AN.poll=null;}
+function startAnalysis(name,ticker){
+  clearTimers();
+  AN={timer:null,poll:null,seconds:0,pct:5,done:false,company:name.toLowerCase(),baseline:RAW.filter(p=>p.company===name.toLowerCase()).length};
+  $('aCoName').textContent=name;
+  if(ticker){$('aCoTicker').textContent=ticker;$('aCoTicker').style.display='';}else $('aCoTicker').style.display='none';
+  $('aStage').textContent=STAGES[0];$('aTimer').textContent='00:00';
+  $('aNote').textContent='Leave this tab open — the dashboard will appear automatically when the analysis lands.';
+  setBar(5);refreshRecord(name,ticker,'running');renderRecent();
+  $('analysis').style.display='flex';
+  AN.timer=setInterval(()=>{
+    AN.seconds++;$('aTimer').textContent=String(Math.floor(AN.seconds/60)).padStart(2,'0')+':'+String(AN.seconds%60).padStart(2,'0');
+    if(!AN.done&&AN.pct<92){AN.pct+=Math.max(0.4,(92-AN.pct)*0.03);setBar(AN.pct);$('aStage').textContent=STAGES[Math.min(STAGES.length-1,Math.floor(AN.pct/92*STAGES.length))];}
+    if(AN.seconds===150&&!AN.done)$('aNote').textContent='Still running — deep scans can take a few minutes. You can close this; results appear automatically when ready.';
+  },1000);
+  AN.poll=setInterval(pollAnalysis,4000);setTimeout(pollAnalysis,2500);
+}
+async function pollAnalysis(){
+  if(AN.done)return;
+  try{
+    const cnt=((await (await fetch('/api/people?company='+encodeURIComponent(AN.company))).json()).people||[]).length;
+    if(cnt>AN.baseline)return landAnalysis();
+    const s=await (await fetch('/api/searches')).json();
+    const rec=(s.searches||[]).find(x=>(x.company||'').toLowerCase()===AN.company);
+    if(rec&&rec.status==='done'&&(rec.found>0||cnt>0))return landAnalysis();
+    if(rec&&rec.status==='error')return failAnalysis(rec.message);
+  }catch{}
+}
+function landAnalysis(){
+  if(AN.done)return;AN.done=true;clearTimers();
+  setBar(100);$('aStage').textContent='Analysis complete';
+  refreshUpdate($('aCoName').textContent,'done');renderRecent();
+  setTimeout(async()=>{$('analysis').style.display='none';COMPANY=AN.company;await loadAll();},900);
+}
+function failAnalysis(msg){
+  if(AN.done)return;AN.done=true;clearTimers();
+  $('aStage').textContent='Analysis could not complete';
+  $('aNote').textContent=(msg||'Something went wrong')+' — you can close and retry.';
+  refreshUpdate($('aCoName').textContent,'failed');renderRecent();
+}
+function closeAnalysis(){clearTimers();AN.done=true;$('analysis').style.display='none';}
+$('aCancel').onclick=closeAnalysis;
 
 // generic modal
 function openModal(html){$('genModal').innerHTML=html;$('genBg').style.display='flex';}
