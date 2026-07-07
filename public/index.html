@@ -54,20 +54,18 @@
     border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
   .rctx .more:hover{background:rgba(255,255,255,.2)}
 
-  /* KPI cards — spacious, expensive, calm (Linear/Ramp/Stripe) */
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:18px}
-  .kpi{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;
-    cursor:pointer;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.04);
-    transition:transform .22s cubic-bezier(.22,.61,.36,1),box-shadow .22s ease-out,border-color .22s ease-out}
-  .kpi:hover{transform:translateY(-5px);box-shadow:0 14px 32px rgba(16,24,40,.10),0 4px 10px rgba(16,24,40,.05);border-color:#dcd6ee}
-  .kpi .ic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:20px;
-    transition:transform .22s ease-out}
-  .kpi:hover .ic{transform:scale(1.03)}
-  .kpi .n{font-size:38px;font-weight:780;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.6px;margin-top:20px}
-  .kpi .l{font-size:13px;color:var(--muted);margin-top:9px;font-weight:600}
-  .kpi .trend{font-size:12px;font-weight:650;margin-top:11px;display:inline-flex;align-items:center;gap:5px;color:var(--green)}
+  /* KPI cards — clean, light, executive (Linear/Stripe calm) */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
+    display:flex;gap:12px;align-items:flex-start;cursor:pointer;box-shadow:var(--shadow);
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+  .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:#e4ddfb}
+  .kpi .ic{width:40px;height:40px;border-radius:11px;background:#f5f3ff;color:var(--brand);
+    display:grid;place-items:center;font-size:18px;flex:none}
+  .kpi .n{font-size:24px;font-weight:750;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
+  .kpi .trend{font-size:11px;font-weight:700;margin-top:7px;display:inline-flex;align-items:center;gap:4px;color:var(--green)}
   .kpi .trend.flat{color:var(--faint)}
-  .kpi .spark{position:absolute;right:22px;bottom:22px;width:54px;height:20px;opacity:.5;pointer-events:none}
 
   /* ---------- BODY ---------- */
   .wrap{max-width:1320px;margin:0 auto;padding:18px 30px 70px}
@@ -117,7 +115,7 @@
   /* ---------- CONTACT ROWS ---------- */
   .rows{margin-top:16px;display:flex;flex-direction:column;gap:12px}
   .row{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
-    display:grid;grid-template-columns:296px 1fr 208px;cursor:pointer;overflow:hidden;will-change:transform;
+    display:grid;grid-template-columns:272px 1fr 200px;cursor:pointer;overflow:hidden;will-change:transform;
     transition:transform .26s cubic-bezier(.22,.61,.36,1),box-shadow .26s ease-out,border-color .26s ease-out}
   /* Tier-based left accent — priority only, never status. --tglow tints the
      elevated card's left-side glow to the tier colour. */
@@ -125,8 +123,8 @@
     transition:filter .26s ease-out}
   .row.t1{--tier:#6C5CE7;--tglow:rgba(108,92,231,.30)}
   .row.t2{--tier:#3B82F6;--tglow:rgba(59,130,246,.30)}
-  .row.t3{--tier:#10B981;--tglow:rgba(16,185,129,.28)}
-  .row.t4{--tier:#F59E0B;--tglow:rgba(245,158,11,.30)}
+  .row.t3{--tier:#F59E0B;--tglow:rgba(245,158,11,.32)}
+  .row.t4{--tier:#64748B;--tglow:rgba(100,116,139,.24)}
   .row.t5{--tier:#64748B;--tglow:rgba(100,116,139,.24)}
   /* Cohesive lift: translate + subtle scale, layered soft shadow, tinted
      left glow — all on the same 260ms ease-out curve. GPU-only props. */
@@ -134,24 +132,24 @@
     box-shadow:0 2px 4px rgba(16,24,40,.04),0 14px 28px rgba(16,24,40,.10),0 26px 50px rgba(16,24,40,.09),-6px 0 22px -8px var(--tglow)}
   .row:hover::before{filter:brightness(1.15) saturate(1.35)}
 
-  .rl{padding:20px;padding-left:22px;display:flex;gap:14px}
+  .rl{padding:16px;padding-left:20px;display:flex;gap:12px}
   .rav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:none;box-shadow:0 4px 12px rgba(99,102,241,.28);
     transition:transform .26s cubic-bezier(.22,.61,.36,1),filter .26s ease-out,box-shadow .26s ease-out}
   .row:hover .rav{transform:scale(1.07);filter:saturate(1.15);box-shadow:0 8px 22px rgba(99,102,241,.45)}
   .rid{min-width:0;flex:1}
   .rtop{display:flex;align-items:flex-start;gap:8px}
-  .rname{font-weight:750;font-size:16.5px;line-height:1.25;letter-spacing:-.2px;transition:color .26s ease-out,font-weight .26s ease-out}
+  .rname{font-weight:750;font-size:15.5px;line-height:1.25;transition:color .26s ease-out,font-weight .26s ease-out}
   .row:hover .rname{color:var(--brand);font-weight:800}
   .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1;opacity:.7;
     transition:transform .26s ease-out,color .16s ease,opacity .26s ease-out}
   .row:hover .star{opacity:1;transform:scale(1.06)}
   .star:hover,.row:hover .star:hover{transform:scale(1.18)}
   .star.on{color:var(--gold);opacity:1}
-  .rrole{color:var(--ink);font-size:13.5px;margin-top:7px;font-weight:600}
-  .rco{color:var(--muted);font-size:12.5px;margin-top:3px;transition:color .26s ease-out}
+  .rrole{color:var(--ink);font-size:13px;margin-top:4px;font-weight:600}
+  .rco{color:var(--muted);font-size:12.5px;margin-top:1px;transition:color .26s ease-out}
   .row:hover .rco{color:#475467}
-  .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:14px;font-size:10.5px;font-weight:800;
-    padding:4px 10px;border-radius:999px;letter-spacing:.3px;transition:filter .26s ease-out}
+  .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:10.5px;font-weight:800;
+    padding:3px 9px;border-radius:999px;letter-spacing:.3px;transition:filter .26s ease-out}
   .rtags{display:flex;gap:6px;flex-wrap:wrap}
   .row:hover .tag,.row:hover .tierbadge{filter:saturate(1.2)}
   .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px;transition:filter .26s ease-out}
@@ -159,11 +157,11 @@
   .tg-director{background:#e0f2fe;color:#026aa2}.tg-manager{background:#d1fadf;color:#067647}.tg-other{background:#f2f4f7;color:#475467}
   .tg-fn{background:#eef2ff;color:#3538cd}.tg-left{background:#ecfdf3;color:#067647}
 
-  .rm{padding:20px 22px;border-left:1px solid var(--line2);min-width:0;display:flex;flex-direction:column;gap:14px;justify-content:center}
-  .klab{font-size:9.5px;font-weight:800;letter-spacing:.7px;color:var(--faint);text-transform:uppercase}
-  .rwhy .t{font-size:13.5px;color:#344054;margin-top:6px;line-height:1.55}
+  .rm{padding:16px;border-left:1px solid var(--line2);min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
+  .klab{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--faint)}
+  .rwhy .t{font-size:13px;color:var(--ink);margin-top:4px;line-height:1.5}
 
-  .rr{padding:20px;border-left:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .rr{padding:16px;border-left:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center;gap:10px}
   /* Gradient rides on background-position so it interpolates smoothly (GPU-safe,
      no snap). At rest the window sits on the solid brand end. */
   .searchbtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;color:#fff;
@@ -378,8 +376,8 @@ const FUNCTIONS=['Leadership','Finance','Operations','Technology','Marketing','S
 const TIER={
   1:{c:'#6C5CE7',bg:'#efeaff',l:'Tier 1'},
   2:{c:'#3B82F6',bg:'#e8f0fe',l:'Tier 2'},
-  3:{c:'#059669',bg:'#e7f8f0',l:'Tier 3'},
-  4:{c:'#B45309',bg:'#fef3e0',l:'Tier 4'},
+  3:{c:'#B45309',bg:'#fef3e0',l:'Tier 3'},
+  4:{c:'#475467',bg:'#eef1f5',l:'Tier 4'},
   5:{c:'#475467',bg:'#eef1f5',l:'Tier 5'},
 };
 const AV=['#6941c6','#026aa2','#b54708','#067647','#b42318','#3538cd','#0e7090','#c11574'];
@@ -495,12 +493,6 @@ function applyFilters(list){
   return r;
 }
 
-// A tiny, elegant sparkline (a thin line, not a chart) for the KPI corner.
-function spark(color,pts){
-  const w=54,h=20,max=Math.max(...pts),min=Math.min(...pts),rng=(max-min)||1,step=w/(pts.length-1);
-  const d=pts.map((v,i)=>`${i?'L':'M'}${(i*step).toFixed(1)} ${(h-2-((v-min)/rng)*(h-4)).toFixed(1)}`).join(' ');
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" fill="none"><path d="${d}" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-}
 // KPIs — meaningful business metrics only (no reliability/AI score).
 function renderKPIs(scope){
   const total=scope.length;
@@ -511,12 +503,12 @@ function renderKPIs(scope){
   const nLeft=scope.filter(p=>isNew(p)&&Number(p.is_current)===0).length;
   const trend=n=>n>0?`<div class="trend">▲ +${n} this week</div>`:`<div class="trend flat">No change this week</div>`;
   const K=[
-    ['👥',total,'Total Contacts','#f5f3ff','#6d28d9',trend(nTotal),[3,4,4,5,5,6,7]],
-    ['⭐',t1,'Tier 1 Contacts','#efeaff','#6C5CE7',t1?`<div class="trend flat">Top priority</div>`:`<div class="trend flat">None yet</div>`,[2,2,3,3,3,4,4]],
-    ['🕒',left,'Recently Left','#e7f8f0','#059669',trend(nLeft),[2,3,3,4,4,5,6]],
-    ['🏢',companies,'Companies Tracked','#e8f0fe','#3B82F6',`<div class="trend flat">In coverage</div>`,[3,3,4,4,4,5,5]],
+    ['👥',total,'Total Contacts','#f5f3ff','#6d28d9',trend(nTotal)],
+    ['⭐',t1,'Tier 1 Contacts','#efeaff','#6C5CE7',t1?`<div class="trend flat">Top priority</div>`:`<div class="trend flat">None yet</div>`],
+    ['🕒',left,'Recently Left','#ecfdf3','#067647',trend(nLeft)],
+    ['🏢',companies,'Companies Tracked','#e8f0fe','#3B82F6',`<div class="trend flat">In coverage</div>`],
   ];
-  $('kpis').innerHTML=K.map(([ic,n,l,bg,col,tr,pts])=>`<div class="kpi"><div class="ic" style="background:${bg};color:${col}">${ic}</div><div class="n">${n}</div><div class="l">${l}</div>${tr}${spark(col,pts)}</div>`).join('');
+  $('kpis').innerHTML=K.map(([ic,n,l,bg,col,tr])=>`<div class="kpi"><div class="ic" style="background:${bg};color:${col}">${ic}</div><div style="flex:1;min-width:0"><div class="n">${n}</div><div class="l">${l}</div>${tr}</div></div>`).join('');
   $('kpis').querySelectorAll('.kpi').forEach(k=>k.onclick=openInsights);
 }
 
