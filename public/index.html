@@ -115,29 +115,44 @@
   /* ---------- CONTACT ROWS ---------- */
   .rows{margin-top:16px;display:flex;flex-direction:column;gap:12px}
   .row{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
-    display:grid;grid-template-columns:272px 1fr 200px;cursor:pointer;overflow:hidden;
-    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
-  /* Tier-based left accent — priority only, never status. */
+    display:grid;grid-template-columns:272px 1fr 200px;cursor:pointer;overflow:hidden;will-change:transform;
+    transition:transform .26s cubic-bezier(.22,.61,.36,1),box-shadow .26s ease-out,border-color .26s ease-out}
+  /* Tier-based left accent — priority only, never status. --tglow tints the
+     elevated card's left-side glow to the tier colour. */
   .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tier,#64748B);
-    transition:width .16s ease,filter .16s ease}
-  .row.t1{--tier:#6C5CE7}.row.t2{--tier:#3B82F6}.row.t3{--tier:#F59E0B}.row.t4{--tier:#64748B}.row.t5{--tier:#64748B}
-  .row:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:#e4ddfb}
-  .row:hover::before{width:5px;filter:saturate(1.35) brightness(1.08)}
+    transition:filter .26s ease-out}
+  .row.t1{--tier:#6C5CE7;--tglow:rgba(108,92,231,.30)}
+  .row.t2{--tier:#3B82F6;--tglow:rgba(59,130,246,.30)}
+  .row.t3{--tier:#F59E0B;--tglow:rgba(245,158,11,.32)}
+  .row.t4{--tier:#64748B;--tglow:rgba(100,116,139,.24)}
+  .row.t5{--tier:#64748B;--tglow:rgba(100,116,139,.24)}
+  /* Cohesive lift: translate + subtle scale, layered soft shadow, tinted
+     left glow — all on the same 260ms ease-out curve. GPU-only props. */
+  .row:hover{transform:translateY(-5px) scale(1.012);border-color:#e4ddfb;
+    box-shadow:0 2px 4px rgba(16,24,40,.04),0 14px 28px rgba(16,24,40,.10),0 26px 50px rgba(16,24,40,.09),-6px 0 22px -8px var(--tglow)}
+  .row:hover::before{filter:brightness(1.15) saturate(1.35)}
 
   .rl{padding:16px;padding-left:20px;display:flex;gap:12px}
-  .rav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:none;box-shadow:0 4px 12px rgba(99,102,241,.28)}
+  .rav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:none;box-shadow:0 4px 12px rgba(99,102,241,.28);
+    transition:transform .26s cubic-bezier(.22,.61,.36,1),filter .26s ease-out,box-shadow .26s ease-out}
+  .row:hover .rav{transform:scale(1.07);filter:saturate(1.15);box-shadow:0 8px 22px rgba(99,102,241,.45)}
   .rid{min-width:0;flex:1}
   .rtop{display:flex;align-items:flex-start;gap:8px}
-  .rname{font-weight:750;font-size:15.5px;line-height:1.25}
-  .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1;transition:transform .12s ease,color .12s ease}
-  .star:hover{transform:scale(1.15)}
-  .star.on{color:var(--gold)}
+  .rname{font-weight:750;font-size:15.5px;line-height:1.25;transition:color .26s ease-out,font-weight .26s ease-out}
+  .row:hover .rname{color:var(--brand);font-weight:800}
+  .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1;opacity:.7;
+    transition:transform .26s ease-out,color .16s ease,opacity .26s ease-out}
+  .row:hover .star{opacity:1;transform:scale(1.06)}
+  .star:hover,.row:hover .star:hover{transform:scale(1.18)}
+  .star.on{color:var(--gold);opacity:1}
   .rrole{color:var(--ink);font-size:13px;margin-top:4px;font-weight:600}
-  .rco{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .rco{color:var(--muted);font-size:12.5px;margin-top:1px;transition:color .26s ease-out}
+  .row:hover .rco{color:#475467}
   .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:10.5px;font-weight:800;
-    padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+    padding:3px 9px;border-radius:999px;letter-spacing:.3px;transition:filter .26s ease-out}
   .rtags{display:flex;gap:6px;flex-wrap:wrap}
-  .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px}
+  .row:hover .tag,.row:hover .tierbadge{filter:saturate(1.2)}
+  .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px;transition:filter .26s ease-out}
   .tg-clevel{background:#fee4e2;color:#b42318}.tg-founder{background:#f4ebff;color:#6941c6}.tg-vp{background:#fef0c7;color:#b54708}
   .tg-director{background:#e0f2fe;color:#026aa2}.tg-manager{background:#d1fadf;color:#067647}.tg-other{background:#f2f4f7;color:#475467}
   .tg-fn{background:#eef2ff;color:#3538cd}.tg-left{background:#ecfdf3;color:#067647}
@@ -147,16 +162,24 @@
   .rwhy .t{font-size:13px;color:var(--ink);margin-top:4px;line-height:1.5}
 
   .rr{padding:16px;border-left:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center;gap:10px}
-  .searchbtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--brand);color:#fff;
+  /* Gradient rides on background-position so it interpolates smoothly (GPU-safe,
+     no snap). At rest the window sits on the solid brand end. */
+  .searchbtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;color:#fff;
+    background:linear-gradient(120deg,#6d28d9 0%,#6d28d9 42%,#8b5cf6 100%);background-size:190% 100%;background-position:0% 0%;
     border:none;border-radius:10px;padding:10px 12px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;
-    transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
-  .searchbtn:hover{background:var(--brand2);box-shadow:0 6px 16px rgba(109,40,217,.28);transform:translateY(-1px)}
-  .searchbtn:active{transform:translateY(0)}
+    box-shadow:0 1px 2px rgba(109,40,217,.16);
+    transition:background-position .26s ease-out,box-shadow .26s ease-out,transform .16s ease,filter .26s ease-out}
+  .sbi{display:inline-block;transition:transform .26s cubic-bezier(.22,.61,.36,1)}
+  .row:hover .searchbtn{background-position:100% 0%;box-shadow:0 8px 20px rgba(109,40,217,.34);filter:brightness(1.06)}
+  .row:hover .sbi{transform:translateX(3px)}
+  .searchbtn:hover{filter:brightness(1.09)}
+  .searchbtn:active{transform:translateY(1px)}
   .rutil{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .rsync{font-size:11px;color:var(--faint);font-weight:600}
-  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.16s}
+  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--muted);opacity:.7;transition:opacity .26s ease-out,transform .26s ease-out,background .16s ease,color .16s ease,border-color .16s ease}
+  .row:hover .iconbtn{opacity:1;transform:scale(1.06)}
   .iconbtn:hover{background:#f6f7fb;color:var(--ink);border-color:#dcd7ea}
-  .iconbtn.on{background:#fff7e6;color:var(--gold);border-color:#fedf89}
+  .iconbtn.on{background:#fff7e6;color:var(--gold);border-color:#fedf89;opacity:1}
 
   .empty{text-align:center;padding:60px 20px;color:var(--muted)}
   .empty .big{font-size:38px;margin-bottom:8px}
@@ -536,7 +559,7 @@ function rowHtml(p){
       <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${esc(p._fn)}</span></div>
     </div>
     <div class="rr">
-      <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Look this person up on LinkedIn">🔍 Search Profile</a>
+      <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Look this person up on LinkedIn"><span class="sbi">🔍</span> Search Profile</a>
       <div class="rutil">
         <span class="rsync">Synced ${ago(p.updated_at||p.created_at)}</span>
         <button class="iconbtn" data-act="menu" data-id="${p.id}" title="More">⋯</button>
