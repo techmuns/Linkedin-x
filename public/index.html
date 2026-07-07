@@ -54,15 +54,18 @@
     border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
   .rctx .more:hover{background:rgba(255,255,255,.2)}
 
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px;position:relative;z-index:2}
-  .kpi{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:15px;padding:16px 18px;
-    box-shadow:0 0 0 1px rgba(124,58,237,.10) inset,0 8px 24px rgba(10,8,30,.35);display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:.15s}
-  .kpi:hover{border-color:rgba(139,110,246,.5);transform:translateY(-1px)}
-  .kpi .ic{width:44px;height:44px;border-radius:12px;background:rgba(124,58,237,.22);display:grid;place-items:center;font-size:20px;flex:none}
-  .kpi .n{font-size:26px;font-weight:750;line-height:1}
-  .kpi .l{font-size:12px;color:#bcb2ea;margin-top:5px}
-  .kpi .bar{height:3px;background:rgba(255,255,255,.14);border-radius:3px;margin-top:10px;overflow:hidden}
-  .kpi .bar>i{display:block;height:100%;background:linear-gradient(90deg,#a78bfa,#7c3aed);border-radius:3px}
+  /* KPI cards — clean, light, executive (Linear/Stripe calm) */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
+    display:flex;gap:12px;align-items:flex-start;cursor:pointer;box-shadow:var(--shadow);
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+  .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:#e4ddfb}
+  .kpi .ic{width:40px;height:40px;border-radius:11px;background:#f5f3ff;color:var(--brand);
+    display:grid;place-items:center;font-size:18px;flex:none}
+  .kpi .n{font-size:24px;font-weight:750;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
+  .kpi .trend{font-size:11px;font-weight:700;margin-top:7px;display:inline-flex;align-items:center;gap:4px;color:var(--green)}
+  .kpi .trend.flat{color:var(--faint)}
 
   /* ---------- BODY ---------- */
   .wrap{max-width:1320px;margin:0 auto;padding:18px 30px 70px}
@@ -110,49 +113,50 @@
   .toggle button.on{background:var(--brand);color:#fff}
 
   /* ---------- CONTACT ROWS ---------- */
-  .rows{margin-top:14px;display:flex;flex-direction:column;gap:12px}
-  .row{position:relative;background:linear-gradient(115deg,#e7dbff 0%,#dfe4ff 18%,#ecf0ff 33%,#ffffff 52%);
-    border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
-    display:grid;grid-template-columns:284px 1fr 292px;cursor:pointer;transition:.14s;overflow:hidden}
-  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#8b5cf6,#6366f1,#3b82f6)}
-  .row:hover{box-shadow:var(--shadow-lg);border-color:#dcd2fb;transform:translateY(-1px)}
-  .rl{padding:16px 18px 16px 20px;display:flex;gap:13px}
-  .rav{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:17px;flex:none;box-shadow:0 6px 16px rgba(99,102,241,.35)}
+  .rows{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+  .row{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:272px 1fr 200px;cursor:pointer;overflow:hidden;
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+  /* Tier-based left accent — priority only, never status. */
+  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tier,#64748B);
+    transition:width .16s ease,filter .16s ease}
+  .row.t1{--tier:#6C5CE7}.row.t2{--tier:#3B82F6}.row.t3{--tier:#F59E0B}.row.t4{--tier:#64748B}.row.t5{--tier:#64748B}
+  .row:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:#e4ddfb}
+  .row:hover::before{width:5px;filter:saturate(1.35) brightness(1.08)}
+
+  .rl{padding:16px;padding-left:20px;display:flex;gap:12px}
+  .rav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:none;box-shadow:0 4px 12px rgba(99,102,241,.28)}
   .rid{min-width:0;flex:1}
   .rtop{display:flex;align-items:flex-start;gap:8px}
-  .rname{font-weight:750;font-size:16px;line-height:1.2}
-  .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1}
+  .rname{font-weight:750;font-size:15.5px;line-height:1.25}
+  .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1;transition:transform .12s ease,color .12s ease}
+  .star:hover{transform:scale(1.15)}
   .star.on{color:var(--gold)}
-  .rrole{color:var(--ink);font-size:13px;margin-top:3px}
-  .rco{color:var(--muted);font-size:12.5px}
-  .rtags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .rrole{color:var(--ink);font-size:13px;margin-top:4px;font-weight:600}
+  .rco{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:10.5px;font-weight:800;
+    padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+  .rtags{display:flex;gap:6px;flex-wrap:wrap}
   .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px}
   .tg-clevel{background:#fee4e2;color:#b42318}.tg-founder{background:#f4ebff;color:#6941c6}.tg-vp{background:#fef0c7;color:#b54708}
   .tg-director{background:#e0f2fe;color:#026aa2}.tg-manager{background:#d1fadf;color:#067647}.tg-other{background:#f2f4f7;color:#475467}
-  .tg-fn{background:#eef2ff;color:#3538cd}
+  .tg-fn{background:#eef2ff;color:#3538cd}.tg-left{background:#ecfdf3;color:#067647}
 
-  .rm{padding:16px 20px;border-left:1px solid var(--line2);position:relative;min-width:0}
-  .rnet{position:absolute;right:16px;top:14px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
-  .rnet.in{background:#ecfdf3;color:#067647}.rnet.out{background:#fffaeb;color:#b54708}
+  .rm{padding:16px;border-left:1px solid var(--line2);min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
   .klab{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--faint)}
-  .rbest{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-  .bchip{font-size:11px;font-weight:650;background:#f5f3ff;color:#5b21b6;border:1px solid #e9d7fe;border-radius:8px;padding:3px 9px}
-  .rwhy{margin-top:11px}
-  .rwhy .t{font-size:13px;color:var(--ink);margin-top:3px;line-height:1.45}
-  .rmetrics{display:flex;gap:26px;margin-top:13px;flex-wrap:wrap}
-  .metric .mlab{font-size:9.5px;font-weight:800;letter-spacing:.5px;color:var(--faint)}
-  .metric .mv{font-size:13px;font-weight:600;margin-top:3px;display:flex;align-items:center;gap:6px}
-  .sig{display:inline-flex;align-items:flex-end;gap:2px;height:13px}
-  .sig i{width:3px;background:#7c3aed;border-radius:1px;display:block}
-  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .rwhy .t{font-size:13px;color:var(--ink);margin-top:4px;line-height:1.5}
 
-  .rr{padding:16px 18px;border-left:1px solid var(--line2);display:flex;flex-direction:column;gap:12px}
-  .ractions{display:flex;align-items:center;gap:8px}
-  .vprofile{flex:1;justify-content:center;background:#f5f3ff;border:1px solid #e9d7fe;color:#5b21b6;border-radius:10px;padding:8px 10px;font-weight:650;cursor:pointer;display:flex;align-items:center;gap:6px}
-  .vprofile:hover{background:#ede9fe}
-  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+  .rr{padding:16px;border-left:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center;gap:10px}
+  .searchbtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:var(--brand);color:#fff;
+    border:none;border-radius:10px;padding:10px 12px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;
+    transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
+  .searchbtn:hover{background:var(--brand2);box-shadow:0 6px 16px rgba(109,40,217,.28);transform:translateY(-1px)}
+  .searchbtn:active{transform:translateY(0)}
+  .rutil{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .rsync{font-size:11px;color:var(--faint);font-weight:600}
+  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.16s}
+  .iconbtn:hover{background:#f6f7fb;color:var(--ink);border-color:#dcd7ea}
   .iconbtn.on{background:#fff7e6;color:var(--gold);border-color:#fedf89}
-  .rrat .t{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
 
   .empty{text-align:center;padding:60px 20px;color:var(--muted)}
   .empty .big{font-size:38px;margin-bottom:8px}
@@ -234,8 +238,8 @@
   .arow .rn{font-weight:650;font-size:13.5px}
   .arow .rtk{font-size:10.5px;color:var(--faint);background:#f2f4f7;border-radius:5px;padding:1px 6px;margin-left:6px}
   .arow .rt{margin-left:auto;color:var(--faint);font-size:11.5px}
-  @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}.rbest{padding-right:0}.rnet{position:static;margin-bottom:8px}}
-  @media print{header .hactions,.fpanel,.pillrow .savedviews,.ractions{display:none!important}body{background:#fff}}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}}
+  @media print{header .hactions,.fpanel,.pillrow .savedviews,.rr{display:none!important}body{background:#fff}}
 </style>
 </head>
 <body>
@@ -259,6 +263,8 @@
 
 <div class="wrap">
   <div class="pillrow" id="pillrow"></div>
+
+  <div class="kpis" id="kpis"></div>
 
   <div class="brief" id="brief"></div>
 
@@ -342,6 +348,15 @@ let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';
 const RELLABEL={ex_employee:'Ex-employee',competitor_ex:'Competitor exec',franchise_partner:'Franchise partner',vendor:'Supplier / vendor',consultant:'Consultant',board:'Board member',investor:'Investor',expert:'Industry expert',other:'Stakeholder'};
 const SENLABEL={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director / Head',manager:'Manager',other:'Professional'};
 const FUNCTIONS=['Leadership','Finance','Operations','Technology','Marketing','Supply Chain'];
+// Tier = contact PRIORITY only (never status). Accent border uses the exact
+// spec colour; the badge uses a readable tint of it.
+const TIER={
+  1:{c:'#6C5CE7',bg:'#efeaff',l:'Tier 1'},
+  2:{c:'#3B82F6',bg:'#e8f0fe',l:'Tier 2'},
+  3:{c:'#B45309',bg:'#fef3e0',l:'Tier 3'},
+  4:{c:'#475467',bg:'#eef1f5',l:'Tier 4'},
+  5:{c:'#475467',bg:'#eef1f5',l:'Tier 5'},
+};
 const AV=['#6941c6','#026aa2','#b54708','#067647','#b42318','#3538cd','#0e7090','#c11574'];
 const CO_INTEL={
   bluestone:{industry:'Jewellery retail (omnichannel D2C)',employees:'~5,000',comps:['CaratLane','Tanishq','Kalyan','Melorra','GIVA']},
@@ -455,15 +470,22 @@ function applyFilters(list){
   return r;
 }
 
-// KPIs
-function pct(a,b){return b?Math.round(a/b*100):0;}
-function confidence(p){let c=30;if(p.last_role)c+=25;if(p.current_employer)c+=20;if(p.linkedin_url)c+=15;if(p.seniority&&p.seniority!=='other')c+=10;return Math.min(100,c);}
-function renderKPIs(list){
-  const senior=list.filter(p=>p.score>=75).length;
-  const cov=Math.round(new Set(list.map(p=>p._fn)).size/FUNCTIONS.length*100);
-  const conf=list.length?Math.round(list.reduce((a,p)=>a+confidence(p),0)/list.length):0;
-  const K=[['📄',list.length,'Mapped sources',Math.min(100,list.length*2)],['⭐',senior,'High-value contacts',pct(senior,list.length)],['◎',cov+'%','Research coverage',cov],['🛡',conf+'%','AI confidence',conf]];
-  $('kpis').innerHTML=K.map(([ic,n,l,b])=>`<div class="kpi"><div class="ic">${ic}</div><div style="flex:1"><div class="n">${n}</div><div class="l">${l}</div><div class="bar"><i style="width:${b}%"></i></div></div></div>`).join('');
+// KPIs — meaningful business metrics only (no reliability/AI score).
+function renderKPIs(scope){
+  const total=scope.length;
+  const t1=scope.filter(p=>p._tier===1).length;
+  const left=scope.filter(p=>Number(p.is_current)===0).length;
+  const companies=new Set(RAW.map(p=>p.company)).size;
+  const nTotal=scope.filter(isNew).length;
+  const nLeft=scope.filter(p=>isNew(p)&&Number(p.is_current)===0).length;
+  const trend=n=>n>0?`<div class="trend">▲ +${n} this week</div>`:`<div class="trend flat">No change this week</div>`;
+  const K=[
+    ['👥',total,'Total Contacts','#f5f3ff','#6d28d9',trend(nTotal)],
+    ['⭐',t1,'Tier 1 Contacts','#efeaff','#6C5CE7',t1?`<div class="trend flat">Top priority</div>`:`<div class="trend flat">None yet</div>`],
+    ['🕒',left,'Recently Left','#ecfdf3','#067647',trend(nLeft)],
+    ['🏢',companies,'Companies Tracked','#e8f0fe','#3B82F6',`<div class="trend flat">In coverage</div>`],
+  ];
+  $('kpis').innerHTML=K.map(([ic,n,l,bg,col,tr])=>`<div class="kpi"><div class="ic" style="background:${bg};color:${col}">${ic}</div><div style="flex:1;min-width:0"><div class="n">${n}</div><div class="l">${l}</div>${tr}</div></div>`).join('');
   $('kpis').querySelectorAll('.kpi').forEach(k=>k.onclick=openInsights);
 }
 
@@ -484,46 +506,49 @@ function renderBrief(list){
       <div><span class="k">Coverage</span><b>${covPct}%</b></div>
       <div style="flex:1"><span class="k">Competitors</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">${(intel.comps||[]).map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')}</div></div>
     </div>
-    <div class="bsum"><span class="ai">AI SUMMARY</span> Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}</div>`;
+    <div class="bsum"><span class="ai">SUMMARY</span> Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}</div>`;
 }
 
 function sigBars(score){const lvl=Math.max(1,Math.min(4,Math.ceil((score||0)/33)));let h='';for(let i=1;i<=4;i++)h+=`<i style="height:${3+i*2.5}px;opacity:${i<=lvl?1:.22}"></i>`;return `<span class="sig">${h}</span>`;}
 
+// LinkedIn URL if we have it, else a LinkedIn people search for the person.
+function searchUrl(p){
+  return p.linkedin_url||('https://www.linkedin.com/search/results/people/?keywords='+encodeURIComponent(p.full_name+' '+(p.company_label||p.company||'')));
+}
 function rowHtml(p){
   const sen=p.seniority||'other';
-  const bf=bestFor(p).map(b=>`<span class="bchip">${esc(b)}</span>`).join('');
-  return `<div class="row" data-id="${p.id}">
+  const t=TIER[p._tier]||TIER[5];
+  const co=p.company_label||p.company||'';
+  const emp=cleanEmployer(p.current_employer);
+  const leftCo=Number(p.is_current)===0;
+  return `<div class="row t${p._tier}" data-id="${p.id}">
     <div class="rl">
       <div class="rav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
-        <div class="rco">${esc(cleanEmployer(p.current_employer)||(Number(p.is_current)===1?(p.company_label||''):'—'))}</div>
-        <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${p._fn}</span></div>
+        <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
+        <span class="tierbadge" style="color:${t.c};background:${t.bg}">● ${t.l}</span>
       </div>
     </div>
     <div class="rm">
-      <div class="rbest"><span class="klab">BEST FOR</span>${bf}</div>
       <div class="rwhy"><span class="klab">WHY THEY MATTER</span><div class="t">${esc(shortWhy(p))}</div></div>
-      <div class="rmetrics">
-        <div class="metric"><div class="mlab">LAST SYNCED</div><div class="mv">${ago(p.updated_at||p.created_at)}</div></div>
-        <div class="metric"><div class="mlab">SOURCE</div><div class="mv" style="text-transform:capitalize">${esc((p.source||'search').split('+')[0])}</div></div>
-      </div>
+      <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${esc(p._fn)}</span></div>
     </div>
     <div class="rr">
-      <div class="ractions">
-        ${p.linkedin_url?`<a class="vprofile" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener" data-noopen>View profile ↗</a>`:`<span class="vprofile" style="opacity:.5" data-noopen>No link</span>`}
-        <button class="iconbtn ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'🔖'}</button>
+      <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Look this person up on LinkedIn">🔍 Search Profile</a>
+      <div class="rutil">
+        <span class="rsync">Synced ${ago(p.updated_at||p.created_at)}</span>
         <button class="iconbtn" data-act="menu" data-id="${p.id}" title="More">⋯</button>
       </div>
-      <div class="rrat"><span class="klab">RATIONALE</span><div class="t">${esc(rationale(p))}</div></div>
     </div>
   </div>`;
 }
-function tableRow(p){return `<tr data-id="${p.id}" style="cursor:pointer"><td><b>${esc(p.full_name)}</b>${p.linkedin_url?' <span class="vchk">✓</span>':''}<div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td>${p.linkedin_url?`<a href="${esc(p.linkedin_url)}" target="_blank" data-noopen>Profile ↗</a>`:'—'}</td></tr>`;}
+function tableRow(p){const t=TIER[p._tier]||TIER[5];return `<tr data-id="${p.id}" style="cursor:pointer"><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${t.c};margin-right:7px;vertical-align:middle" title="${t.l}"></span><b>${esc(p.full_name)}</b>${p.linkedin_url?' <span class="vchk">✓</span>':''}<div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td><a href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen>Search ↗</a></td></tr>`;}
 
 function render(){
   const scope=scopeList();
+  renderKPIs(scope);
   renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
@@ -574,7 +599,7 @@ function openDrawer(id){
         <span class="tag tg-fn">${p._fn}</span>
       </div>
     </div>
-    <div class="dsec"><h4>🧠 AI reasoning</h4><p>${esc(shortWhy(p))} ${esc(rationale(p))}</p></div>
+    <div class="dsec"><h4>📌 Why they matter</h4><p>${esc(shortWhy(p))} ${esc(rationale(p))}</p></div>
     <div class="dsec"><h4>💬 Discussion questions</h4><ul>${discussionQs(p).map(q=>`<li>${esc(q)}</li>`).join('')}</ul></div>
     <div class="dsec"><h4>🧾 Source trail</h4><p style="color:var(--muted)">Found via <b>${esc(p.source||'search')}</b>${p.linkedin_url?` · <a href="${esc(p.linkedin_url)}" target="_blank">LinkedIn profile ↗</a>`:''}${p.source_detail&&/^https?:/.test(p.source_detail)?` · <a href="${esc(p.source_detail)}" target="_blank">source ↗</a>`:''}</p></div>
     <div class="dsec"><h4>✅ Status & notes</h4>
