@@ -6,13 +6,16 @@
 <title>Scuttlebutt Desk — Buy-Side Intelligence</title>
 <style>
   :root{
-    --bg:#f5f6fa; --panel:#ffffff; --ink:#101828; --muted:#667085; --faint:#98a2b3;
-    --line:#eaecf0; --line2:#f2f4f7;
+    --bg:#f0f3f9; --panel:#fafbfd; --ink:#1a2138; --muted:#5b6b8c; --faint:#8a97b3;
+    --line:#e0e4f0; --line2:#ebeef6;
     --brand:#6d28d9; --brand2:#7c3aed; --li:#0a66c2;
     --gold:#f59e0b; --green:#12b76a; --amber:#f79009; --red:#f04438;
     --hd1:#0a0e24; --hd2:#160f38; --hd3:#241653;
-    --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.08);
-    --shadow-lg:0 12px 34px rgba(16,24,40,.16);
+    --shadow:0 1px 2px rgba(109,40,217,.04),0 2px 4px rgba(109,40,217,.06);
+    --shadow-lg:0 8px 24px rgba(109,40,217,.12),0 16px 40px rgba(109,40,217,.08);
+    --card-bg:linear-gradient(135deg,#f8f9fd 0%,#f4f6fc 100%);
+    --card-border:#dde1f1;
+    --card-hover-bg:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -126,87 +129,103 @@
   .toggle button.on{background:var(--brand);color:#fff}
 
   /* ---------- CONTACT ROWS ---------- */
-  .rows{margin-top:16px;display:flex;flex-direction:column;gap:12px}
-  .row{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
-    display:grid;grid-template-columns:272px 1fr 200px;cursor:pointer;overflow:hidden;will-change:transform;
+  .rows{margin-top:16px;display:flex;flex-direction:column;gap:14px}
+  .row{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
+    box-shadow:var(--shadow);display:grid;grid-template-columns:280px 1fr 210px;cursor:pointer;overflow:hidden;
+    will-change:transform;
     transition:transform 200ms ease-out,box-shadow 200ms ease-out,border-color 200ms ease-out,background 200ms ease-out}
-  /* Tier-based left accent — priority only, never status. --tglow tints the
-     elevated card's left-side glow to the tier colour. */
-  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tier,#64748B);
-    transition:filter 200ms ease-out,box-shadow 200ms ease-out}
-  .row.t1{--tier:#6C5CE7;--tglow:rgba(108,92,231,.35)}
-  .row.t2{--tier:#3B82F6;--tglow:rgba(59,130,246,.35)}
-  .row.t3{--tier:#F59E0B;--tglow:rgba(245,158,11,.35)}
-  .row.t4{--tier:#64748B;--tglow:rgba(100,116,139,.28)}
-  .row.t5{--tier:#64748B;--tglow:rgba(100,116,139,.28)}
-  /* Cohesive lift: translate + subtle scale, layered soft shadow, tinted
-     left glow — all on the same 200ms ease-out curve. GPU-only props. */
-  .row:hover{transform:translateY(-5px) scale(1.005);border-color:#d4c5f9;
-    box-shadow:0 2px 4px rgba(109,40,217,.06),0 12px 28px rgba(124,58,237,.16),0 26px 48px rgba(109,40,217,.12),-6px 0 24px -8px var(--tglow);
-    background:rgba(250,247,255,.75)}
-  .row:hover::before{filter:brightness(1.2) saturate(1.4);box-shadow:0 0 12px 2px var(--tglow)}
+  /* Tier-based left accent — darker blue-violet, visible by default */
+  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tier,#5b4e99);
+    transition:filter 200ms ease-out,box-shadow 200ms ease-out,width 200ms ease-out}
+  .row.t1{--tier:#5b4e99;--tglow:rgba(91,78,153,.4)}
+  .row.t2{--tier:#4d6bb8;--tglow:rgba(77,107,184,.4)}
+  .row.t3{--tier:#9d6b3a;--tglow:rgba(157,107,58,.38)}
+  .row.t4{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
+  .row.t5{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
+  /* Premium hover: richer blue-lilac bg, soft purple shadow glow */
+  .row:hover{transform:translateY(-5px) scale(1.005);border-color:#c8cee8;
+    background:var(--card-hover-bg);
+    box-shadow:0 2px 6px rgba(109,40,217,.08),0 12px 32px rgba(124,58,237,.18),0 28px 52px rgba(109,40,217,.14),-6px 0 26px -8px var(--tglow)}
+  .row:hover::before{filter:brightness(1.25) saturate(1.5);box-shadow:0 0 14px 3px var(--tglow);width:5px}
   @media(prefers-reduced-motion:reduce){
     .row{transition:none}
     .row:hover{transform:none;scale:1}
   }
 
-  .rl{padding:16px;padding-left:20px;display:flex;gap:12px}
-  .rav{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:16px;flex:none;box-shadow:0 4px 12px rgba(99,102,241,.28);
+  .rl{padding:18px;padding-left:22px;display:flex;gap:14px}
+  .rav{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
+    font-size:17px;flex:none;background:linear-gradient(135deg,#6d5ec7 0%,#4d6bb8 100%);
+    box-shadow:0 0 0 3px rgba(109,94,199,.12),0 4px 14px rgba(109,40,217,.32);
     transition:transform 200ms ease-out,filter 200ms ease-out,box-shadow 200ms ease-out}
-  .row:hover .rav{transform:scale(1.05);filter:saturate(1.2) brightness(1.05);
-    box-shadow:0 8px 24px rgba(109,40,217,.42),0 0 18px rgba(124,58,237,.25)}
+  .row:hover .rav{transform:scale(1.05);filter:saturate(1.25) brightness(1.08);
+    box-shadow:0 0 0 3px rgba(109,94,199,.2),0 8px 26px rgba(109,40,217,.45),0 0 20px rgba(124,58,237,.28)}
   .rid{min-width:0;flex:1}
   .rtop{display:flex;align-items:flex-start;gap:8px}
-  .rname{font-weight:750;font-size:15.5px;line-height:1.25;transition:color 200ms ease-out}
-  .row:hover .rname{color:var(--brand2)}
+  .rname{font-weight:750;font-size:16px;line-height:1.3;color:var(--ink);transition:color 200ms ease-out}
+  .row:hover .rname{color:#5b4e99}
   .star{margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--faint);line-height:1;opacity:.7;
     transition:transform 200ms ease-out,color 180ms ease,opacity 200ms ease-out,background 180ms ease;
     border-radius:8px;padding:4px}
   .row:hover .star{opacity:1;transform:scale(1.05)}
-  .star:hover,.row:hover .star:hover{transform:scale(1.15);background:rgba(109,40,217,.08)}
+  .star:hover,.row:hover .star:hover{transform:scale(1.15);background:rgba(109,94,199,.12)}
   .star.on{color:var(--gold);opacity:1}
-  .rrole{color:var(--ink);font-size:13px;margin-top:4px;font-weight:600}
-  .rco{color:var(--muted);font-size:12.5px;margin-top:1px;transition:color 200ms ease-out}
-  .row:hover .rco{color:#475467}
-  .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:10.5px;font-weight:800;
-    padding:3px 9px;border-radius:999px;letter-spacing:.3px;transition:filter 200ms ease-out,transform 200ms ease-out}
+  .rrole{color:#3d4a68;font-size:13.5px;margin-top:5px;font-weight:600}
+  .rco{color:var(--muted);font-size:12.5px;margin-top:2px;transition:color 200ms ease-out}
+  .row:hover .rco{color:#4a5b7a}
+  .tierbadge{display:inline-flex;align-items:center;gap:5px;margin-top:11px;font-size:10.5px;font-weight:800;
+    padding:4px 11px;border-radius:999px;letter-spacing:.35px;
+    background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3;
+    transition:filter 200ms ease-out,transform 200ms ease-out,box-shadow 200ms ease-out}
+  .row:hover .tierbadge{filter:saturate(1.25) contrast(1.1);transform:translateY(-1px);box-shadow:0 2px 6px rgba(91,78,153,.18)}
   .rtags{display:flex;gap:6px;flex-wrap:wrap}
-  .row:hover .tag,.row:hover .tierbadge{filter:saturate(1.3) contrast(1.08);transform:translateY(-1px)}
+  .row:hover .tag{filter:saturate(1.3) contrast(1.08);transform:translateY(-1px)}
   .tag{font-size:10.5px;font-weight:750;padding:3px 9px;border-radius:999px;transition:filter 200ms ease-out,transform 200ms ease-out}
   .tg-clevel{background:#fee4e2;color:#b42318}.tg-founder{background:#f4ebff;color:#6941c6}.tg-vp{background:#fef0c7;color:#b54708}
   .tg-director{background:#e0f2fe;color:#026aa2}.tg-manager{background:#d1fadf;color:#067647}.tg-other{background:#f2f4f7;color:#475467}
   .tg-fn{background:#eef2ff;color:#3538cd}.tg-left{background:#ecfdf3;color:#067647}
 
-  .rm{padding:16px;border-left:1px solid var(--line2);min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
-  .klab{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:var(--faint)}
-  .rwhy .t{font-size:13px;color:var(--ink);margin-top:4px;line-height:1.5}
+  .rm{padding:18px 20px;border-left:1px solid rgba(208,215,235,.5);min-width:0;display:flex;flex-direction:column;gap:11px;justify-content:center}
+  .klab{font-size:9.5px;font-weight:800;letter-spacing:.7px;color:#8a97b3;text-transform:uppercase}
+  .rwhy .t{font-size:13.5px;color:#2a3652;margin-top:5px;line-height:1.6;font-weight:500}
+  .proof-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .pchip{font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;
+    background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b4e99;
+    border:1px solid #dae0f2;letter-spacing:.2px;
+    transition:filter 200ms ease-out,transform 200ms ease-out,box-shadow 200ms ease-out}
+  .row:hover .pchip{filter:saturate(1.25) contrast(1.1);transform:translateY(-1px);box-shadow:0 2px 6px rgba(91,78,153,.15)}
+  .research-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .rchip{font-size:10.5px;font-weight:650;padding:4px 9px;border-radius:999px;
+    background:#eef2ff;color:#4d6bb8;border:1px solid #dde5fc;
+    transition:filter 200ms ease-out,transform 200ms ease-out}
+  .row:hover .rchip{filter:saturate(1.2) contrast(1.08);transform:translateY(-1px)}
 
-  .rr{padding:16px;border-left:1px solid var(--line2);display:flex;flex-direction:column;justify-content:center;gap:10px}
-  /* Gradient rides on background-position so it interpolates smoothly (GPU-safe,
-     no snap). At rest the window sits on the solid brand end. */
-  .searchbtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;color:#fff;
-    background:linear-gradient(120deg,#6d28d9 0%,#6d28d9 42%,#8b5cf6 100%);background-size:190% 100%;background-position:0% 0%;
-    border:none;border-radius:10px;padding:10px 12px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;
-    box-shadow:0 1px 2px rgba(109,40,217,.16);
+  .rr{padding:18px 20px;border-left:1px solid rgba(208,215,235,.5);display:flex;flex-direction:column;justify-content:center;gap:12px}
+  /* Rich violet/purple gradient primary CTA */
+  .searchbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;color:#fff;
+    background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 48%,#7c6bcc 100%);background-size:200% 100%;background-position:0% 0%;
+    border:none;border-radius:11px;padding:11px 14px;font-weight:750;font-size:13.5px;cursor:pointer;text-decoration:none;
+    box-shadow:0 2px 6px rgba(91,78,153,.28),0 4px 12px rgba(109,94,199,.22);
     transition:background-position 200ms ease-out,box-shadow 200ms ease-out,transform 180ms ease-out,filter 200ms ease-out}
   .sbi{display:inline-block;transition:transform 200ms ease-out}
   .row:hover .searchbtn{background-position:100% 0%;
-    box-shadow:0 2px 6px rgba(109,40,217,.24),0 8px 22px rgba(124,58,237,.38),0 0 20px rgba(109,40,217,.25);
-    filter:brightness(1.08);transform:translateY(-2px)}
+    box-shadow:0 3px 8px rgba(91,78,153,.32),0 10px 28px rgba(109,94,199,.36),0 0 24px rgba(124,107,204,.32);
+    filter:brightness(1.1);transform:translateY(-2px)}
   .row:hover .sbi{transform:translateX(3px)}
-  .searchbtn:hover{filter:brightness(1.12)}
+  .searchbtn:hover{filter:brightness(1.15)}
   .searchbtn:active{transform:translateY(0)}
-  .rutil{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .rsync{font-size:11px;color:var(--faint);font-weight:600}
-  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--muted);opacity:.7;
+  .rutil{display:flex;align-items:center;justify-content:space-between;gap:9px}
+  .rsync{font-size:11px;color:#8a97b3;font-weight:600}
+  .iconbtn{border:1px solid #dde1f1;background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%);
+    border-radius:9px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--muted);opacity:.8;
     transition:opacity 200ms ease-out,transform 200ms ease-out,background 180ms ease,color 180ms ease,border-color 180ms ease,box-shadow 200ms ease-out}
   .row:hover .iconbtn{opacity:1;transform:scale(1.05)}
-  .iconbtn:hover{background:rgba(250,247,255,.9);color:var(--brand2);border-color:#d4c5f9;
-    box-shadow:0 4px 12px rgba(109,40,217,.18)}
+  .iconbtn:hover{background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b4e99;border-color:#c8cee8;
+    box-shadow:0 4px 14px rgba(91,78,153,.22)}
   .iconbtn.on{background:#fff7e6;color:var(--gold);border-color:#fedf89;opacity:1}
 
-  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
-  .empty .big{font-size:38px;margin-bottom:8px}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted);
+    background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;margin-top:16px}
+  .empty .big{font-size:38px;margin-bottom:8px;opacity:.6}
 
   /* table */
   table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-top:14px}
@@ -247,8 +266,8 @@
   .hmrow{display:flex;align-items:center;gap:9px;margin-bottom:6px}
   .hmrow .fn{width:100px;font-size:12px;color:var(--muted)}
   .hmrow .cell{flex:1;height:24px;border-radius:7px;display:flex;align-items:center;padding:0 9px;font-size:11.5px;font-weight:700}
-  .vchk{color:var(--green);font-weight:800;font-size:12px}
-  .newb{background:#ecfdf3;color:#067647;font-size:9px;font-weight:800;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:2px;letter-spacing:.5px}
+  .vchk{color:#10b981;font-weight:800;font-size:12px;background:#d1fae5;border-radius:4px;padding:1px 5px;margin-left:4px}
+  .newb{background:#d1fae5;color:#047857;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:.5px;border:1px solid #a7f3d0}
   .refresh-note{color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-right:14px}
   .copick{padding:10px 12px;border-radius:9px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600}
   .copick:hover{background:#f5f3ff}
@@ -562,25 +581,35 @@ function sigBars(score){const lvl=Math.max(1,Math.min(4,Math.ceil((score||0)/33)
 function searchUrl(p){
   return p.linkedin_url||('https://www.linkedin.com/search/results/people/?keywords='+encodeURIComponent(p.full_name+' '+(p.company_label||p.company||'')));
 }
+function proofChips(p){
+  const chips=[];
+  if(['founder','clevel'].includes(p.seniority))chips.push('Worked with founder');
+  if(p._tier<=2)chips.push('Strategic exposure');
+  if(Number(p.is_current)===0)chips.push('Can speak candidly');
+  if(p.linkedin_url&&p._reach>=70)chips.push('Reachable');
+  return chips.slice(0,3).map(c=>`<span class="pchip">${esc(c)}</span>`).join('');
+}
 function rowHtml(p){
   const sen=p.seniority||'other';
   const t=TIER[p._tier]||TIER[5];
   const co=p.company_label||p.company||'';
   const emp=cleanEmployer(p.current_employer);
   const leftCo=Number(p.is_current)===0;
+  const research=bestFor(p);
   return `<div class="row t${p._tier}" data-id="${p.id}">
     <div class="rl">
-      <div class="rav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="rav">${esc(initials(p.full_name))}</div>
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
-        <span class="tierbadge" style="color:${t.c};background:${t.bg}">● ${t.l}</span>
+        <span class="tierbadge">● ${t.l}</span>
       </div>
     </div>
     <div class="rm">
       <div class="rwhy"><span class="klab">WHY THEY MATTER</span><div class="t">${esc(shortWhy(p))}</div></div>
-      <div class="rtags"><span class="tag tg-${sen}">${SENLABEL[sen]}</span><span class="tag tg-fn">${esc(p._fn)}</span></div>
+      <div class="proof-chips">${proofChips(p)}</div>
+      <div class="research-chips">${research.map(r=>`<span class="rchip">${esc(r)}</span>`).join('')}</div>
     </div>
     <div class="rr">
       <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Look this person up on LinkedIn"><span class="sbi">🔍</span> Search Profile</a>
