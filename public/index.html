@@ -275,6 +275,32 @@
     background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;margin-top:16px}
   .empty .big{font-size:38px;margin-bottom:8px;opacity:.6}
 
+  /* Status workflow */
+  .status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:11px;
+    font-weight:700;letter-spacing:.3px;cursor:pointer;
+    transition:background 180ms ease,border-color 180ms ease,box-shadow 180ms ease}
+  .status-pill.st-none{background:#f0f2fb;color:#5b6b8c;border:1px solid #dde1f1}
+  .status-pill.st-shortlisted{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#92400e;border:1px solid #fbbf24}
+  .status-pill.st-contacted{background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%);color:#1e40af;border:1px solid #60a5fa}
+  .status-pill.st-done{background:linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%);color:#065f46;border:1px solid #34d399}
+  .status-pill.st-skip{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb}
+  .status-pill:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+
+  .row.shortlisted{border-color:#e9d5ff;box-shadow:0 0 0 1px rgba(167,139,250,.15),var(--shadow)}
+  .row.shortlisted::before{filter:brightness(1.1) saturate(1.3)}
+
+  /* Bottom shortlist tray */
+  .shortlist-tray{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--card-bg);border:1px solid #c8cee8;border-radius:14px;
+    padding:14px 20px;box-shadow:0 8px 32px rgba(109,40,217,.2),0 16px 48px rgba(109,40,217,.15);
+    display:none;align-items:center;gap:16px;z-index:100;backdrop-filter:blur(8px);
+    animation:traySlideUp 300ms ease-out}
+  .shortlist-tray.show{display:flex}
+  @keyframes traySlideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+  .shortlist-tray .count{font-size:14px;font-weight:700;color:#3d4a68}
+  .shortlist-tray .count span{color:#6d5ec7;font-size:18px;margin-right:4px}
+  .shortlist-tray .btn{padding:8px 16px;font-size:13px}
+
   /* table */
   table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-top:14px}
   th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line2);font-size:13px}
@@ -454,6 +480,13 @@
 
 <!-- Generic modal -->
 <div class="modal-bg" id="genBg"><div class="modal" id="genModal"></div></div>
+
+<!-- Shortlist tray -->
+<div class="shortlist-tray" id="shortlistTray">
+  <div class="count"><span id="shortlistCount">0</span> contacts shortlisted</div>
+  <button class="btn primary" onclick="exportShortlisted()">⤓ Export selected</button>
+  <button class="btn" onclick="clearShortlist()">Clear</button>
+</div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -690,6 +723,10 @@ function proofChips(p){
 
   return chips.slice(0,3).map(c=>`<span class="pchip">${esc(c)}</span>`).join('');
 }
+function statusLabel(s){
+  const labels={no:'Not reviewed',shortlisted:'Shortlisted',contacted:'Contacted',done:'Call done',skip:'Not useful'};
+  return labels[s]||'Not reviewed';
+}
 function rowHtml(p){
   const sen=p.seniority||'other';
   const t=TIER[p._tier]||TIER[5];
@@ -697,14 +734,20 @@ function rowHtml(p){
   const emp=cleanEmployer(p.current_employer);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
-  return `<div class="row t${p._tier}" data-id="${p.id}">
+  const status=p.contacted||'no';
+  const statusClass=status==='shortlisted'?'st-shortlisted':status==='contacted'?'st-contacted':status==='done'?'st-done':status==='skip'?'st-skip':'st-none';
+  const isShortlisted=p._saved||status==='shortlisted';
+  return `<div class="row t${p._tier} ${isShortlisted?'shortlisted':''}" data-id="${p.id}">
     <div class="rl">
       <div class="rav">${esc(initials(p.full_name))}</div>
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
-        <span class="tierbadge">● ${t.l}</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+          <span class="tierbadge">● ${t.l}</span>
+          <span class="status-pill ${statusClass}" data-act="status" data-id="${p.id}">${statusLabel(status)}</span>
+        </div>
       </div>
     </div>
     <div class="rm">
@@ -734,6 +777,13 @@ function render(){
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
   else $('tableWrap').innerHTML=`<table><thead><tr>${['Name','Current role','Now at','Link'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table>`;
+  updateShortlistTray();
+}
+function updateShortlistTray(){
+  const shortlisted=RAW.filter(p=>p._saved);
+  const count=shortlisted.length;
+  $('shortlistCount').textContent=count;
+  $('shortlistTray').classList.toggle('show',count>0);
 }
 
 // ---- interactions ----
@@ -743,11 +793,23 @@ function toggleSave(id){const p=RAW.find(x=>x.id===id);if(!p)return;p._saved=!p.
 
 document.addEventListener('click',e=>{
   const save=e.target.closest('[data-act="save"]');if(save){e.stopPropagation();toggleSave(save.dataset.id);return;}
+  const status=e.target.closest('[data-act="status"]');if(status){e.stopPropagation();cycleStatus(status.dataset.id);return;}
   const menu=e.target.closest('[data-act="menu"]');if(menu){e.stopPropagation();openMenu(menu);return;}
   if(e.target.closest('[data-noopen]'))return;
   const row=e.target.closest('.row[data-id],tr[data-id]');if(row){openDrawer(row.dataset.id);}
   document.querySelectorAll('.menu').forEach(m=>m.remove());
 });
+
+function cycleStatus(id){
+  const p=RAW.find(x=>x.id===id);if(!p)return;
+  const cycle=['no','shortlisted','contacted','done','skip'];
+  const curr=p.contacted||'no';
+  const next=cycle[(cycle.indexOf(curr)+1)%cycle.length];
+  p.contacted=next;
+  if(next==='shortlisted'&&!p._saved){p._saved=true;SAVED.add(id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));}
+  patch(id,{contacted:next});
+  render();
+}
 
 function openMenu(btn){
   document.querySelectorAll('.menu').forEach(m=>m.remove());
@@ -965,6 +1027,22 @@ window.exportContacts=function(){const list=applyFilters(scopeList());const cols
   const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,cleanEmployer(p.current_employer),p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
 function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(es).join(','))].join('\n');const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+
+function exportShortlisted(){
+  const shortlisted=RAW.filter(p=>p._saved);
+  if(!shortlisted.length){alert('No contacts shortlisted.');return;}
+  const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Status','LinkedIn','Notes'];
+  const rows=shortlisted.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,cleanEmployer(p.current_employer),p.current_role||'',p.score,'Tier '+p._tier,statusLabel(p.contacted||'no'),p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+  downloadCSV('shortlisted-contacts.csv',cols,rows);
+}
+
+function clearShortlist(){
+  if(!confirm('Clear all shortlisted contacts?'))return;
+  RAW.forEach(p=>{p._saved=false;});
+  SAVED.clear();
+  localStorage.setItem('lx_saved',JSON.stringify([]));
+  render();
+}
 
 loadAll();
 </script>
