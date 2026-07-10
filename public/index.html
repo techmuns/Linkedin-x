@@ -57,28 +57,34 @@
     border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
   .rctx .more:hover{background:rgba(255,255,255,.2)}
 
-  /* KPI cards — clean, light, executive (Linear/Stripe calm) */
+  /* KPI cards — premium frosted blue-lilac with color accents */
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
-    display:flex;gap:12px;align-items:flex-start;cursor:pointer;box-shadow:var(--shadow);
+  .kpi{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;
+    padding:18px 16px;display:flex;flex-direction:column;cursor:pointer;box-shadow:var(--shadow);overflow:hidden;
     transition:transform 200ms ease-out,box-shadow 200ms ease-out,border-color 200ms ease-out,background 200ms ease-out}
-  .kpi:hover{transform:translateY(-5px) scale(1.005);
-    box-shadow:0 2px 4px rgba(109,40,217,.06),0 12px 28px rgba(124,58,237,.18),0 24px 42px rgba(109,40,217,.14);
-    border-color:#d4c5f9;background:rgba(250,247,255,.85)}
-  .kpi .ic{width:40px;height:40px;border-radius:11px;background:#f5f3ff;color:var(--brand);
-    display:grid;place-items:center;font-size:18px;flex:none;
+  /* Left accent edge with color per KPI type */
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kpi-accent,#6d5ec7);
+    transition:width 200ms ease-out,filter 200ms ease-out,box-shadow 200ms ease-out}
+  .kpi.kpi-total{--kpi-accent:#6d5ec7;--kpi-glow:rgba(109,94,199,.4)}
+  .kpi.kpi-tier1{--kpi-accent:#a78bfa;--kpi-glow:rgba(167,139,250,.45)}
+  .kpi.kpi-left{--kpi-accent:#14b8a6;--kpi-glow:rgba(20,184,166,.4)}
+  .kpi.kpi-companies{--kpi-accent:#6b7bc8;--kpi-glow:rgba(107,123,200,.4)}
+  .kpi:hover{transform:translateY(-5px);border-color:#c8cee8;
+    background:var(--card-hover-bg);
+    box-shadow:0 3px 8px rgba(109,40,217,.1),0 14px 32px rgba(124,58,237,.2),0 28px 48px rgba(109,40,217,.16)}
+  .kpi:hover::before{width:4px;filter:brightness(1.2) saturate(1.4);box-shadow:0 0 16px 2px var(--kpi-glow)}
+  .kpi-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .kpi .ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:20px;flex:none;
     transition:transform 200ms ease-out,filter 200ms ease-out,box-shadow 200ms ease-out}
-  .kpi:hover .ic{transform:scale(1.05);filter:saturate(1.2);
-    box-shadow:0 6px 16px rgba(109,40,217,.28)}
-  .kpi .n{font-size:24px;font-weight:750;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
-  .kpi .l{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600}
-  .kpi .trend{font-size:11px;font-weight:700;margin-top:7px;display:inline-flex;align-items:center;gap:4px;color:var(--green);
-    transition:filter 200ms ease-out}
-  .kpi:hover .trend{filter:saturate(1.15) brightness(1.05)}
-  .kpi .trend.flat{color:var(--faint)}
+  .kpi:hover .ic{transform:scale(1.08);filter:brightness(1.15) saturate(1.25);
+    box-shadow:0 6px 18px rgba(109,94,199,.32)}
+  .kpi .n{font-size:32px;font-weight:800;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;
+    letter-spacing:-.02em}
+  .kpi .l{font-size:13px;color:#3d4a68;margin-top:8px;font-weight:650;letter-spacing:.2px}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;font-weight:500}
   @media(prefers-reduced-motion:reduce){
     .kpi{transition:none}
-    .kpi:hover{transform:none;scale:1}
+    .kpi:hover{transform:none}
     .kpi .ic{transition:none}
     .kpi:hover .ic{transform:none;scale:1}
   }
@@ -536,7 +542,7 @@ function applyFilters(list){
   return r;
 }
 
-// KPIs — meaningful business metrics only (no reliability/AI score).
+// KPIs — premium frosted blue-lilac cards with color accents
 function renderKPIs(scope){
   const total=scope.length;
   const t1=scope.filter(p=>p._tier===1).length;
@@ -544,14 +550,19 @@ function renderKPIs(scope){
   const companies=new Set(RAW.map(p=>p.company)).size;
   const nTotal=scope.filter(isNew).length;
   const nLeft=scope.filter(p=>isNew(p)&&Number(p.is_current)===0).length;
-  const trend=n=>n>0?`<div class="trend">▲ +${n} this week</div>`:`<div class="trend flat">No change this week</div>`;
+  const pctT1=total>0?Math.round(t1/total*100):0;
+  const pctLeft=total>0?Math.round(left/total*100):0;
   const K=[
-    ['👥',total,'Total Contacts','#f5f3ff','#6d28d9',trend(nTotal)],
-    ['⭐',t1,'Tier 1 Contacts','#efeaff','#6C5CE7',t1?`<div class="trend flat">Top priority</div>`:`<div class="trend flat">None yet</div>`],
-    ['🕒',left,'Recently Left','#ecfdf3','#067647',trend(nLeft)],
-    ['🏢',companies,'Companies Tracked','#e8f0fe','#3B82F6',`<div class="trend flat">In coverage</div>`],
+    {type:'total',ic:'👥',n:total,l:'Total Contacts',bg:'linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%)',col:'#6d5ec7',
+     sub:nTotal>0?`${nTotal} new this week`:'Your network of senior sources'},
+    {type:'tier1',ic:'⭐',n:t1,l:'Tier 1 Contacts',bg:'linear-gradient(135deg,#f5f3ff 0%,#ede8ff 100%)',col:'#a78bfa',
+     sub:t1>0?`${pctT1}% of network · top priority`:'No tier 1 contacts yet'},
+    {type:'left',ic:'🕒',n:left,l:'Recently Left',bg:'linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)',col:'#14b8a6',
+     sub:nLeft>0?`${nLeft} new this week · ${pctLeft}% of network`:`${pctLeft}% of network · can speak candidly`},
+    {type:'companies',ic:'🏢',n:companies,l:'Companies Tracked',bg:'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)',col:'#6b7bc8',
+     sub:'In active coverage'}
   ];
-  $('kpis').innerHTML=K.map(([ic,n,l,bg,col,tr])=>`<div class="kpi"><div class="ic" style="background:${bg};color:${col}">${ic}</div><div style="flex:1;min-width:0"><div class="n">${n}</div><div class="l">${l}</div>${tr}</div></div>`).join('');
+  $('kpis').innerHTML=K.map(k=>`<div class="kpi kpi-${k.type}"><div class="kpi-head"><div class="ic" style="background:${k.bg};color:${k.col}">${k.ic}</div></div><div class="n">${k.n}</div><div class="l">${esc(k.l)}</div><div class="sub">${esc(k.sub)}</div></div>`).join('');
   $('kpis').querySelectorAll('.kpi').forEach(k=>k.onclick=openInsights);
 }
 
