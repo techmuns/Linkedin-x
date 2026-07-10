@@ -301,10 +301,59 @@
   .shortlist-tray .count span{color:#6d5ec7;font-size:18px;margin-right:4px}
   .shortlist-tray .btn{padding:8px 16px;font-size:13px}
 
-  /* table */
-  table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-top:14px}
-  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line2);font-size:13px}
-  th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:#fafbfc}
+  /* table - premium frosted design */
+  .table-wrap{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
+    overflow:hidden;box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:separate;border-spacing:0}
+  thead{background:linear-gradient(135deg,#6d5ec7 0%,#5b7bc8 100%);color:#fff}
+  th{text-align:left;padding:14px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;
+    border-bottom:none;white-space:nowrap}
+  tbody tr{position:relative;background:linear-gradient(135deg,#fafbfd 0%,#f8f9fd 100%);
+    transition:transform 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
+  tbody tr::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tier,#6b7590);
+    transition:width 180ms ease-out,filter 180ms ease-out,box-shadow 180ms ease-out}
+  tbody tr.t1{--tier:#6C5CE7;--tglow:rgba(108,92,231,.4)}
+  tbody tr.t2{--tier:#4d6bb8;--tglow:rgba(77,107,184,.4)}
+  tbody tr.t3{--tier:#9d6b3a;--tglow:rgba(157,107,58,.38)}
+  tbody tr.t4{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
+  tbody tr.t5{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
+  tbody tr:hover{transform:translateY(-2px);
+    background:linear-gradient(135deg,#f5f7fd 0%,#f0f2fb 100%);
+    box-shadow:0 2px 8px rgba(109,40,217,.12),0 6px 16px rgba(109,40,217,.08),-4px 0 16px -6px var(--tglow)}
+  tbody tr:hover::before{width:4px;filter:brightness(1.2) saturate(1.4);box-shadow:0 0 12px 2px var(--tglow)}
+  td{text-align:left;padding:14px 16px;border-bottom:1px solid #ebeef6;font-size:13px;color:#3d4a68;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  .tcell-name{display:flex;align-items:center;gap:12px}
+  .tav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
+    font-size:14px;flex:none;background:linear-gradient(135deg,#6d5ec7,#5b4e99);
+    box-shadow:0 0 0 2px rgba(109,94,199,.12),0 2px 8px rgba(109,94,199,.25);
+    transition:transform 180ms ease-out,box-shadow 180ms ease-out}
+  tbody tr:hover .tav{transform:scale(1.05);box-shadow:0 0 0 2px rgba(109,94,199,.2),0 4px 12px rgba(109,94,199,.35)}
+  .tname-info{min-width:0;flex:1}
+  .tname{font-weight:750;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tsub{font-size:12px;color:var(--muted);margin-top:3px}
+  .tchips{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+  .tchip{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;letter-spacing:.2px;
+    transition:filter 180ms ease-out,transform 180ms ease-out}
+  tbody tr:hover .tchip{filter:saturate(1.2) contrast(1.08);transform:translateY(-1px)}
+  .trole-main{font-weight:650;font-size:13.5px;color:#3d4a68;margin-bottom:4px}
+  .trole-co{font-size:12px;color:#6d5ec7;font-weight:600}
+  .trole-former{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .tnowat{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:650;
+    background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b6b8c;border:1px solid #dde1f1}
+  .tnowat.empty{background:#f3f4f6;color:#9ca3af;border-color:#e5e7eb}
+  .ttier{display:flex;align-items:center;gap:8px}
+  .ttier-pill{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
+    background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
+  .tstars{color:#f59e0b;font-size:13px;letter-spacing:1px}
+  .ttier-label{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+  .tactions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .tactions .btn{padding:7px 13px;font-size:12.5px;white-space:nowrap;border:1px solid #c8cee8;
+    background:transparent;color:#6d5ec7;font-weight:650;
+    transition:background 180ms ease,border-color 180ms ease,box-shadow 180ms ease,transform 180ms ease}
+  .tactions .btn:hover{background:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%);border-color:#a78bfa;
+    box-shadow:0 2px 8px rgba(109,94,199,.2);transform:translateY(-1px)}
+  .tactions .iconbtn{width:32px;height:32px;font-size:15px}
 
   /* drawer - premium frosted blue-lilac */
   .drawer-bg{position:fixed;inset:0;background:rgba(26,24,69,.55);backdrop-filter:blur(4px);
@@ -783,7 +832,67 @@ function rowHtml(p){
     </div>
   </div>`;
 }
-function tableRow(p){const t=TIER[p._tier]||TIER[5];return `<tr data-id="${p.id}" style="cursor:pointer"><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${t.c};margin-right:7px;vertical-align:middle" title="${t.l}"></span><b>${esc(p.full_name)}</b>${p.linkedin_url?' <span class="vchk">✓</span>':''}<div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}</div></td><td>${esc(roleTitle(p))}</td><td>${esc(cleanEmployer(p.current_employer)||'—')}</td><td><a href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen>Search ↗</a></td></tr>`;}
+function tableRow(p){
+  const t=TIER[p._tier]||TIER[5];
+  const co=p.company_label||p.company||'';
+  const emp=cleanEmployer(p.current_employer);
+  const leftCo=Number(p.is_current)===0;
+  const sen=p.seniority||'other';
+
+  // Tier stars and label
+  const stars='★'.repeat(6-p._tier);
+  const tierLabel=p._tier===1?'Top source':p._tier===2?'High priority':p._tier===3?'Key contact':'Standard';
+
+  // Name chips
+  const chips=[];
+  if(isNew(p))chips.push(`<span class="tchip newb">NEW</span>`);
+  if(leftCo)chips.push(`<span class="tchip tg-left">Ex-${esc(co)}</span>`);
+  if(['founder','clevel'].includes(p.seniority))chips.push(`<span class="tchip tg-founder">Leadership</span>`);
+  else if(p._fn==='Operations')chips.push(`<span class="tchip tg-director">Operations</span>`);
+  else if(p._fn==='Finance')chips.push(`<span class="tchip tg-vp">Finance</span>`);
+
+  return `<tr class="t${p._tier}" data-id="${p.id}">
+    <td>
+      <div class="tcell-name">
+        <div class="tav">${esc(initials(p.full_name))}</div>
+        <div class="tname-info">
+          <div class="tname">
+            <strong>${esc(p.full_name)}</strong>
+            ${p.linkedin_url?'<span class="vchk">✓</span>':''}
+          </div>
+          <div class="tsub">${SENLABEL[sen]} · ${p._fn}</div>
+          ${chips.length?`<div class="tchips">${chips.join('')}</div>`:''}
+        </div>
+      </div>
+    </td>
+    <td>
+      <div class="trole-main">${esc(roleTitle(p))}</div>
+      ${co?`<div class="trole-co">${leftCo?'Former: ':'At '}${esc(co)}</div>`:''}
+      ${leftCo&&emp?`<div class="trole-former">Now: ${esc(emp)}</div>`:''}
+    </td>
+    <td>
+      ${emp?`<span class="tnowat">${esc(emp)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
+    </td>
+    <td>
+      <div class="ttier">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="ttier-pill">${t.l}</span>
+            <span class="tstars">${stars}</span>
+          </div>
+          <div class="ttier-label">${tierLabel}</div>
+        </div>
+      </div>
+    </td>
+    <td>
+      <div class="tactions">
+        <a href="${esc(searchUrl(p))}" target="_blank" rel="noopener" class="btn" data-noopen onclick="event.stopPropagation()">View Profile ↗</a>
+        <button class="star iconbtn ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</button>
+        <button class="iconbtn" data-act="menu" data-id="${p.id}" onclick="event.stopPropagation()" title="More">⋯</button>
+      </div>
+    </td>
+  </tr>`;
+}
 
 function render(){
   const scope=scopeList();
@@ -795,7 +904,7 @@ function render(){
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<table><thead><tr>${['Name','Current role','Now at','Link'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table>`;
+  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Tier','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   updateShortlistTray();
 }
 function updateShortlistTray(){
