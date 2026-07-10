@@ -306,25 +306,44 @@
   th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line2);font-size:13px}
   th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:#fafbfc}
 
-  /* drawer */
-  .drawer-bg{position:fixed;inset:0;background:rgba(16,24,40,.45);opacity:0;pointer-events:none;transition:.2s;z-index:50}
+  /* drawer - premium frosted blue-lilac */
+  .drawer-bg{position:fixed;inset:0;background:rgba(26,24,69,.55);backdrop-filter:blur(4px);
+    opacity:0;pointer-events:none;transition:opacity 250ms ease-out;z-index:50}
   .drawer-bg.show{opacity:1;pointer-events:auto}
-  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,96vw);background:var(--panel);box-shadow:var(--shadow-lg);
-    transform:translateX(100%);transition:.25s;z-index:51;overflow:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,96vw);
+    background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%);
+    border-left:1px solid #c8cee8;box-shadow:-8px 0 48px rgba(109,40,217,.18),-16px 0 64px rgba(109,40,217,.12);
+    transform:translateX(100%);transition:transform 280ms cubic-bezier(0.22,0.61,0.36,1);z-index:51;overflow:auto}
   .drawer.show{transform:none}
-  .dhead{background:linear-gradient(120deg,var(--hd1),var(--hd3));color:#fff;padding:22px 22px 18px;position:relative}
-  .dhead .close{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px}
-  .dhead .dav{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;font-size:20px;margin-bottom:10px;box-shadow:0 6px 18px rgba(99,102,241,.45)}
-  .dhead .dn{font-size:20px;font-weight:750}
-  .dhead .dr{color:#ccc2f0;font-size:13px;margin-top:2px}
-  .dsec{padding:16px 22px;border-bottom:1px solid var(--line2)}
-  .dsec h4{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--brand);text-transform:uppercase;display:flex;align-items:center;gap:7px}
-  .dsec p{margin:0;font-size:13.5px;line-height:1.6}
-  .dsec ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.7}
-  .dsec textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;resize:vertical;min-height:64px;background:#fcfcfd}
-  .dsec textarea:focus{outline:none;border-color:var(--brand)}
-  .drow2{display:flex;gap:10px;flex-wrap:wrap}
-  .dstat{border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-weight:650}
+  .dhead{background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 100%);color:#fff;padding:24px;position:relative;
+    border-bottom:1px solid rgba(255,255,255,.12)}
+  .dhead .close{position:absolute;right:20px;top:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+    color:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:16px;display:grid;place-items:center;
+    transition:background 180ms ease,transform 180ms ease}
+  .dhead .close:hover{background:rgba(255,255,255,.2);transform:scale(1.05)}
+  .dhead .dav{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
+    font-size:22px;margin-bottom:12px;background:linear-gradient(135deg,#8b5cf6,#6d5ec7);
+    box-shadow:0 0 0 3px rgba(255,255,255,.15),0 6px 20px rgba(0,0,0,.25)}
+  .dhead .dn{font-size:21px;font-weight:800;letter-spacing:.2px;margin-bottom:4px}
+  .dhead .dr{color:#e8e4f5;font-size:13.5px;font-weight:500;opacity:.92}
+  .dhead .dtags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .dsec{padding:20px 24px;border-bottom:1px solid #e8ecf9}
+  .dsec:last-child{border-bottom:none}
+  .dsec h4{margin:0 0 10px;font-size:10.5px;font-weight:800;letter-spacing:.8px;color:#6d5ec7;text-transform:uppercase;
+    display:flex;align-items:center;gap:7px}
+  .dsec p{margin:0;font-size:13.5px;line-height:1.65;color:#3d4a68}
+  .dsec ul{margin:8px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7;color:#3d4a68}
+  .dsec ul li{margin-bottom:8px}
+  .dsec textarea{width:100%;border:1px solid #dde1f1;border-radius:10px;padding:11px 13px;font-size:13px;
+    resize:vertical;min-height:80px;background:var(--card-bg);color:#3d4a68;font-family:inherit;
+    transition:border-color 180ms ease,box-shadow 180ms ease}
+  .dsec textarea:focus{outline:none;border-color:#a78bfa;box-shadow:0 0 0 3px rgba(167,139,250,.12)}
+  .dsec .proof-chips{margin-top:10px}
+  .drow2{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .dstat{border:1px solid #dde1f1;border-radius:9px;padding:8px 12px;font-weight:650;font-size:13px;
+    background:var(--card-bg)}
+  .dcta{display:flex;gap:10px;margin-top:14px}
+  .dcta .btn{flex:1;justify-content:center}
 
   /* modals */
   .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.55);display:none;align-items:center;justify-content:center;z-index:60;backdrop-filter:blur(2px);padding:20px}
@@ -826,31 +845,88 @@ function openMenu(btn){
 function openDrawer(id){
   const p=RAW.find(x=>x.id===id);if(!p)return;
   const co=p.company_label||p.company;
-  const status=['no','contacted','replied','scheduled','done','skip'].map(s=>`<option value="${s}" ${p.contacted===s?'selected':''}>${({no:'Not contacted',contacted:'Contacted',replied:'Replied',scheduled:'Scheduled',done:'Done',skip:'Skip'})[s]}</option>`).join('');
+  const emp=cleanEmployer(p.current_employer);
+  const leftCo=Number(p.is_current)===0;
+  const research=bestFor(p);
+  const status=p.contacted||'no';
+  const statusClass=status==='shortlisted'?'st-shortlisted':status==='contacted'?'st-contacted':status==='done'?'st-done':status==='skip'?'st-skip':'st-none';
+
   $('drawer').innerHTML=`
     <div class="dhead">
       <button class="close" id="dClose">✕</button>
-      <div class="dav" style="background:${avGrad(p.full_name)}">${esc(initials(p.full_name))}</div>
+      <div class="dav">${esc(initials(p.full_name))}</div>
       <div class="dn">${esc(p.full_name)}</div>
-      <div class="dr">${esc(roleTitle(p))}${cleanEmployer(p.current_employer)?' · '+esc(cleanEmployer(p.current_employer)):''}</div>
-      <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
+      <div class="dr">${esc(roleTitle(p))}${emp?' · now '+esc(emp):leftCo?' · '+esc(co):''}</div>
+      <div class="dtags">
         <span class="tag tg-${p.seniority||'other'}">${SENLABEL[p.seniority||'other']}</span>
         <span class="tag tg-fn">${p._fn}</span>
+        ${p.linkedin_url?'<span class="vchk">✓ Verified</span>':''}
+        ${isNew(p)?'<span class="newb">NEW</span>':''}
       </div>
     </div>
-    <div class="dsec"><h4>📌 Why they matter</h4><p>${esc(shortWhy(p))} ${esc(rationale(p))}</p></div>
-    <div class="dsec"><h4>💬 Discussion questions</h4><ul>${discussionQs(p).map(q=>`<li>${esc(q)}</li>`).join('')}</ul></div>
-    <div class="dsec"><h4>🧾 Source trail</h4><p style="color:var(--muted)">Found via <b>${esc(p.source||'search')}</b>${p.linkedin_url?` · <a href="${esc(p.linkedin_url)}" target="_blank">LinkedIn profile ↗</a>`:''}${p.source_detail&&/^https?:/.test(p.source_detail)?` · <a href="${esc(p.source_detail)}" target="_blank">source ↗</a>`:''}</p></div>
-    <div class="dsec"><h4>✅ Status & notes</h4>
-      <div class="drow2" style="margin-bottom:8px"><select class="dstat" id="dStatus">${status}</select></div>
-      <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…">${esc(p.notes||'')}</textarea></div>
-    <div class="dsec"><h4>✉️ Outreach draft</h4><textarea id="dOut" style="min-height:150px">${esc(outreachDraft(p))}</textarea>
-      <div class="drow2" style="margin-top:8px"><button class="btn primary sm" id="dCopy">Copy draft</button></div></div>`;
+
+    <div class="dsec">
+      <h4>💡 Why this person matters</h4>
+      <p>${esc(shortWhy(p))}</p>
+      <div class="proof-chips">${proofChips(p)}</div>
+    </div>
+
+    <div class="dsec">
+      <h4>📊 Research areas</h4>
+      <div class="research-chips">${research.map(r=>`<span class="rchip">${esc(r)}</span>`).join('')}</div>
+    </div>
+
+    <div class="dsec">
+      <h4>💬 Suggested questions</h4>
+      <ul>${discussionQs(p).map(q=>`<li>${esc(q)}</li>`).join('')}</ul>
+    </div>
+
+    <div class="dsec">
+      <h4>🧾 Source & verification</h4>
+      <p>Found via <b>${esc(p.source||'search')}</b> · Last synced ${ago(p.updated_at||p.created_at)}</p>
+      ${p.linkedin_url?`<div class="drow2"><a href="${esc(p.linkedin_url)}" target="_blank" class="btn sm" style="text-decoration:none">🔗 LinkedIn Profile ↗</a></div>`:''}
+    </div>
+
+    <div class="dsec">
+      <h4>✅ Status & tracking</h4>
+      <div class="drow2">
+        <span class="status-pill ${statusClass}" data-act="status" data-id="${p.id}" style="cursor:pointer">${statusLabel(status)}</span>
+        <button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" style="font-size:18px;border:1px solid #dde1f1;background:var(--card-bg);padding:6px 12px;border-radius:8px;cursor:pointer">${p._saved?'★ Shortlisted':'☆ Shortlist'}</button>
+      </div>
+      <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…" style="margin-top:12px">${esc(p.notes||'')}</textarea>
+    </div>
+
+    <div class="dsec">
+      <h4>✉️ Outreach draft</h4>
+      <textarea id="dOut" style="min-height:160px">${esc(outreachDraft(p))}</textarea>
+      <div class="dcta">
+        <button class="btn primary" id="dCopy">📋 Copy draft</button>
+        <button class="btn" id="dExport">⤓ Export contact</button>
+      </div>
+    </div>`;
+
   $('drawer').classList.add('show');$('drawerBg').classList.add('show');
   $('dClose').onclick=closeDrawer;
-  $('dStatus').onchange=e=>{p.contacted=e.target.value;patch(id,{contacted:e.target.value});render();};
+
+  // Status pill click handler
+  const statusPill=$('drawer').querySelector('[data-act="status"]');
+  if(statusPill)statusPill.onclick=()=>{cycleStatus(id);openDrawer(id);};
+
+  // Bookmark handler
+  const saveBtn=$('drawer').querySelector('[data-act="save"]');
+  if(saveBtn)saveBtn.onclick=()=>{toggleSave(id);openDrawer(id);};
+
   $('dNotes').addEventListener('focusout',()=>{if(p.notes!==$('dNotes').value){p.notes=$('dNotes').value;patch(id,{notes:p.notes});}});
-  $('dCopy').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText($('dOut').value);$('dCopy').textContent='Copied ✓';setTimeout(()=>$('dCopy').textContent='Copy draft',1500);};
+  $('dCopy').onclick=()=>{
+    navigator.clipboard&&navigator.clipboard.writeText($('dOut').value);
+    $('dCopy').innerHTML='✓ Copied';
+    setTimeout(()=>$('dCopy').innerHTML='📋 Copy draft',1500);
+  };
+  $('dExport').onclick=()=>{
+    const cols=['Name','Company','Role','Function','Status','LinkedIn','Notes'];
+    const row=[[p.full_name,co,roleTitle(p),p._fn,statusLabel(status),p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]];
+    downloadCSV(p.full_name.replace(/\s+/g,'-')+'-contact.csv',cols,row);
+  };
 }
 function closeDrawer(){$('drawer').classList.remove('show');$('drawerBg').classList.remove('show');}
 $('drawerBg').onclick=closeDrawer;
