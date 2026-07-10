@@ -66,6 +66,11 @@
 
   .rctx{display:flex;align-items:center;gap:10px;margin-top:11px;position:relative;z-index:2;opacity:.88}
   .rctx .txt{color:#c4bae8;font-size:12px;font-weight:500;letter-spacing:.15px}
+  .rctx .more{margin-left:8px;background:rgba(255,255,255,.05);border:1px solid rgba(167,139,250,.18);
+    color:#d4ceeb;border-radius:8px;padding:4px 11px;font-size:11.5px;font-weight:650;cursor:pointer;
+    display:inline-flex;gap:5px;align-items:center;letter-spacing:.2px;
+    transition:background 180ms ease,border-color 180ms ease,color 180ms ease}
+  .rctx .more:hover{background:rgba(255,255,255,.10);border-color:rgba(167,139,250,.28);color:#e8e4f5}
 
   /* KPI cards — premium frosted blue-lilac with color accents */
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
@@ -341,6 +346,7 @@
   </div>
   <div class="rctx">
     <span class="txt">Tracking senior operators and domain experts across priority sectors.</span>
+    <button class="more" id="insightsBtn">📊 View insights</button>
   </div>
 </header>
 
