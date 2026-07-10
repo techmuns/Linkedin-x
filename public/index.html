@@ -521,9 +521,30 @@ const BESTFOR={Leadership:['Strategy & positioning','Leadership quality'],Financ
 function bestFor(p){return BESTFOR[p._fn]||['Sector view','Competitive read'];}
 function roleWord(p){return {founder:'Founder',clevel:'C-suite operator',vp:'Senior VP',director:'Senior leader',manager:'Manager',other:'Domain expert'}[p.seniority]||'Senior operator';}
 function shortWhy(p){
-  const phrase={Leadership:'end-to-end visibility into strategy and how decisions were made',Finance:'a deep view of margins, cash and financial controls',Operations:'hands-on experience building and scaling operations and teams',Technology:'insight into the product, data and technology stack',Marketing:'a read on brand strength, CAC and growth channels','Supply Chain':'insight into sourcing, vendors and inventory discipline'}[p._fn];
-  if(p.relationship==='competitor_ex')return `Competitor-side ${roleTitle(p)} with an outside-in read on how the target is really perceived.`;
-  return `${roleTitle(p)} with ${phrase}.`;
+  const isFounder=['founder','clevel'].includes(p.seniority);
+  const leftCo=Number(p.is_current)===0;
+  const rel=p.relationship||'ex_employee';
+
+  // Relationship-specific rationales
+  if(rel==='competitor_ex')return `Competitor ${roleTitle(p)}. Can benchmark operations, culture, and relative strengths.`;
+  if(rel==='franchise_partner')return `Franchise partner. Ground reality on store economics, support quality, commercial terms.`;
+  if(rel==='vendor')return `Vendor/supplier. Insight into payment terms, volumes, negotiating leverage, operational demands.`;
+  if(rel==='board')return `Board member. Strategic oversight, governance, leadership assessment, financial health.`;
+  if(rel==='investor')return `Investor. Thesis, risks identified, founder quality, growth trajectory assessment.`;
+  if(rel==='consultant')return `Consultant. Project scope, internal capabilities, transformation readiness, pain points.`;
+
+  // Function-specific rationales
+  if(isFounder)return leftCo?`Founding team member. Strategy, culture DNA, leadership style, why they left.`:`Founding team. Strategy, decision-making, culture, competitive positioning.`;
+
+  const fn=p._fn;
+  if(fn==='Finance')return leftCo?`Finance leader. Margins, unit economics, cash controls. Left — can speak candidly.`:`Finance leader. Margins, working capital, unit economics, financial controls.`;
+  if(fn==='Operations')return leftCo?`Operations leader. Execution quality, process bottlenecks, scale challenges. Recently left.`:`Operations leader. Execution at scale, process efficiency, operational bottlenecks.`;
+  if(fn==='Supply Chain')return leftCo?`Supply chain leader. Vendor leverage, inventory discipline, sourcing. Recently left.`:`Supply chain leader. Vendor relationships, inventory turns, sourcing strategy.`;
+  if(fn==='Marketing')return leftCo?`Marketing leader. CAC, brand strength, customer acquisition. Left — unfiltered view.`:`Marketing leader. Customer acquisition cost, growth channels, brand perception.`;
+  if(fn==='Technology')return leftCo?`Tech leader. Product depth, data maturity, technical moat. Recently left.`:`Tech leader. Product roadmap, data infrastructure, technical capabilities.`;
+  if(fn==='Leadership')return leftCo?`Senior leader. Cross-functional strategy, decision-making, culture. Left — candid view.`:`Senior leader. Strategy, cross-functional coordination, leadership team quality.`;
+
+  return leftCo?`${roleTitle(p)}. Domain expertise in ${fn.toLowerCase()}. Recently left — can speak freely.`:`${roleTitle(p)}. Deep ${fn.toLowerCase()} expertise and operational insight.`;
 }
 function rationale(p){
   const m={Leadership:'Strong operator reputation; trusted across functions and external partners.',Finance:'Credible on the real financial picture beyond reported numbers.',Operations:'Proven track record improving execution and operational efficiency.',Technology:'Hands-on view of technical depth and product moat.',Marketing:'Candid on true customer economics and brand position.','Supply Chain':'Ground truth on vendor leverage and working-capital discipline.'};
@@ -638,10 +659,35 @@ function searchUrl(p){
 }
 function proofChips(p){
   const chips=[];
-  if(['founder','clevel'].includes(p.seniority))chips.push('Worked with founder');
-  if(p._tier<=2)chips.push('Strategic exposure');
-  if(Number(p.is_current)===0)chips.push('Can speak candidly');
-  if(p.linkedin_url&&p._reach>=70)chips.push('Reachable');
+  const isFounder=['founder','clevel'].includes(p.seniority);
+  const leftCo=Number(p.is_current)===0;
+  const rel=p.relationship||'ex_employee';
+  const fn=p._fn;
+
+  // Relationship-specific chips
+  if(rel==='competitor_ex')chips.push('Competitor view');
+  if(rel==='franchise_partner')chips.push('Store economics');
+  if(rel==='vendor')chips.push('Vendor perspective');
+  if(rel==='board')chips.push('Board insight');
+  if(rel==='investor')chips.push('Investor thesis');
+  if(rel==='consultant')chips.push('Transformation work');
+
+  // Seniority/access chips
+  if(isFounder&&rel==='ex_employee')chips.push('Worked with founder');
+  if(p._tier===1)chips.push('Strategic exposure');
+
+  // Exit status
+  if(leftCo&&chips.length<2)chips.push('Recent exit');
+
+  // Function-specific proof
+  if(fn==='Finance'&&chips.length<2)chips.push('P&L visibility');
+  if(fn==='Operations'&&chips.length<2)chips.push('Scale experience');
+  if(fn==='Supply Chain'&&chips.length<2)chips.push('Vendor access');
+  if(fn==='Marketing'&&chips.length<2)chips.push('CAC data');
+
+  // Reachability
+  if(p.linkedin_url&&p._reach>=70&&chips.length<3)chips.push('Reachable');
+
   return chips.slice(0,3).map(c=>`<span class="pchip">${esc(c)}</span>`).join('');
 }
 function rowHtml(p){
