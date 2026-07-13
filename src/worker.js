@@ -331,7 +331,19 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
 
 // ---- Routing -------------------------------------------------------------
 
+// Make sure columns added after the original schema exist, so the app works
+// even when the D1 migration wasn't run by hand (e.g. GUI-only deploys). Cheap:
+// one guarded ALTER per isolate — a "duplicate column" error just means it's
+// already there.
+let schemaEnsured = false;
+async function ensureSchema(env) {
+  if (schemaEnsured) return;
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN photo_url TEXT').run(); } catch { /* already exists */ }
+  schemaEnsured = true;
+}
+
 async function handleApi(request, env, url, ctx) {
+  await ensureSchema(env);
   const path = url.pathname;
   const method = request.method;
 
@@ -550,25 +562,28 @@ export default {
   // automatically. Runs entirely in the Worker — no GitHub Actions needed.
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      if (!hasSearchKey(env)) return;
-      const names = new Map();
-      try {
-        const { results } = await env.DB.prepare(
-          'SELECT company, company_label FROM people GROUP BY company'
-        ).all();
-        for (const r of (results || [])) names.set(r.company, r.company_label || r.company);
-      } catch { /* nothing to refresh */ }
-      for (const [company] of names) {
-        const id = crypto.randomUUID();
-        const now = new Date().toISOString();
+      await ensureSchema(env);
+      // Research (needs a search key): refresh each tracked company.
+      if (hasSearchKey(env)) {
+        const names = new Map();
         try {
-          await env.DB.prepare(
-            'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES (?,?,?,?,?)'
-          ).bind(id, company, 'running', now, now).run();
-        } catch { /* ignore */ }
-        await runResearchJob(env, id, company);
+          const { results } = await env.DB.prepare(
+            'SELECT company, company_label FROM people GROUP BY company'
+          ).all();
+          for (const r of (results || [])) names.set(r.company, r.company_label || r.company);
+        } catch { /* nothing to refresh */ }
+        for (const [company] of names) {
+          const id = crypto.randomUUID();
+          const now = new Date().toISOString();
+          try {
+            await env.DB.prepare(
+              'INSERT INTO searches (id, company, status, created_at, updated_at) VALUES (?,?,?,?,?)'
+            ).bind(id, company, 'running', now, now).run();
+          } catch { /* ignore */ }
+          await runResearchJob(env, id, company);
+        }
       }
-      // Top up missing LinkedIn profile photos, gently (paced inside).
+      // Top up missing LinkedIn photos + companies, gently (no search key needed).
       try {
         for (let k = 0; k < 4; k++) {
           const r = await enrichPhotos(env, { limit: 8 });
