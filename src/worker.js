@@ -279,24 +279,23 @@ async function fetchPhotoViaProxycurl(env, linkedinUrl) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Enrich people from their PUBLIC profile: one fetch fills both the photo AND
-// the current company (parsed from the same page). Deliberately SERIAL with a
-// delay so we never burst LinkedIn (bursts get a 999 block; spaced reads are
-// fine). A field we checked but couldn't find gets a '-' sentinel so we don't
-// retry it forever. Small batches; call repeatedly to work through a big list.
+// Fill each person's CURRENT COMPANY ("Now at") from their public profile —
+// read from LinkedIn's own Experience field (og:description). Deliberately
+// SERIAL with a delay so we never burst LinkedIn (bursts get a 999 block).
+// A profile we checked but couldn't read a company from gets a '-' sentinel so
+// we don't retry it forever. Small batches; call repeatedly for a big list.
 async function enrichPhotos(env, { company, limit = 6 } = {}) {
-  // "Needs enrichment" = missing a photo OR missing a current employer.
-  const need = "((photo_url IS NULL OR photo_url = '') OR (current_employer IS NULL OR current_employer = ''))";
+  const need = "(current_employer IS NULL OR current_employer = '')";
   const where = ['linkedin_url IS NOT NULL', "linkedin_url != ''", need];
   const binds = [];
   if (company) { where.push('company = ?'); binds.push(normCompany(company)); }
   const n = Math.min(Math.max(Number(limit) || 6, 1), 12);
   const { results } = await env.DB.prepare(
-    `SELECT id, linkedin_url, company, current_employer FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
+    `SELECT id, linkedin_url, company FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
   ).bind(...binds, n).all();
 
   const useProxycurl = !!env.PROXYCURL_API_KEY;
-  let updated = 0, employers = 0, fails = 0;
+  let employers = 0, fails = 0;
   const now = new Date().toISOString();
   for (let i = 0; i < results.length; i++) {
     if (i) await sleep(1500);                       // pace requests
@@ -309,15 +308,10 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
       continue;
     }
     fails = 0;
-    // Settle the photo ('-' = checked, no public photo). Fill current_employer
-    // only when we didn't already have one; '-' marks "checked, none found" so
-    // we don't re-fetch forever. Never clobber an employer we already had.
-    const hadEmp = row.current_employer && row.current_employer !== '-';
-    const empVal = hadEmp ? row.current_employer : (res.employer || '-');
-    await env.DB.prepare('UPDATE people SET photo_url = ?, current_employer = ?, updated_at = ? WHERE id = ?')
-      .bind(res.photo || '-', empVal, now, row.id).run();
-    if (res.photo) updated++;
-    if (!hadEmp && res.employer) employers++;
+    // '-' = checked, no company found (so we don't re-fetch it forever).
+    await env.DB.prepare('UPDATE people SET current_employer = ?, updated_at = ? WHERE id = ?')
+      .bind(res.employer || '-', now, row.id).run();
+    if (res.employer) employers++;
   }
 
   const rem = await env.DB.prepare(
@@ -325,7 +319,7 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
        AND ${need}${company ? ' AND company = ?' : ''}`
   ).bind(...(company ? [normCompany(company)] : [])).first();
 
-  return { tried: results.length, updated, employers, remaining: (rem && rem.n) || 0,
+  return { tried: results.length, employers, remaining: (rem && rem.n) || 0,
     blocked: fails >= 2, provider: useProxycurl ? 'proxycurl' : 'scrape' };
 }
 

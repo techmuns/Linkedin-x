@@ -515,7 +515,7 @@
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
-      <button class="btn sm" id="getPhotosBtn" title="Fetch public LinkedIn profile photos and current companies for this list">📷 Get photos</button>
+      <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) from their public LinkedIn profile">🏢 Fill “Now at”</button>
       <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
     </div>
   </div>
@@ -567,7 +567,6 @@
   <label>Most senior role at the target company</label><input id="m_role"/>
   <div class="r2"><div><label>Now at (employer)</label><input id="m_emp"/></div><div><label>Current role</label><input id="m_crole"/></div></div>
   <label>LinkedIn URL</label><input id="m_url" placeholder="https://www.linkedin.com/in/…"/>
-  <label>Photo URL <span style="color:var(--faint);font-weight:400">— optional, shows as their avatar</span></label><input id="m_photo" placeholder="https://…/headshot.jpg"/>
   <div class="acts"><button class="btn" id="m_cancel">Cancel</button><button class="btn primary" id="m_save">Save source</button></div>
 </div></div>
 
@@ -617,23 +616,10 @@ function avGrad(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;co
 // Avatar: show a real profile photo when we have one (photo_url); otherwise the
 // initials icon. When a LinkedIn URL exists the avatar links to the actual
 // profile and gets a small LinkedIn badge — people with no profile keep the plain icon.
-// A person's face when we have a stored photo URL (populated by "Get photos",
-// the daily cron, or a manual entry). Only accept real http(s) URLs so the
-// server's "no public photo" sentinel ('-') cleanly falls back to initials.
-function avatarPhoto(p){const u=String(p.photo_url||p.image_url||p.avatar_url||p.image||'').trim();return /^https?:\/\//i.test(u)?u:'';}
-function avatarInner(p){
-  const src=avatarPhoto(p);
-  // On any load failure the img removes itself and the initials show through.
-  const pic=src?`<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`:'';
-  const badge=p.linkedin_url?'<span class="li-badge" aria-hidden="true">in</span>':'';
-  return `<span class="ini">${esc(initials(p.full_name))}</span>${pic}${badge}`;
-}
+// Plain name-initials avatar (no photos). LinkedIn availability is still shown
+// by the green ✓ next to the person's name.
 function avatarEl(p,cls){
-  const inner=avatarInner(p);
-  if(p.linkedin_url){
-    return `<a class="${cls}" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener" data-noopen title="Open ${esc(p.full_name)} on LinkedIn ↗">${inner}</a>`;
-  }
-  return `<div class="${cls}">${inner}</div>`;
+  return `<div class="${cls}"><span class="ini">${esc(initials(p.full_name))}</span></div>`;
 }
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
 function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
@@ -1115,22 +1101,22 @@ $('getPhotosBtn').onclick=getPhotos;
 async function getPhotos(){
   if(!TOKEN){setKey();if(!TOKEN)return;}
   const btn=$('getPhotosBtn');const orig=btn.textContent;btn.disabled=true;
-  let added=0,emps=0,blocked=false;
+  let emps=0,blocked=false;
   try{
     for(let i=0;i<40;i++){
-      btn.textContent=`📷 Fetching… ${added} photos · ${emps} companies`;
+      btn.textContent=`🏢 Filling… ${emps} companies`;
       const r=await fetch('/api/enrich-photos',{method:'POST',headers:authHeaders(),
         body:JSON.stringify({company:COMPANY||undefined,limit:6})});
       if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');break;}
       const d=await r.json().catch(()=>({}));
-      added+=d.updated||0;emps+=d.employers||0;
-      await loadAll();                        // faces + companies pop in progressively
+      emps+=d.employers||0;
+      await loadAll();                        // companies pop in progressively
       if(d.blocked){blocked=true;break;}      // LinkedIn rate-limited the IP
       if(!d.tried||d.remaining===0)break;
     }
     btn.textContent=blocked
-      ? `⏳ +${added} photos · ${emps} companies — LinkedIn paused us, retry later`
-      : `✓ ${added} photos · ${emps} companies`;
+      ? `⏳ +${emps} companies — LinkedIn paused us, retry later`
+      : `✓ ${emps} compan${emps===1?'y':'ies'} filled`;
   }catch(e){btn.textContent='⚠ Try again';}
   setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},blocked?5000:2600);
 }
@@ -1139,7 +1125,7 @@ async function getPhotos(){
 $('addBtn').onclick=()=>{$('m_company').value=(COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'');$('modalBg').style.display='flex';};
 $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
-$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),photo_url:$('m_photo').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url','m_photo'].forEach(id=>$(id).value='');await loadAll();};
+$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
 
 // add company — live stock search (proxied through the Worker); local directory
 // is a fallback if the API is unavailable.
