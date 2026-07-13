@@ -508,8 +508,6 @@
 <div class="wrap">
   <div class="pillrow" id="pillrow"></div>
 
-  <div class="kpis" id="kpis"></div>
-
   <div class="brief" id="brief"></div>
 
   <div class="fpanel">
@@ -777,28 +775,6 @@ function applyFilters(list){
   return r;
 }
 
-// KPIs — premium frosted blue-lilac cards with color accents
-function renderKPIs(scope){
-  const total=scope.length;
-  const t1=scope.filter(p=>p._tier===1).length;
-  const left=scope.filter(p=>Number(p.is_current)===0).length;
-  const companies=new Set(RAW.map(p=>p.company)).size;
-  // Static, contextual subtext — no deltas/percentages that read as
-  // "everything is N" or an unearned "100% of network".
-  const K=[
-    {type:'total',ic:'👥',n:total,l:'Total Contacts',bg:'linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%)',col:'#6d5ec7',
-     sub:'Across selected companies'},
-    {type:'tier1',ic:'⭐',n:t1,l:'Tier 1 Contacts',bg:'linear-gradient(135deg,#f5f3ff 0%,#ede8ff 100%)',col:'#a78bfa',
-     sub:'Top-priority contacts'},
-    {type:'left',ic:'🕒',n:left,l:'Recently Left',bg:'linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)',col:'#14b8a6',
-     sub:'Recent exits identified'},
-    {type:'companies',ic:'🏢',n:companies,l:'Companies Tracked',bg:'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)',col:'#6b7bc8',
-     sub:'In active coverage'}
-  ];
-  $('kpis').innerHTML=K.map(k=>`<div class="kpi kpi-${k.type}"><div class="n">${k.n}</div><div class="l">${esc(k.l)}</div><div class="sub">${esc(k.sub)}</div></div>`).join('');
-  $('kpis').querySelectorAll('.kpi').forEach(k=>k.onclick=openInsights);
-}
-
 function renderBrief(list){
   if(!COMPANY){$('brief').style.display='none';return;}
   $('brief').style.display='';
@@ -972,7 +948,6 @@ function tableRow(p){
 
 function render(){
   const scope=scopeList();
-  renderKPIs(scope);
   renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
