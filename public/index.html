@@ -459,7 +459,7 @@
   .rav,.tav,.dav{position:relative;text-decoration:none;overflow:visible}
   .rav .ini,.tav .ini,.dav .ini{position:absolute;inset:0;display:grid;place-items:center}
   .rav img,.tav img,.dav img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;
-    object-fit:cover;background:#e8ecf9;display:block}
+    object-fit:cover;display:block}
   a.rav,a.tav,a.dav{cursor:pointer}
   .row:hover a.rav,.dhead a.dav:hover{filter:saturate(1.1) brightness(1.03)}
   /* Small LinkedIn "in" badge marking a linkable profile */
@@ -516,6 +516,7 @@
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
+      <button class="btn sm" id="getPhotosBtn" title="Fetch public LinkedIn profile photos for this list">📷 Get photos</button>
       <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
     </div>
   </div>
@@ -617,10 +618,14 @@ function avGrad(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;co
 // Avatar: show a real profile photo when we have one (photo_url); otherwise the
 // initials icon. When a LinkedIn URL exists the avatar links to the actual
 // profile and gets a small LinkedIn badge — people with no profile keep the plain icon.
-function avatarPhoto(p){return String(p.photo_url||p.image_url||p.avatar_url||p.image||'').trim();}
+// A person's face when we have a stored photo URL (populated by "Get photos",
+// the daily cron, or a manual entry). Only accept real http(s) URLs so the
+// server's "no public photo" sentinel ('-') cleanly falls back to initials.
+function avatarPhoto(p){const u=String(p.photo_url||p.image_url||p.avatar_url||p.image||'').trim();return /^https?:\/\//i.test(u)?u:'';}
 function avatarInner(p){
-  const img=avatarPhoto(p);
-  const pic=img?`<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`:'';
+  const src=avatarPhoto(p);
+  // On any load failure the img removes itself and the initials show through.
+  const pic=src?`<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`:'';
   const badge=p.linkedin_url?'<span class="li-badge" aria-hidden="true">in</span>':'';
   return `<span class="ini">${esc(initials(p.full_name))}</span>${pic}${badge}`;
 }
@@ -1081,6 +1086,32 @@ $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('v
 $('avatarBtn').onclick=()=>{document.querySelectorAll('.menu').forEach(m=>m.remove());const m=document.createElement('div');m.className='menu';const r=$('avatarBtn').getBoundingClientRect();m.style.top=(r.bottom+window.scrollY+6)+'px';m.style.left=(r.right+window.scrollX-180)+'px';m.innerHTML='<button>🔑 Set edit password</button>';document.body.appendChild(m);m.querySelector('button').onclick=(ev)=>{ev.stopPropagation();m.remove();setKey();};};
 $('exportBtn').onclick=openExport;
 $('insightsBtn').onclick=openInsights;
+
+// Fetch public LinkedIn profile photos for the current list, in small paced
+// batches (the Worker throttles itself so LinkedIn isn't hit in a burst).
+$('getPhotosBtn').onclick=getPhotos;
+async function getPhotos(){
+  if(!TOKEN){setKey();if(!TOKEN)return;}
+  const btn=$('getPhotosBtn');const orig=btn.textContent;btn.disabled=true;
+  let added=0,blocked=false;
+  try{
+    for(let i=0;i<40;i++){
+      btn.textContent=`📷 Fetching… ${added} added`;
+      const r=await fetch('/api/enrich-photos',{method:'POST',headers:authHeaders(),
+        body:JSON.stringify({company:COMPANY||undefined,limit:6})});
+      if(r.status===401){alert('Wrong password — click the avatar → Set password.');break;}
+      const d=await r.json().catch(()=>({}));
+      added+=d.updated||0;
+      await loadAll();                        // faces pop in progressively
+      if(d.blocked){blocked=true;break;}      // LinkedIn rate-limited the IP
+      if(!d.tried||d.remaining===0)break;
+    }
+    btn.textContent=blocked
+      ? `⏳ +${added} · LinkedIn paused us — retry later`
+      : `✓ ${added} photo${added===1?'':'s'} added`;
+  }catch(e){btn.textContent='⚠ Try again';}
+  setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},blocked?5000:2600);
+}
 
 // add source modal
 $('addBtn').onclick=()=>{$('m_company').value=(COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'');$('modalBg').style.display='flex';};

@@ -180,6 +180,110 @@ async function runResearchJob(env, id, company) {
   }
 }
 
+// ---- LinkedIn public photo resolver --------------------------------------
+// Reads a person's PUBLIC profile preview image (og:image) — the very same
+// photo LinkedIn serves to link-unfurlers (Slack/Twitter/WhatsApp). No login,
+// no account risk. Results are edge-cached so we touch LinkedIn at most once
+// per profile per week; profiles with no public photo return 404 so the
+// dashboard falls back to the initials avatar.
+
+function isLinkedInProfile(u) {
+  try {
+    const url = new URL(u);
+    return /(^|\.)linkedin\.com$/.test(url.hostname) && url.pathname.includes('/in/');
+  } catch { return false; }
+}
+
+function parseOgImage(html) {
+  const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+  if (!m) return null;
+  const url = m[1].replace(/&amp;/g, '&');
+  // Only accept a real profile headshot — never the generic LinkedIn logo or a
+  // background banner.
+  return /media\.licdn\.com\/.*(profile-displayphoto|profile-framedphoto)/.test(url) ? url : null;
+}
+
+// Returns { ok:true, photo:<url|null> } on a real 200 (photo may be null when the
+// profile genuinely has no public photo), or { ok:false } when LinkedIn blocked
+// us (HTTP 999) or the request failed — so callers don't mistake a block for
+// "no photo" and can retry later.
+async function resolveLinkedInPhoto(linkedinUrl) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(linkedinUrl, {
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        'accept': 'text/html,application/xhtml+xml',
+        'accept-language': 'en-US,en;q=0.9',
+      },
+      signal: ctrl.signal,
+    });
+    if (!r.ok) return { ok: false, status: r.status };     // 999 = rate-limit block
+    return { ok: true, photo: parseOgImage(await r.text()) };
+  } catch { return { ok: false, status: 0 }; }
+  finally { clearTimeout(timer); }
+}
+
+// Optional reliable provider: when PROXYCURL_API_KEY is set we use Proxycurl
+// (it reaches LinkedIn through its own infrastructure, so no IP blocks) instead
+// of scraping. Same { ok, photo } contract.
+async function fetchPhotoViaProxycurl(env, linkedinUrl) {
+  try {
+    const u = 'https://nubela.co/proxycurl/api/v2/linkedin?use_cache=if-present&fallback_to_cache=on-error&url=' + encodeURIComponent(linkedinUrl);
+    const r = await fetch(u, { headers: { authorization: 'Bearer ' + env.PROXYCURL_API_KEY } });
+    if (!r.ok) return { ok: false, status: r.status };
+    const d = await r.json().catch(() => ({}));
+    return { ok: true, photo: d.profile_pic_url || null };
+  } catch { return { ok: false, status: 0 }; }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Resolve public LinkedIn photos for people who don't have one yet, and store
+// the image URL on the row. Deliberately SERIAL with a delay between requests
+// so we never burst LinkedIn (bursts get a 999 block; spaced reads are fine).
+// A profile with no public photo gets a '-' sentinel so we don't retry it
+// forever. Small batches; call repeatedly to work through a big list.
+async function enrichPhotos(env, { company, limit = 6 } = {}) {
+  const where = ['linkedin_url IS NOT NULL', "linkedin_url != ''", "(photo_url IS NULL OR photo_url = '')"];
+  const binds = [];
+  if (company) { where.push('company = ?'); binds.push(normCompany(company)); }
+  const n = Math.min(Math.max(Number(limit) || 6, 1), 12);
+  const { results } = await env.DB.prepare(
+    `SELECT id, linkedin_url FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
+  ).bind(...binds, n).all();
+
+  const useProxycurl = !!env.PROXYCURL_API_KEY;
+  let updated = 0, fails = 0;
+  const now = new Date().toISOString();
+  for (let i = 0; i < results.length; i++) {
+    if (i) await sleep(1500);                       // pace requests
+    const res = useProxycurl
+      ? await fetchPhotoViaProxycurl(env, results[i].linkedin_url)
+      : await resolveLinkedInPhoto(results[i].linkedin_url);
+    if (!res.ok) {                                  // blocked/failed — leave empty, retry next run
+      if (++fails >= 2) break;                      // likely IP-blocked; stop early
+      continue;
+    }
+    fails = 0;
+    // Store the photo URL, or '-' when the profile genuinely has no public photo
+    // (so we don't re-check it every run). '-' renders as the initials avatar.
+    await env.DB.prepare('UPDATE people SET photo_url = ?, updated_at = ? WHERE id = ?')
+      .bind(res.photo || '-', now, results[i].id).run();
+    if (res.photo) updated++;
+  }
+
+  const rem = await env.DB.prepare(
+    `SELECT count(*) AS n FROM people WHERE linkedin_url IS NOT NULL AND linkedin_url != ''
+       AND (photo_url IS NULL OR photo_url = '')${company ? ' AND company = ?' : ''}`
+  ).bind(...(company ? [normCompany(company)] : [])).first();
+
+  return { tried: results.length, updated, remaining: (rem && rem.n) || 0,
+    blocked: fails >= 2, provider: useProxycurl ? 'proxycurl' : 'scrape' };
+}
+
 // ---- Routing -------------------------------------------------------------
 
 async function handleApi(request, env, url, ctx) {
@@ -350,6 +454,16 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, id, ran: true });
   }
 
+  // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing
+  // one, a small paced batch at a time. Body: { company?, limit? }. Call
+  // repeatedly until { remaining: 0 }.
+  if (path === '/api/enrich-photos' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    const r = await enrichPhotos(env, { company: body.company, limit: body.limit });
+    return json({ ok: true, ...r });
+  }
+
   // GET /api/searches -> recent jobs
   if (path === '/api/searches' && method === 'GET') {
     const { results } = await env.DB.prepare(
@@ -409,6 +523,13 @@ export default {
         } catch { /* ignore */ }
         await runResearchJob(env, id, company);
       }
+      // Top up missing LinkedIn profile photos, gently (paced inside).
+      try {
+        for (let k = 0; k < 4; k++) {
+          const r = await enrichPhotos(env, { limit: 8 });
+          if (!r.tried || r.remaining === 0) break;
+        }
+      } catch { /* best effort */ }
     })());
   },
 };
