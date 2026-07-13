@@ -1,0 +1,46 @@
+name: Enrich profiles (Now At + experience)
+
+# Fills each contact's current company and total experience from their PUBLIC
+# LinkedIn profile, running from GitHub's IPs (which LinkedIn doesn't block the
+# way it blocks the Cloudflare Worker). Public data only, paced.
+#
+# One-time setup: add a repo secret INGEST_TOKEN (Settings → Secrets and
+# variables → Actions) = your dashboard edit password. Optionally add WORKER_URL
+# if your dashboard URL ever changes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max profiles to process this run'
+        required: false
+        default: '68'
+  schedule:
+    - cron: '0 3 * * *'   # daily 03:00 UTC — tops up anyone still missing data
+
+concurrency:
+  group: enrich
+  cancel-in-progress: false
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: scraper
+        run: npm ci
+      - name: Install Chromium
+        working-directory: scraper
+        run: npx playwright install --with-deps chromium
+      - name: Run enrichment
+        working-directory: scraper
+        env:
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          ENRICH_LIMIT: ${{ github.event.inputs.limit || '68' }}
+        run: node enrich.mjs
