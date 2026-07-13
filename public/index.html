@@ -327,11 +327,11 @@
   th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;white-space:nowrap}
   td{font-size:13px;color:#3d4a68;border-bottom:1px solid #ebeef6}
   tbody tr:last-child td{border-bottom:none}
-  th:nth-child(1),td:nth-child(1){width:32%}
-  th:nth-child(2),td:nth-child(2){width:24%}
-  th:nth-child(3),td:nth-child(3){width:16%}
-  th:nth-child(4),td:nth-child(4){width:14%}
-  th:nth-child(5),td:nth-child(5){width:14%}
+  th:nth-child(1),td:nth-child(1){width:28%}
+  th:nth-child(2),td:nth-child(2){width:22%}
+  th:nth-child(3),td:nth-child(3){width:15%}
+  th:nth-child(4),td:nth-child(4){width:19%}
+  th:nth-child(5),td:nth-child(5){width:16%}
   .tcell-name{display:flex;align-items:center;gap:12px}
   .tav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
     font-size:14px;flex:none;background:linear-gradient(135deg,#6d5ec7,#5b4e99);
@@ -356,6 +356,17 @@
     background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
   .tstars{color:#f59e0b;font-size:13px;letter-spacing:1px}
   .ttier-label{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+  /* Exposure column — compact frosted chips (depth + freshness) */
+  .exposure{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+  .xchip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.2px;line-height:1.25;
+    padding:3px 9px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    transition:filter 180ms ease-out,transform 180ms ease-out}
+  tbody tr:hover .xchip{filter:saturate(1.18) contrast(1.05);transform:translateY(-1px)}
+  .xchip.total{background:linear-gradient(135deg,#eef2ff 0%,#e5e9fd 100%);color:#4d5bb8;border:1px solid #dae0f7}
+  .xchip.exp{background:linear-gradient(135deg,#f3edff 0%,#eaddff 100%);color:#6941c6;border:1px solid #e4d5fb}
+  .xchip.fresh{background:linear-gradient(135deg,#ecfdf3 0%,#d6f7e4 100%);color:#067647;border:1px solid #b6ecca}
+  .xchip.warm{background:linear-gradient(135deg,#fef4e6 0%,#fde7c9 100%);color:#b54708;border:1px solid #fbd9a8}
+  .xchip.unclear{background:linear-gradient(135deg,#f1f3f9 0%,#e9edf5 100%);color:#6b7794;border:1px solid #dde1f1}
   .tactions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
   .tactions .btn{padding:7px 13px;font-size:12.5px;white-space:nowrap;border:1px solid #c8cee8;
     background:transparent;color:#6d5ec7;font-weight:650;
@@ -888,16 +899,38 @@ function rowHtml(p){
     </div>
   </div>`;
 }
+function tenureYear(s){const m=String(s||'').match(/(?:19|20)\d{2}/);return m?parseInt(m[0],10):null;}
+// Exposure chips (table only): help buy-side judge source credibility — depth of
+// company knowledge + freshness of insight. Built ONLY from real data; when a
+// number isn't truly known we say so rather than inventing one.
+function exposureChips(p){
+  const out=[];
+  const co=p.company_label||p.company||'';
+  const ts=tenureYear(p.tenure_start), te=tenureYear(p.tenure_end);
+  const isCurrent=Number(p.is_current)===1;
+  const nowY=new Date().getFullYear();
+
+  // Total experience: no such field in the data — never fabricate it.
+
+  // Depth of company knowledge — a real duration when we know both dates, else
+  // just the company (no guessed years).
+  if(ts&&te&&te>=ts&&te-ts<=50) out.push({cls:'exp',text:`${te-ts}y at ${co}`});
+  else if(ts&&isCurrent&&nowY>=ts&&nowY-ts<=50) out.push({cls:'exp',text:`${nowY-ts}y+ at ${co}`});
+  else if(co) out.push({cls:'exp',text:`At ${co}`});
+
+  // Freshness of insight.
+  if(isCurrent) out.push({cls:'fresh',text:'Current'});
+  else if(te){ const age=nowY-te; out.push({cls:age<=1?'fresh':age<=4?'warm':'unclear',text:`Exited ${te}`}); }
+  else out.push({cls:'unclear',text:'Dates not mapped'});
+
+  if(!out.length) out.push({cls:'unclear',text:'Exposure unclear'});
+  return out.slice(0,3);
+}
 function tableRow(p){
-  const t=TIER[p._tier]||TIER[5];
   const co=p.company_label||p.company||'';
   const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const sen=p.seniority||'other';
-
-  // Tier stars and label
-  const stars='★'.repeat(6-p._tier);
-  const tierLabel=p._tier===1?'Top source':p._tier===2?'High priority':p._tier===3?'Key contact':'Standard';
 
   // Name chips
   const chips=[];
@@ -930,15 +963,7 @@ function tableRow(p){
       ${emp?`<span class="tnowat">${esc(emp)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
     </td>
     <td>
-      <div class="ttier">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span class="ttier-pill">${t.l}</span>
-            <span class="tstars">${stars}</span>
-          </div>
-          <div class="ttier-label">${tierLabel}</div>
-        </div>
-      </div>
+      <div class="exposure">${exposureChips(p).map(c=>`<span class="xchip ${c.cls}">${esc(c.text)}</span>`).join('')}</div>
     </td>
     <td>
       <div class="tactions">
@@ -960,7 +985,7 @@ function render(){
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Tier','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   updateShortlistTray();
 }
 function updateShortlistTray(){
