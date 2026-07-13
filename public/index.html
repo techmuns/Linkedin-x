@@ -136,7 +136,7 @@
   .brief .bstage{margin-left:auto;font-weight:800;font-size:12px;padding:5px 12px;border-radius:999px}
   .brief .bfacts{display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:13px}
   .brief .bfacts b{display:block;font-size:15px}
-  .brief .bfacts .k{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.5px}
+  .brief .bfacts .k{font-size:10px;color:#6b7794;text-transform:uppercase;letter-spacing:.5px}
   .brief .bsum{margin-top:10px;font-size:12.5px;color:var(--ink);background:#faf8ff;border:1px solid #ece3ff;border-radius:10px;padding:9px 12px}
   .brief .bsum .ai{font-size:9.5px;font-weight:800;color:var(--brand);background:#efe6ff;border-radius:5px;padding:2px 6px;letter-spacing:.4px}
   .chip{font-size:11.5px;font-weight:650;padding:3px 10px;border-radius:999px;background:#f2f4f7;color:#475467;border:1px solid var(--line2)}
@@ -146,7 +146,7 @@
   /* filter panel */
   .fpanel{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;
     box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  .fgroup .glab{font-size:9.5px;font-weight:800;letter-spacing:.8px;color:#8a97b3;margin-bottom:7px;text-transform:uppercase}
+  .fgroup .glab{font-size:9.5px;font-weight:800;letter-spacing:.8px;color:#6b7794;margin-bottom:7px;text-transform:uppercase}
   .seg{display:flex;gap:5px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);border:1px solid #dde1f1;
     border-radius:11px;padding:5px}
   .seg button{border:none;background:transparent;padding:7px 13px;border-radius:8px;cursor:pointer;color:#5b6b8c;
@@ -164,10 +164,10 @@
   .search input{width:290px;max-width:44vw;padding:10px 13px 10px 38px;border:1px solid #dde1f1;border-radius:11px;
     background:var(--card-bg);font-size:13px;color:#3d4a68;
     transition:border-color 180ms ease,box-shadow 180ms ease,background 180ms ease}
-  .search input::placeholder{color:#8a97b3;opacity:.8}
+  .search input::placeholder{color:#6b7794;opacity:.8}
   .search input:focus{outline:none;border-color:#a78bfa;background:var(--card-hover-bg);
     box-shadow:0 0 0 3px rgba(167,139,250,.12),0 2px 8px rgba(109,94,199,.18)}
-  .search svg{position:absolute;left:12px;top:11px;color:#8a97b3;pointer-events:none}
+  .search svg{position:absolute;left:12px;top:11px;color:#6b7794;pointer-events:none}
   .toggle{display:flex;gap:3px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);
     border:1px solid #dde1f1;border-radius:10px;padding:3px}
   .toggle button{background:transparent;border:none;padding:8px 14px;cursor:pointer;color:#5b6b8c;font-weight:650;
@@ -234,7 +234,7 @@
   .tg-fn{background:#eef2ff;color:#3538cd}.tg-left{background:#ecfdf3;color:#067647}
 
   .rm{padding:18px 20px;border-left:1px solid rgba(208,215,235,.5);min-width:0;display:flex;flex-direction:column;gap:11px;justify-content:center}
-  .klab{font-size:9.5px;font-weight:800;letter-spacing:.7px;color:#8a97b3;text-transform:uppercase}
+  .klab{font-size:9.5px;font-weight:800;letter-spacing:.7px;color:#6b7794;text-transform:uppercase}
   .rwhy .t{font-size:13.5px;color:#2a3652;margin-top:5px;line-height:1.6;font-weight:500}
   .proof-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
   .pchip{font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;
@@ -263,7 +263,7 @@
   .searchbtn:hover{filter:brightness(1.15)}
   .searchbtn:active{transform:translateY(0)}
   .rutil{display:flex;align-items:center;justify-content:space-between;gap:9px}
-  .rsync{font-size:11px;color:#8a97b3;font-weight:600}
+  .rsync{font-size:11px;color:#6b7794;font-weight:600}
   .iconbtn{border:1px solid #dde1f1;background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%);
     border-radius:9px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--muted);opacity:.8;
     transition:opacity 200ms ease-out,transform 200ms ease-out,background 180ms ease,color 180ms ease,border-color 180ms ease,box-shadow 200ms ease-out}
@@ -350,7 +350,7 @@
   .trole-former{font-size:11.5px;color:var(--muted);margin-top:2px}
   .tnowat{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:650;
     background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b6b8c;border:1px solid #dde1f1}
-  .tnowat.empty{background:#f3f4f6;color:#9ca3af;border-color:#e5e7eb}
+  .tnowat.empty{background:#f3f4f6;color:#6b7794;border-color:#e5e7eb}
   .ttier{display:flex;align-items:center;gap:8px}
   .ttier-pill{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
     background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
@@ -761,17 +761,15 @@ function renderKPIs(scope){
   const t1=scope.filter(p=>p._tier===1).length;
   const left=scope.filter(p=>Number(p.is_current)===0).length;
   const companies=new Set(RAW.map(p=>p.company)).size;
-  const nTotal=scope.filter(isNew).length;
-  const nLeft=scope.filter(p=>isNew(p)&&Number(p.is_current)===0).length;
-  const pctT1=total>0?Math.round(t1/total*100):0;
-  const pctLeft=total>0?Math.round(left/total*100):0;
+  // Static, contextual subtext — no deltas/percentages that read as
+  // "everything is N" or an unearned "100% of network".
   const K=[
     {type:'total',ic:'👥',n:total,l:'Total Contacts',bg:'linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%)',col:'#6d5ec7',
-     sub:nTotal>0?`${nTotal} new this week`:'Your network of senior sources'},
+     sub:'Across selected companies'},
     {type:'tier1',ic:'⭐',n:t1,l:'Tier 1 Contacts',bg:'linear-gradient(135deg,#f5f3ff 0%,#ede8ff 100%)',col:'#a78bfa',
-     sub:t1>0?`${pctT1}% of network · top priority`:'No tier 1 contacts yet'},
+     sub:'Top-priority contacts'},
     {type:'left',ic:'🕒',n:left,l:'Recently Left',bg:'linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%)',col:'#14b8a6',
-     sub:nLeft>0?`${nLeft} new this week · ${pctLeft}% of network`:`${pctLeft}% of network · can speak candidly`},
+     sub:'Recent exits identified'},
     {type:'companies',ic:'🏢',n:companies,l:'Companies Tracked',bg:'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)',col:'#6b7bc8',
      sub:'In active coverage'}
   ];
