@@ -688,31 +688,64 @@ function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._
 const BESTFOR={Leadership:['Strategy & positioning','Leadership quality'],Finance:['Unit economics','Margins & cash'],Operations:['Operational insight','Execution at scale'],Technology:['Product & tech','Data maturity'],Marketing:['Brand & CAC','Growth channels'],'Supply Chain':['Sourcing & vendors','Inventory & WC']};
 function bestFor(p){return BESTFOR[p._fn]||['Sector view','Competitive read'];}
 function roleWord(p){return {founder:'Founder',clevel:'C-suite operator',vp:'Senior VP',director:'Senior leader',manager:'Manager',other:'Domain expert'}[p.seniority]||'Senior operator';}
+// "Why they matter" — an individual rationale per contact. Built from data we
+// actually have (company + function + their headline + where they are now) so
+// two people never read identically unless their available data truly is.
+function hashStr(s){let h=0;s=String(s||'');for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+const pickWhy=(arr,seed)=>arr[(((seed%arr.length)+arr.length)%arr.length)]; // negative-safe
+const WHY_FNADJ={Finance:'finance',Operations:'operations','Supply Chain':'supply-chain',Marketing:'marketing',Technology:'tech',Leadership:''};
+// Role noun by function + seniority tier (senior / manager / operator). Kept
+// honest — no inflated "C-suite" from a noisy seniority guess.
+function whyRoleLabel(fn,sen){
+  const tier=['founder','clevel','vp','director'].includes(sen)?'senior':(sen==='manager'?'manager':'operator');
+  const L={Finance:{senior:'finance leader',manager:'finance manager',operator:'finance operator'},
+    Operations:{senior:'operations leader',manager:'operations manager',operator:'operations hand'},
+    'Supply Chain':{senior:'supply-chain leader',manager:'supply-chain manager',operator:'supply-chain operator'},
+    Marketing:{senior:'marketing leader',manager:'marketing manager',operator:'marketing operator'},
+    Technology:{senior:'tech leader',manager:'tech manager',operator:'engineer'},
+    Leadership:{senior:'senior leader',manager:'manager',operator:'insider'}};
+  return (L[fn]||L.Operations)[tier];
+}
+const WHY_INSIGHT={
+  Finance:['Real margins, unit economics and cash discipline','The true P&L picture behind the reported numbers','Asset quality, provisioning and where the risk really sits','How tightly capital and cash are actually run'],
+  Operations:['Execution quality and where it breaks at scale','How the network really runs day to day','Throughput, SLAs and the real operational bottlenecks','Where cost and breakage quietly hide in ops'],
+  'Supply Chain':['Vendor leverage, inventory and sourcing','Supplier terms, working capital and sourcing risk','Inventory discipline and where the supply chain strains'],
+  Marketing:['True CAC, brand strength and which channels work','The real acquisition economics and brand pull','Which channels convert and what retention looks like'],
+  Technology:['Product depth, data maturity and technical moat','How real the tech and data advantage actually is','Engineering quality, data infra and platform risk'],
+  Leadership:['Strategy, culture and promoter/board dynamics','How decisions really get made and who drives them','Leadership quality, culture and where the org is exposed','Board and promoter dynamics and the real priorities','Who holds real influence and how strategy gets set','Culture, retention and the gaps behind the leadership story'],
+};
+const WHY_TAIL=['left, so speaks candidly','since moved on, so speaks freely','no longer there, so more candid','out of the org now, so unguarded'];
+// Pull a clean specialty from the headline (whitelist only — never surface noise).
+const WHY_SPECIALTIES=[['Retail Credit & Risk',/retail credit|credit & risk|credit and risk/i],['Credit & Risk',/\bcredit\b[^.]*\brisk\b|\brisk\b[^.]*\bcredit\b/i],['Treasury',/treasury/i],['Trade & Forex',/trade\s*&?\s*forex|forex|trade finance/i],['ALM & Funding',/\balm\b|asset liability|funding desk/i],['Distribution',/distribution|third party/i],['Branch Operations',/branch op|\bbranch\b/i],['Wealth',/wealth|private bank|\bwam\b/i],['Product',/product management|\bproduct\b/i],['Last-Mile Ops',/last[- ]?mile|\blm\b|delivery/i],['Warehouse / DC',/warehouse|\bdc\b|fulfil/i],['Regional Ops',/regional op|cluster|region head/i],['Sales & Strategy',/sales & strategy|sales and strategy/i],['Relationship Mgmt',/relationship (head|manager|management)/i],['Accounts & Finance',/accounts and finance|accounts & finance/i],['Data Governance',/data governance/i],['HR',/\bhr\b|human resource/i],['Production',/production/i],['Sourcing',/purchase|procurement|sourcing/i]];
+function whySpecialty(p){const t=(p.current_role||'')+' '+(p.last_role||'');for(const [label,re] of WHY_SPECIALTIES)if(re.test(t))return label;return '';}
+// Reject a "now at" value that is clearly a role title or qualification, not a company.
+function whyNiceNow(emp){if(!emp)return '';const s=emp.trim();if(/^(sme|mba|pgdm|pgp|iim\b|nmims|b\.?tech|m\.?tech)\b/i.test(s))return '';if(/^(chief|senior|assistant|asst|deputy|dy|general|regional|national|associate|vice|group|zonal|area|branch|cluster)?\s*(manager|officer|head|analyst|executive|president|director|lead|banker|consultant|specialist|professional|sales|marketing|operations|strategy|management)\b/i.test(s))return '';if(s.split(/\s+/).length>5)return '';return s;}
 function shortWhy(p){
-  const isFounder=['founder','clevel'].includes(p.seniority);
-  const leftCo=Number(p.is_current)===0;
+  const co=p.company_label||p.company||'the company';
+  const emp=whyNiceNow(deriveEmployer(p));
+  const left=Number(p.is_current)===0;
   const rel=p.relationship||'ex_employee';
-
-  // Relationship-specific rationales
-  if(rel==='competitor_ex')return `Competitor ${roleTitle(p)}. Can benchmark operations, culture, and relative strengths.`;
-  if(rel==='franchise_partner')return `Franchise partner. Ground reality on store economics, support quality, commercial terms.`;
-  if(rel==='vendor')return `Vendor/supplier. Insight into payment terms, volumes, negotiating leverage, operational demands.`;
-  if(rel==='board')return `Board member. Strategic oversight, governance, leadership assessment, financial health.`;
-  if(rel==='investor')return `Investor. Thesis, risks identified, founder quality, growth trajectory assessment.`;
-  if(rel==='consultant')return `Consultant. Project scope, internal capabilities, transformation readiness, pain points.`;
-
-  // Function-specific rationales
-  if(isFounder)return leftCo?`Founding team member. Strategy, culture DNA, leadership style, why they left.`:`Founding team. Strategy, decision-making, culture, competitive positioning.`;
-
   const fn=p._fn;
-  if(fn==='Finance')return leftCo?`Finance leader. Margins, unit economics, cash controls. Left — can speak candidly.`:`Finance leader. Margins, working capital, unit economics, financial controls.`;
-  if(fn==='Operations')return leftCo?`Operations leader. Execution quality, process bottlenecks, scale challenges. Recently left.`:`Operations leader. Execution at scale, process efficiency, operational bottlenecks.`;
-  if(fn==='Supply Chain')return leftCo?`Supply chain leader. Vendor leverage, inventory discipline, sourcing. Recently left.`:`Supply chain leader. Vendor relationships, inventory turns, sourcing strategy.`;
-  if(fn==='Marketing')return leftCo?`Marketing leader. CAC, brand strength, customer acquisition. Left — unfiltered view.`:`Marketing leader. Customer acquisition cost, growth channels, brand perception.`;
-  if(fn==='Technology')return leftCo?`Tech leader. Product depth, data maturity, technical moat. Recently left.`:`Tech leader. Product roadmap, data infrastructure, technical capabilities.`;
-  if(fn==='Leadership')return leftCo?`Senior leader. Cross-functional strategy, decision-making, culture. Left — candid view.`:`Senior leader. Strategy, cross-functional coordination, leadership team quality.`;
+  const seed=hashStr((p.id!=null?String(p.id):'')+(p.full_name||''));
+  const now=emp?`, now at ${emp}`:'';
 
-  return leftCo?`${roleTitle(p)}. Domain expertise in ${fn.toLowerCase()}. Recently left — can speak freely.`:`${roleTitle(p)}. Deep ${fn.toLowerCase()} expertise and operational insight.`;
+  // Relationship-specific rationales (name the company so it varies per view).
+  if(rel==='competitor_ex')return `Competitor-side ${WHY_FNADJ[fn]||''} view on ${co}${now}. Benchmarks ops, pricing and relative strength.`.replace(/\s{2,}/g,' ');
+  if(rel==='franchise_partner')return `${co} franchise partner${now}. Store economics, support quality and commercial terms.`;
+  if(rel==='vendor')return `${co} supplier${now}. Payment terms, order volumes and negotiating leverage.`;
+  if(rel==='board')return `${co} board member. Governance, strategy and financial-health read.`;
+  if(rel==='investor')return `${co} investor. Thesis, risks flagged and founder-quality read.`;
+  if(rel==='consultant')return `Consulted for ${co}${now}. Internal capabilities and transformation readiness.`;
+
+  // Employee / ex-employee: role + specialty + where they are now + a rotated,
+  // function-specific insight so same-bucket people still read differently.
+  const spec=whySpecialty(p);
+  let subject=`${co} ${whyRoleLabel(fn,p.seniority)}`;
+  if(spec)subject+=` — ${spec}`;
+  const insight=pickWhy(WHY_INSIGHT[fn]||[`On-the-ground ${(WHY_FNADJ[fn]||fn.toLowerCase())} insight`],seed);
+  const lead=left?`Ex-${subject}${now}.`:`${subject}${now}.`;
+  const tail=left?`${insight} — ${pickWhy(WHY_TAIL,Math.floor(seed/7))}.`:`${insight}.`;
+  return `${lead} ${tail}`;
 }
 function rationale(p){
   const m={Leadership:'Strong operator reputation; trusted across functions and external partners.',Finance:'Credible on the real financial picture beyond reported numbers.',Operations:'Proven track record improving execution and operational efficiency.',Technology:'Hands-on view of technical depth and product moat.',Marketing:'Candid on true customer economics and brand position.','Supply Chain':'Ground truth on vendor leverage and working-capital discipline.'};
