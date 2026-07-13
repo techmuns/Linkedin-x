@@ -641,12 +641,38 @@ function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)
 // Clean the "now at" value: reject leftover "Ex…" fragments and role phrases
 // that the scraper mistook for a current company.
 function cleanEmployer(e){
-  if(!e)return '';const s=e.trim();const low=s.toLowerCase();
+  if(!e)return '';let s=e.trim();
+  // Strip trailing scraped noise: a dangling "…", ", Ex-HDFC …", or a lone " ex".
+  s=s.replace(/\s*[,|·]\s*ex[- ].*$/i,'').replace(/\s*\.{2,}$/,'').replace(/\s+ex[-\s]*$/i,'').trim();
+  const low=s.toLowerCase();
   if(s.length<2)return '';
   if(/^(ex(\b|[-\s])|former|formerly|previously|past\b|self\b|freelance|open to|looking|seeking)/i.test(low))return '';
   if(s.split(/\s+/).length>=3 && /\b(architect|architecting|manager|director|\bhead\b|officer|engineer|analyst|consultant|specialist|coordinator|associate|intern|professional|logistics|supply\s*chain|operations|marketing|strategy|business development|transformation)\b/i.test(low))return '';
   if(s.split(/\s+/).length>6)return '';
   return s;
+}
+// "Now at" from data we already have: a captured current_employer wins;
+// otherwise pull the company out of the LinkedIn headline (current_role) — but
+// ONLY from unambiguous shapes ("… at Company", "Founder Company"). Never a bare
+// "of", which would mangle "Bank of India" → "India".
+function deriveEmployer(p){
+  const direct=cleanEmployer(p.current_employer);
+  if(direct)return direct;
+  let h=(p.current_role||'').trim();if(!h)return '';
+  h=h.split(/\s*[·|]\s*/)[0].trim();
+  const okco=c=>{
+    c=(c||'').trim().replace(/\s*[.,]+$/,'').replace(/\s*\.{2,}$/,'').trim();
+    if(c.length<2)return '';
+    if(/^(ex\b|ex[-\s]|former|self\b|freelance)/i.test(c))return '';
+    if(/\b(strategist|leader|award|manager|director|officer|head|analyst|consultant|specialist|marketing|operations|strategy)\b/i.test(c))return '';
+    if(p.company&&c.toLowerCase().includes(p.company.toLowerCase()))return '';
+    return c;
+  };
+  let m=h.match(/\b(?:at|@)\s+([A-Za-z0-9][^,|·]{1,40})$/i);
+  if(m){const c=okco(m[1]);if(c)return c;}
+  m=h.match(/^(?:co[-\s]?founder|founder|owner|proprietor)\s+(.+)$/i);
+  if(m&&/^[A-Z]/.test(m[1].trim())){const c=okco(m[1]);if(c&&!/\b(of|at|the|and|for)\b/i.test(c)&&!/[&]/.test(c)&&c.split(/\s+/).length<=3)return c;}
+  return '';
 }
 function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))return '—';const days=Math.floor((Date.now()-d)/86400000);if(days<=0)return 'today';if(days===1)return '1 day ago';if(days<30)return days+' days ago';const m=Math.floor(days/30);return m+' mo ago';}
 
@@ -844,7 +870,7 @@ function rowHtml(p){
   const sen=p.seniority||'other';
   const t=TIER[p._tier]||TIER[5];
   const co=p.company_label||p.company||'';
-  const emp=cleanEmployer(p.current_employer);
+  const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
   const status=p.contacted||'no';
@@ -880,7 +906,7 @@ function rowHtml(p){
 function tableRow(p){
   const t=TIER[p._tier]||TIER[5];
   const co=p.company_label||p.company||'';
-  const emp=cleanEmployer(p.current_employer);
+  const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const sen=p.seniority||'other';
 
@@ -999,7 +1025,7 @@ function openMenu(btn){
 function openDrawer(id){
   const p=RAW.find(x=>x.id===id);if(!p)return;
   const co=p.company_label||p.company;
-  const emp=cleanEmployer(p.current_employer);
+  const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
   const status=p.contacted||'no';
@@ -1238,8 +1264,8 @@ function openInsights(){
   const max=Math.max(1,...Object.values(fnCount));const seq=['#f2f4f7','#efe8ff','#d9c6ff','#b79bf3','#8b5cf6','#6d28d9'];
   const heat=FUNCTIONS.map(f=>{const n=fnCount[f];const lvl=n===0?0:Math.min(5,Math.ceil(n/max*5));return `<div class="hmrow"><div class="fn">${f}</div><div class="cell" style="background:${seq[lvl]};color:${lvl>=3?'#fff':'#475467'}">${n} ${n===1?'contact':'contacts'}</div></div>`;}).join('');
   const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${cleanEmployer(p.current_employer)?' · now '+esc(cleanEmployer(p.current_employer)):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
-  const movers=[...new Set(list.filter(p=>Number(p.is_current)===0).map(p=>cleanEmployer(p.current_employer)).filter(Boolean))].slice(0,10);
+  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${deriveEmployer(p)?' · now '+esc(deriveEmployer(p)):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
+  const movers=[...new Set(list.filter(p=>Number(p.is_current)===0).map(p=>deriveEmployer(p)).filter(Boolean))].slice(0,10);
   openModal(`<h3>📊 Research insights ${COMPANY?'· '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''}</h3>
     <div class="mnote">A quick read on your coverage and best leads. Kept off the main screen for clarity.</div>
     <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:.5px;color:var(--brand)">COVERAGE BY FUNCTION</h4>${heat}
@@ -1263,13 +1289,13 @@ function openOutreach(){
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
 }
 window.openOutreach=openOutreach;
-window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,cleanEmployer(x.p.current_employer),x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
+window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
 
 // export
 function openExport(){openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
   <div class="acts" style="justify-content:flex-start"><button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="openOutreach()">✨ Outreach list</button></div>`);}
 window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Network','Status','LinkedIn','Notes'];
-  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,cleanEmployer(p.current_employer),p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
 function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(es).join(','))].join('\n');const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 
@@ -1277,7 +1303,7 @@ function exportShortlisted(){
   const shortlisted=RAW.filter(p=>p._saved);
   if(!shortlisted.length){alert('No contacts shortlisted.');return;}
   const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Status','LinkedIn','Notes'];
-  const rows=shortlisted.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,cleanEmployer(p.current_employer),p.current_role||'',p.score,'Tier '+p._tier,statusLabel(p.contacted||'no'),p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+  const rows=shortlisted.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),p.current_role||'',p.score,'Tier '+p._tier,statusLabel(p.contacted||'no'),p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV('shortlisted-contacts.csv',cols,rows);
 }
 
