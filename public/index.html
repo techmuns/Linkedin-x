@@ -864,13 +864,11 @@ function statusLabel(s){
 }
 function rowHtml(p){
   const sen=p.seniority||'other';
-  const t=TIER[p._tier]||TIER[5];
   const co=p.company_label||p.company||'';
   const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
   const status=p.contacted||'no';
-  const statusClass=status==='shortlisted'?'st-shortlisted':status==='contacted'?'st-contacted':status==='done'?'st-done':status==='skip'?'st-skip':'st-none';
   const isShortlisted=p._saved||status==='shortlisted';
   return `<div class="row t${p._tier} ${isShortlisted?'shortlisted':''}" data-id="${p.id}">
     <div class="rl">
@@ -879,10 +877,6 @@ function rowHtml(p){
         <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
-          <span class="tierbadge">● ${t.l}</span>
-          <span class="status-pill ${statusClass}" data-act="status" data-id="${p.id}">${statusLabel(status)}</span>
-        </div>
       </div>
     </div>
     <div class="rm">
