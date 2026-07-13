@@ -486,7 +486,6 @@
     <div class="hactions">
       <button class="btn primary" id="addBtn">＋ Add Source</button>
       <button class="btn" id="exportBtn">⤓ Export</button>
-      <div class="avatar-btn" id="avatarBtn"><span class="av">🧑‍💼</span></div>
     </div>
   </div>
   <div class="rctx">
@@ -986,7 +985,7 @@ function updateShortlistTray(){
 }
 
 // ---- interactions ----
-function patch(id,body){if(!TOKEN){setKey();if(!TOKEN)return;}return fetch('/api/people/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)}).then(r=>{if(r.status===401)alert('Wrong password — click the avatar → Set password.');});}
+function patch(id,body){if(!TOKEN){setKey();if(!TOKEN)return;}return fetch('/api/people/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)}).then(r=>{if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');setKey();}});}
 function setKey(){const k=prompt('Enter your edit password to unlock editing.',TOKEN||'');if(k!==null){TOKEN=k.trim();localStorage.setItem('lx_token',TOKEN);}}
 function toggleSave(id){const p=RAW.find(x=>x.id===id);if(!p)return;p._saved=!p._saved;if(p._saved)SAVED.add(id);else SAVED.delete(id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));render();}
 
@@ -1107,7 +1106,6 @@ $('viewCards').onclick=()=>{VIEW='cards';$('viewCards').classList.add('on');$('v
 $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('viewCards').classList.remove('on');render();};
 
 // ---- header actions ----
-$('avatarBtn').onclick=()=>{document.querySelectorAll('.menu').forEach(m=>m.remove());const m=document.createElement('div');m.className='menu';const r=$('avatarBtn').getBoundingClientRect();m.style.top=(r.bottom+window.scrollY+6)+'px';m.style.left=(r.right+window.scrollX-180)+'px';m.innerHTML='<button>🔑 Set edit password</button>';document.body.appendChild(m);m.querySelector('button').onclick=(ev)=>{ev.stopPropagation();m.remove();setKey();};};
 $('exportBtn').onclick=openExport;
 $('insightsBtn').onclick=openInsights;
 
@@ -1123,7 +1121,7 @@ async function getPhotos(){
       btn.textContent=`📷 Fetching… ${added} added`;
       const r=await fetch('/api/enrich-photos',{method:'POST',headers:authHeaders(),
         body:JSON.stringify({company:COMPANY||undefined,limit:6})});
-      if(r.status===401){alert('Wrong password — click the avatar → Set password.');break;}
+      if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');break;}
       const d=await r.json().catch(()=>({}));
       added+=d.updated||0;
       await loadAll();                        // faces pop in progressively
@@ -1141,7 +1139,7 @@ async function getPhotos(){
 $('addBtn').onclick=()=>{$('m_company').value=(COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'');$('modalBg').style.display='flex';};
 $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
-$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),photo_url:$('m_photo').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url','m_photo'].forEach(id=>$(id).value='');await loadAll();};
+$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),photo_url:$('m_photo').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url','m_photo'].forEach(id=>$(id).value='');await loadAll();};
 
 // add company — live stock search (proxied through the Worker); local directory
 // is a fallback if the API is unavailable.
@@ -1188,7 +1186,7 @@ async function pickCompany(name,ticker){
   startAnalysis(name,ticker||'');
   try{
     const r=await fetch('/api/search',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:name})});
-    if(r.status===401){alert('Wrong password — click the avatar → Set password.');closeAnalysis();return;}
+    if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');closeAnalysis();return;}
   }catch{ /* analysis screen keeps polling */ }
 }
 
