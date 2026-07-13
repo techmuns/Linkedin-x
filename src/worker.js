@@ -240,6 +240,18 @@ function extractEmployer(html, targetCompany) {
   return '';
 }
 
+// Total professional experience: earliest WORK start year from the profile's
+// JSON-LD (LinkedIn's own structured data). We take startDates on company roles
+// only (path /company/…), never education (/school/…), so it's real, not guessed.
+// Returns a 4-digit year, or null when not confidently found.
+function extractCareerStartYear(html) {
+  const NOW = new Date().getFullYear();
+  const years = [...html.matchAll(/company\/[^"]+","member":\{"@type":"OrganizationRole","startDate":(\d{4})/gi)]
+    .map(m => parseInt(m[1], 10))
+    .filter(y => y >= 1950 && y <= NOW);
+  return years.length ? Math.min(...years) : null;
+}
+
 // Returns { ok:true, photo:<url|null> } on a real 200 (photo may be null when the
 // profile genuinely has no public photo), or { ok:false } when LinkedIn blocked
 // us (HTTP 999) or the request failed — so callers don't mistake a block for
@@ -258,7 +270,8 @@ async function resolveLinkedInPhoto(linkedinUrl, targetCompany) {
     });
     if (!r.ok) return { ok: false, status: r.status };     // 999 = rate-limit block
     const html = await r.text();
-    return { ok: true, photo: parseOgImage(html), employer: extractEmployer(html, targetCompany) };
+    return { ok: true, photo: parseOgImage(html), employer: extractEmployer(html, targetCompany),
+      careerStart: extractCareerStartYear(html) };
   } catch { return { ok: false, status: 0 }; }
   finally { clearTimeout(timer); }
 }
@@ -273,29 +286,36 @@ async function fetchPhotoViaProxycurl(env, linkedinUrl) {
     if (!r.ok) return { ok: false, status: r.status };
     const d = await r.json().catch(() => ({}));
     const exp = Array.isArray(d.experiences) ? (d.experiences.find(e => e && !e.ends_at) || d.experiences[0]) : null;
-    return { ok: true, photo: d.profile_pic_url || null, employer: (exp && exp.company) || null };
+    // Earliest work start year across all experiences → career start.
+    let careerStart = null;
+    if (Array.isArray(d.experiences)) {
+      const yrs = d.experiences.map(e => e && e.starts_at && e.starts_at.year).filter(y => y >= 1950);
+      if (yrs.length) careerStart = Math.min(...yrs);
+    }
+    return { ok: true, photo: d.profile_pic_url || null, employer: (exp && exp.company) || null, careerStart };
   } catch { return { ok: false, status: 0 }; }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Fill each person's CURRENT COMPANY ("Now at") from their public profile —
-// read from LinkedIn's own Experience field (og:description). Deliberately
-// SERIAL with a delay so we never burst LinkedIn (bursts get a 999 block).
-// A profile we checked but couldn't read a company from gets a '-' sentinel so
-// we don't retry it forever. Small batches; call repeatedly for a big list.
+// Fill each person's CURRENT COMPANY ("Now at") and TOTAL EXPERIENCE (career
+// start year) from their public profile — LinkedIn's own Experience field
+// (og:description) and JSON-LD job start dates. Deliberately SERIAL with a delay
+// so we never burst LinkedIn (bursts get a 999 block). A field we checked but
+// couldn't read gets a sentinel ('-' / 0) so we don't retry it forever. Small
+// batches; call repeatedly for a big list.
 async function enrichPhotos(env, { company, limit = 6 } = {}) {
-  const need = "(current_employer IS NULL OR current_employer = '')";
+  const need = "((current_employer IS NULL OR current_employer = '') OR career_start_year IS NULL)";
   const where = ['linkedin_url IS NOT NULL', "linkedin_url != ''", need];
   const binds = [];
   if (company) { where.push('company = ?'); binds.push(normCompany(company)); }
   const n = Math.min(Math.max(Number(limit) || 6, 1), 12);
   const { results } = await env.DB.prepare(
-    `SELECT id, linkedin_url, company FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
+    `SELECT id, linkedin_url, company, current_employer, career_start_year FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
   ).bind(...binds, n).all();
 
   const useProxycurl = !!env.PROXYCURL_API_KEY;
-  let employers = 0, fails = 0;
+  let employers = 0, experiences = 0, fails = 0;
   const now = new Date().toISOString();
   for (let i = 0; i < results.length; i++) {
     if (i) await sleep(1500);                       // pace requests
@@ -308,10 +328,16 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
       continue;
     }
     fails = 0;
-    // '-' = checked, no company found (so we don't re-fetch it forever).
-    await env.DB.prepare('UPDATE people SET current_employer = ?, updated_at = ? WHERE id = ?')
-      .bind(res.employer || '-', now, row.id).run();
-    if (res.employer) employers++;
+    // Never clobber data we already had. '-'/0 = checked but nothing found, so
+    // we don't re-fetch forever.
+    const hadEmp = row.current_employer && row.current_employer !== '-';
+    const empVal = hadEmp ? row.current_employer : (res.employer || '-');
+    const hadCs = row.career_start_year != null;
+    const csVal = hadCs ? row.career_start_year : (res.careerStart || 0);
+    await env.DB.prepare('UPDATE people SET current_employer = ?, career_start_year = ?, updated_at = ? WHERE id = ?')
+      .bind(empVal, csVal, now, row.id).run();
+    if (!hadEmp && res.employer) employers++;
+    if (!hadCs && res.careerStart) experiences++;
   }
 
   const rem = await env.DB.prepare(
@@ -319,7 +345,7 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
        AND ${need}${company ? ' AND company = ?' : ''}`
   ).bind(...(company ? [normCompany(company)] : [])).first();
 
-  return { tried: results.length, employers, remaining: (rem && rem.n) || 0,
+  return { tried: results.length, employers, experiences, remaining: (rem && rem.n) || 0,
     blocked: fails >= 2, provider: useProxycurl ? 'proxycurl' : 'scrape' };
 }
 
@@ -333,6 +359,7 @@ let schemaEnsured = false;
 async function ensureSchema(env) {
   if (schemaEnsured) return;
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN photo_url TEXT').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN career_start_year INTEGER').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
 
@@ -462,7 +489,7 @@ async function handleApi(request, env, url, ctx) {
     const id = m[1];
     const body = await request.json();
     const editable = ['contacted', 'notes', 'last_role', 'current_employer', 'current_role',
-      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'photo_url', 'location'];
+      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'photo_url', 'location', 'career_start_year'];
     const sets = [], binds = [];
     for (const k of editable) {
       if (k in body) { sets.push(`${k} = ?`); binds.push(body[k]); }

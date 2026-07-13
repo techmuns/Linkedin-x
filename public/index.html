@@ -526,7 +526,7 @@
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
-      <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) from their public LinkedIn profile">🏢 Fill “Now at”</button>
+      <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) and total experience from their public LinkedIn profile">✨ Enrich</button>
       <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
     </div>
   </div>
@@ -906,24 +906,25 @@ function tenureYear(s){const m=String(s||'').match(/(?:19|20)\d{2}/);return m?pa
 function exposureChips(p){
   const out=[];
   const co=p.company_label||p.company||'';
+  const cs=Number(p.career_start_year)||0;
   const ts=tenureYear(p.tenure_start), te=tenureYear(p.tenure_end);
   const isCurrent=Number(p.is_current)===1;
   const nowY=new Date().getFullYear();
 
-  // Total experience: no such field in the data — never fabricate it.
+  // 1) Total professional experience — the headline credibility signal, from
+  //    LinkedIn's own job start dates. Real data only; "Exp not mapped" if absent.
+  if(cs>=1950&&cs<=nowY) out.push({cls:'total',text:`${nowY-cs}y experience`});
+  else out.push({cls:'unclear',text:'Exp not mapped'});
 
-  // Depth of company knowledge — a real duration when we know both dates, else
-  // just the company (no guessed years).
+  // 2) Depth at the target company — a real duration when we know both dates,
+  //    else just the company (no guessed years).
   if(ts&&te&&te>=ts&&te-ts<=50) out.push({cls:'exp',text:`${te-ts}y at ${co}`});
-  else if(ts&&isCurrent&&nowY>=ts&&nowY-ts<=50) out.push({cls:'exp',text:`${nowY-ts}y+ at ${co}`});
   else if(co) out.push({cls:'exp',text:`At ${co}`});
 
-  // Freshness of insight.
+  // 3) Freshness — only when we actually know it.
   if(isCurrent) out.push({cls:'fresh',text:'Current'});
   else if(te){ const age=nowY-te; out.push({cls:age<=1?'fresh':age<=4?'warm':'unclear',text:`Exited ${te}`}); }
-  else out.push({cls:'unclear',text:'Dates not mapped'});
 
-  if(!out.length) out.push({cls:'unclear',text:'Exposure unclear'});
   return out.slice(0,3);
 }
 function tableRow(p){
@@ -1126,22 +1127,22 @@ $('getPhotosBtn').onclick=getPhotos;
 async function getPhotos(){
   if(!TOKEN){setKey();if(!TOKEN)return;}
   const btn=$('getPhotosBtn');const orig=btn.textContent;btn.disabled=true;
-  let emps=0,blocked=false;
+  let emps=0,exp=0,blocked=false;
   try{
     for(let i=0;i<40;i++){
-      btn.textContent=`🏢 Filling… ${emps} companies`;
+      btn.textContent=`✨ Enriching… ${emps} co · ${exp} exp`;
       const r=await fetch('/api/enrich-photos',{method:'POST',headers:authHeaders(),
         body:JSON.stringify({company:COMPANY||undefined,limit:6})});
       if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');break;}
       const d=await r.json().catch(()=>({}));
-      emps+=d.employers||0;
-      await loadAll();                        // companies pop in progressively
+      emps+=d.employers||0;exp+=d.experiences||0;
+      await loadAll();                        // data pops in progressively
       if(d.blocked){blocked=true;break;}      // LinkedIn rate-limited the IP
       if(!d.tried||d.remaining===0)break;
     }
     btn.textContent=blocked
-      ? `⏳ +${emps} companies — LinkedIn paused us, retry later`
-      : `✓ ${emps} compan${emps===1?'y':'ies'} filled`;
+      ? `⏳ +${emps} co · ${exp} exp — LinkedIn paused us, retry`
+      : `✓ ${emps} companies · ${exp} experience`;
   }catch(e){btn.textContent='⚠ Try again';}
   setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},blocked?5000:2600);
 }
