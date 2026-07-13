@@ -515,7 +515,7 @@
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
-      <button class="btn sm" id="getPhotosBtn" title="Fetch public LinkedIn profile photos for this list">📷 Get photos</button>
+      <button class="btn sm" id="getPhotosBtn" title="Fetch public LinkedIn profile photos and current companies for this list">📷 Get photos</button>
       <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
     </div>
   </div>
@@ -1115,22 +1115,22 @@ $('getPhotosBtn').onclick=getPhotos;
 async function getPhotos(){
   if(!TOKEN){setKey();if(!TOKEN)return;}
   const btn=$('getPhotosBtn');const orig=btn.textContent;btn.disabled=true;
-  let added=0,blocked=false;
+  let added=0,emps=0,blocked=false;
   try{
     for(let i=0;i<40;i++){
-      btn.textContent=`📷 Fetching… ${added} added`;
+      btn.textContent=`📷 Fetching… ${added} photos · ${emps} companies`;
       const r=await fetch('/api/enrich-photos',{method:'POST',headers:authHeaders(),
         body:JSON.stringify({company:COMPANY||undefined,limit:6})});
       if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');break;}
       const d=await r.json().catch(()=>({}));
-      added+=d.updated||0;
-      await loadAll();                        // faces pop in progressively
+      added+=d.updated||0;emps+=d.employers||0;
+      await loadAll();                        // faces + companies pop in progressively
       if(d.blocked){blocked=true;break;}      // LinkedIn rate-limited the IP
       if(!d.tried||d.remaining===0)break;
     }
     btn.textContent=blocked
-      ? `⏳ +${added} · LinkedIn paused us — retry later`
-      : `✓ ${added} photo${added===1?'':'s'} added`;
+      ? `⏳ +${added} photos · ${emps} companies — LinkedIn paused us, retry later`
+      : `✓ ${added} photos · ${emps} companies`;
   }catch(e){btn.textContent='⚠ Try again';}
   setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},blocked?5000:2600);
 }

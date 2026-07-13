@@ -204,11 +204,47 @@ function parseOgImage(html) {
   return /media\.licdn\.com\/.*(profile-displayphoto|profile-framedphoto)/.test(url) ? url : null;
 }
 
+function decodeEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&').replace(/&#0?39;|&apos;|&#x27;/gi, "'")
+    .replace(/&quot;|&#34;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&middot;|&#183;/gi, '·')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+}
+
+function cleanExtractedCompany(s, targetCompany) {
+  s = decodeEntities(s).trim().replace(/\s*[.,]+$/, '').trim();
+  if (s.length < 2 || s.length > 60) return '';
+  if (/^(ex\b|former|self\b|freelance|education|location|\d+\s+connection)/i.test(s)) return '';
+  // It's an EX company if it matches the target company we're researching.
+  if (targetCompany && s.toLowerCase() === String(targetCompany).toLowerCase()) return '';
+  return s;
+}
+
+// Pull the person's CURRENT company out of the PUBLIC profile HTML — the same
+// page we fetch for the photo. LinkedIn's og:description carries it in a stable
+// SEO template:
+//   "<headline> · <summary> · Experience: <Company> · Education: … · Location: …"
+// We split on the middot and take the "Experience:" segment; JSON-LD worksFor is
+// a fallback. Returns '' when not confidently found.
+function extractEmployer(html, targetCompany) {
+  const md = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']/i)
+          || html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:description["']/i);
+  if (md) {
+    const desc = decodeEntities(md[1]);
+    const seg = desc.split(/\s*[·•|]\s*/).map(x => x.trim()).find(x => /^Experience:/i.test(x));
+    if (seg) { const c = cleanExtractedCompany(seg.replace(/^Experience:\s*/i, ''), targetCompany); if (c) return c; }
+  }
+  const ld = html.match(/"worksFor"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"]+)"/i);
+  if (ld) { const c = cleanExtractedCompany(ld[1], targetCompany); if (c) return c; }
+  return '';
+}
+
 // Returns { ok:true, photo:<url|null> } on a real 200 (photo may be null when the
 // profile genuinely has no public photo), or { ok:false } when LinkedIn blocked
 // us (HTTP 999) or the request failed — so callers don't mistake a block for
 // "no photo" and can retry later.
-async function resolveLinkedInPhoto(linkedinUrl) {
+async function resolveLinkedInPhoto(linkedinUrl, targetCompany) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10000);
   try {
@@ -221,7 +257,8 @@ async function resolveLinkedInPhoto(linkedinUrl) {
       signal: ctrl.signal,
     });
     if (!r.ok) return { ok: false, status: r.status };     // 999 = rate-limit block
-    return { ok: true, photo: parseOgImage(await r.text()) };
+    const html = await r.text();
+    return { ok: true, photo: parseOgImage(html), employer: extractEmployer(html, targetCompany) };
   } catch { return { ok: false, status: 0 }; }
   finally { clearTimeout(timer); }
 }
@@ -235,52 +272,60 @@ async function fetchPhotoViaProxycurl(env, linkedinUrl) {
     const r = await fetch(u, { headers: { authorization: 'Bearer ' + env.PROXYCURL_API_KEY } });
     if (!r.ok) return { ok: false, status: r.status };
     const d = await r.json().catch(() => ({}));
-    return { ok: true, photo: d.profile_pic_url || null };
+    const exp = Array.isArray(d.experiences) ? (d.experiences.find(e => e && !e.ends_at) || d.experiences[0]) : null;
+    return { ok: true, photo: d.profile_pic_url || null, employer: (exp && exp.company) || null };
   } catch { return { ok: false, status: 0 }; }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Resolve public LinkedIn photos for people who don't have one yet, and store
-// the image URL on the row. Deliberately SERIAL with a delay between requests
-// so we never burst LinkedIn (bursts get a 999 block; spaced reads are fine).
-// A profile with no public photo gets a '-' sentinel so we don't retry it
-// forever. Small batches; call repeatedly to work through a big list.
+// Enrich people from their PUBLIC profile: one fetch fills both the photo AND
+// the current company (parsed from the same page). Deliberately SERIAL with a
+// delay so we never burst LinkedIn (bursts get a 999 block; spaced reads are
+// fine). A field we checked but couldn't find gets a '-' sentinel so we don't
+// retry it forever. Small batches; call repeatedly to work through a big list.
 async function enrichPhotos(env, { company, limit = 6 } = {}) {
-  const where = ['linkedin_url IS NOT NULL', "linkedin_url != ''", "(photo_url IS NULL OR photo_url = '')"];
+  // "Needs enrichment" = missing a photo OR missing a current employer.
+  const need = "((photo_url IS NULL OR photo_url = '') OR (current_employer IS NULL OR current_employer = ''))";
+  const where = ['linkedin_url IS NOT NULL', "linkedin_url != ''", need];
   const binds = [];
   if (company) { where.push('company = ?'); binds.push(normCompany(company)); }
   const n = Math.min(Math.max(Number(limit) || 6, 1), 12);
   const { results } = await env.DB.prepare(
-    `SELECT id, linkedin_url FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
+    `SELECT id, linkedin_url, company, current_employer FROM people WHERE ${where.join(' AND ')} ORDER BY score DESC LIMIT ?`
   ).bind(...binds, n).all();
 
   const useProxycurl = !!env.PROXYCURL_API_KEY;
-  let updated = 0, fails = 0;
+  let updated = 0, employers = 0, fails = 0;
   const now = new Date().toISOString();
   for (let i = 0; i < results.length; i++) {
     if (i) await sleep(1500);                       // pace requests
+    const row = results[i];
     const res = useProxycurl
-      ? await fetchPhotoViaProxycurl(env, results[i].linkedin_url)
-      : await resolveLinkedInPhoto(results[i].linkedin_url);
+      ? await fetchPhotoViaProxycurl(env, row.linkedin_url)
+      : await resolveLinkedInPhoto(row.linkedin_url, row.company);
     if (!res.ok) {                                  // blocked/failed — leave empty, retry next run
       if (++fails >= 2) break;                      // likely IP-blocked; stop early
       continue;
     }
     fails = 0;
-    // Store the photo URL, or '-' when the profile genuinely has no public photo
-    // (so we don't re-check it every run). '-' renders as the initials avatar.
-    await env.DB.prepare('UPDATE people SET photo_url = ?, updated_at = ? WHERE id = ?')
-      .bind(res.photo || '-', now, results[i].id).run();
+    // Settle the photo ('-' = checked, no public photo). Fill current_employer
+    // only when we didn't already have one; '-' marks "checked, none found" so
+    // we don't re-fetch forever. Never clobber an employer we already had.
+    const hadEmp = row.current_employer && row.current_employer !== '-';
+    const empVal = hadEmp ? row.current_employer : (res.employer || '-');
+    await env.DB.prepare('UPDATE people SET photo_url = ?, current_employer = ?, updated_at = ? WHERE id = ?')
+      .bind(res.photo || '-', empVal, now, row.id).run();
     if (res.photo) updated++;
+    if (!hadEmp && res.employer) employers++;
   }
 
   const rem = await env.DB.prepare(
     `SELECT count(*) AS n FROM people WHERE linkedin_url IS NOT NULL AND linkedin_url != ''
-       AND (photo_url IS NULL OR photo_url = '')${company ? ' AND company = ?' : ''}`
+       AND ${need}${company ? ' AND company = ?' : ''}`
   ).bind(...(company ? [normCompany(company)] : [])).first();
 
-  return { tried: results.length, updated, remaining: (rem && rem.n) || 0,
+  return { tried: results.length, updated, employers, remaining: (rem && rem.n) || 0,
     blocked: fails >= 2, provider: useProxycurl ? 'proxycurl' : 'scrape' };
 }
 
