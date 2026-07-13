@@ -455,6 +455,21 @@
   .arow .rn{font-weight:650;font-size:13.5px}
   .arow .rtk{font-size:10.5px;color:var(--faint);background:#f2f4f7;border-radius:5px;padding:1px 6px;margin-left:6px}
   .arow .rt{margin-left:auto;color:var(--faint);font-size:11.5px}
+  /* ---------- AVATAR: real profile photo / initials / LinkedIn link ---------- */
+  .rav,.tav,.dav{position:relative;text-decoration:none;overflow:visible}
+  .rav .ini,.tav .ini,.dav .ini{position:absolute;inset:0;display:grid;place-items:center}
+  .rav img,.tav img,.dav img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;
+    object-fit:cover;background:#e8ecf9;display:block}
+  a.rav,a.tav,a.dav{cursor:pointer}
+  .row:hover a.rav,.dhead a.dav:hover{filter:saturate(1.1) brightness(1.03)}
+  /* Small LinkedIn "in" badge marking a linkable profile */
+  .li-badge{position:absolute;right:-2px;bottom:-2px;min-width:16px;height:16px;padding:0 3px;border-radius:5px;
+    background:#0a66c2;color:#fff;font-size:9.5px;font-weight:800;line-height:1;display:grid;place-items:center;
+    box-shadow:0 0 0 2px #fafbfd,0 1px 3px rgba(10,102,194,.4);letter-spacing:.3px;pointer-events:none}
+  .tav .li-badge{min-width:14px;height:14px;font-size:8.5px;right:-3px;bottom:-3px}
+  .dhead .dav .li-badge{width:20px;height:20px;min-width:20px;font-size:11px;
+    box-shadow:0 0 0 2px #6257a6,0 1px 3px rgba(0,0,0,.35)}
+
   @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.rm,.rr{border-left:none;border-top:1px solid var(--line2)}}
   @media print{header .hactions,.fpanel,.pillrow .savedviews,.rr{display:none!important}body{background:#fff}}
 </style>
@@ -552,6 +567,7 @@
   <label>Most senior role at the target company</label><input id="m_role"/>
   <div class="r2"><div><label>Now at (employer)</label><input id="m_emp"/></div><div><label>Current role</label><input id="m_crole"/></div></div>
   <label>LinkedIn URL</label><input id="m_url" placeholder="https://www.linkedin.com/in/…"/>
+  <label>Photo URL <span style="color:var(--faint);font-weight:400">— optional, shows as their avatar</span></label><input id="m_photo" placeholder="https://…/headshot.jpg"/>
   <div class="acts"><button class="btn" id="m_cancel">Cancel</button><button class="btn primary" id="m_save">Save source</button></div>
 </div></div>
 
@@ -598,6 +614,23 @@ function initials(n){return (n||'?').split(/\s+/).filter(Boolean).slice(0,2).map
 function avColor(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;return AV[h%AV.length];}
 // Soft purple→blue gradient for avatars, subtly varied per person.
 function avGrad(n){let h=0;for(const c of(n||''))h=(h*31+c.charCodeAt(0))>>>0;const base=228+(h%54);return `linear-gradient(135deg,hsl(${base},74%,64%),hsl(${base-34},70%,52%))`;}
+// Avatar: show a real profile photo when we have one (photo_url); otherwise the
+// initials icon. When a LinkedIn URL exists the avatar links to the actual
+// profile and gets a small LinkedIn badge — people with no profile keep the plain icon.
+function avatarPhoto(p){return String(p.photo_url||p.image_url||p.avatar_url||p.image||'').trim();}
+function avatarInner(p){
+  const img=avatarPhoto(p);
+  const pic=img?`<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`:'';
+  const badge=p.linkedin_url?'<span class="li-badge" aria-hidden="true">in</span>':'';
+  return `<span class="ini">${esc(initials(p.full_name))}</span>${pic}${badge}`;
+}
+function avatarEl(p,cls){
+  const inner=avatarInner(p);
+  if(p.linkedin_url){
+    return `<a class="${cls}" href="${esc(p.linkedin_url)}" target="_blank" rel="noopener" data-noopen title="Open ${esc(p.full_name)} on LinkedIn ↗">${inner}</a>`;
+  }
+  return `<div class="${cls}">${inner}</div>`;
+}
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
 function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
 // Clean the "now at" value: reject leftover "Ex…" fragments and role phrases
@@ -816,7 +849,7 @@ function rowHtml(p){
   const isShortlisted=p._saved||status==='shortlisted';
   return `<div class="row t${p._tier} ${isShortlisted?'shortlisted':''}" data-id="${p.id}">
     <div class="rl">
-      <div class="rav">${esc(initials(p.full_name))}</div>
+      ${avatarEl(p,'rav')}
       <div class="rid">
         <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
@@ -863,7 +896,7 @@ function tableRow(p){
   return `<tr class="t${p._tier}" data-id="${p.id}">
     <td>
       <div class="tcell-name">
-        <div class="tav">${esc(initials(p.full_name))}</div>
+        ${avatarEl(p,'tav')}
         <div class="tname-info">
           <div class="tname">
             <strong>${esc(p.full_name)}</strong>
@@ -972,7 +1005,7 @@ function openDrawer(id){
   $('drawer').innerHTML=`
     <div class="dhead">
       <button class="close" id="dClose">✕</button>
-      <div class="dav">${esc(initials(p.full_name))}</div>
+      ${avatarEl(p,'dav')}
       <div class="dn">${esc(p.full_name)}</div>
       <div class="dr">${esc(roleTitle(p))}${emp?' · now '+esc(emp):leftCo?' · '+esc(co):''}</div>
       <div class="dtags">
@@ -984,19 +1017,8 @@ function openDrawer(id){
     </div>
 
     <div class="dsec">
-      <h4>💡 Why this person matters</h4>
-      <p>${esc(shortWhy(p))}</p>
-      <div class="proof-chips">${proofChips(p)}</div>
-    </div>
-
-    <div class="dsec">
       <h4>📊 Research areas</h4>
       <div class="research-chips">${research.map(r=>`<span class="rchip">${esc(r)}</span>`).join('')}</div>
-    </div>
-
-    <div class="dsec">
-      <h4>💬 Suggested questions</h4>
-      <ul>${discussionQs(p).map(q=>`<li>${esc(q)}</li>`).join('')}</ul>
     </div>
 
     <div class="dsec">
@@ -1064,7 +1086,7 @@ $('insightsBtn').onclick=openInsights;
 $('addBtn').onclick=()=>{$('m_company').value=(COMPANY?(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'');$('modalBg').style.display='flex';};
 $('m_cancel').onclick=()=>$('modalBg').style.display='none';
 $('modalBg').onclick=e=>{if(e.target===$('modalBg'))$('modalBg').style.display='none';};
-$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url'].forEach(id=>$(id).value='');await loadAll();};
+$('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={full_name:$('m_name').value.trim(),company:$('m_company').value.trim(),relationship:$('m_rel').value,last_role:$('m_role').value.trim(),current_employer:$('m_emp').value.trim(),current_role:$('m_crole').value.trim(),linkedin_url:$('m_url').value.trim(),photo_url:$('m_photo').value.trim(),source:'manual',is_current:0};if(!body.full_name||!body.company){alert('Name and company required.');return;}const r=await fetch('/api/people',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});if(r.status===401){alert('Wrong password.');return;}$('modalBg').style.display='none';['m_name','m_role','m_emp','m_crole','m_url','m_photo'].forEach(id=>$(id).value='');await loadAll();};
 
 // add company — live stock search (proxied through the Worker); local directory
 // is a fallback if the API is unavailable.

@@ -109,6 +109,7 @@ async function upsertPerson(env, input) {
     is_current: input.is_current != null ? (input.is_current ? 1 : 0) : (existing?.is_current ?? 0),
     location: input.location ?? existing?.location ?? null,
     linkedin_url: input.linkedin_url ?? existing?.linkedin_url ?? null,
+    photo_url: input.photo_url ?? existing?.photo_url ?? null,
     source: input.source || existing?.source || 'search',
     source_detail: input.source_detail ?? existing?.source_detail ?? null,
     contacted: existing?.contacted || 'no',
@@ -121,12 +122,12 @@ async function upsertPerson(env, input) {
     await env.DB.prepare(
       `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?,
          seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
-         is_current=?, location=?, linkedin_url=?, source=?, source_detail=?, score=?,
+         is_current=?, location=?, linkedin_url=?, photo_url=?, source=?, source_detail=?, score=?,
          updated_at=? WHERE id=?`
     ).bind(
       merged.full_name, merged.company_label, merged.relationship, merged.last_role,
       merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
-      merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url,
+      merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url, merged.photo_url,
       merged.source, merged.source_detail, merged.score, now, existing.id
     ).run();
     return { ok: true, id: existing.id, updated: true };
@@ -136,14 +137,14 @@ async function upsertPerson(env, input) {
   await env.DB.prepare(
     `INSERT INTO people (id, full_name, company, company_label, relationship, last_role,
        seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
-       location, linkedin_url, source, source_detail, score, contacted, notes,
+       location, linkedin_url, photo_url, source, source_detail, score, contacted, notes,
        created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, merged.full_name, merged.company, merged.company_label, merged.relationship,
     merged.last_role, merged.seniority, merged.current_employer, merged.current_role,
     merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
-    merged.linkedin_url, merged.source, merged.source_detail, merged.score,
+    merged.linkedin_url, merged.photo_url, merged.source, merged.source_detail, merged.score,
     merged.contacted, merged.notes, now, now
   ).run();
   return { ok: true, id, created: true };
@@ -255,7 +256,7 @@ async function handleApi(request, env, url, ctx) {
     const { results } = await stmt.all();
     const cols = ['full_name', 'company_label', 'relationship', 'last_role', 'seniority',
       'current_employer', 'current_role', 'tenure_start', 'tenure_end', 'location',
-      'linkedin_url', 'score', 'contacted', 'notes', 'source', 'source_detail'];
+      'linkedin_url', 'photo_url', 'score', 'contacted', 'notes', 'source', 'source_detail'];
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = [cols.join(','), ...results.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
     return new Response(csv, {
@@ -306,7 +307,7 @@ async function handleApi(request, env, url, ctx) {
     const id = m[1];
     const body = await request.json();
     const editable = ['contacted', 'notes', 'last_role', 'current_employer', 'current_role',
-      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'location'];
+      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'photo_url', 'location'];
     const sets = [], binds = [];
     for (const k of editable) {
       if (k in body) { sets.push(`${k} = ?`); binds.push(body[k]); }
