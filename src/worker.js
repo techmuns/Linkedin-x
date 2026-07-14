@@ -349,6 +349,155 @@ async function enrichPhotos(env, { company, limit = 6 } = {}) {
     blocked: fails >= 2, provider: useProxycurl ? 'proxycurl' : 'scrape' };
 }
 
+// ---- CSV / Google-Sheet import -------------------------------------------
+// Fill "Now at" (current_employer) and "Exposure" (career_start_year) from a
+// file the USER exports themselves — a ZoomInfo CSV, any spreadsheet, or a
+// published Google Sheet. We never scrape and never touch their login; we just
+// match rows to existing contacts (by LinkedIn URL, else name) and write those
+// two columns. Header detection is flexible so a raw export usually works as-is.
+
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', q = false;
+  text = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+    else field += c;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// header (lowercased) -> our field. First matching column wins.
+const IMPORT_ALIASES = {
+  name: ['full name', 'full_name', 'name', 'contact name', 'contact full name', 'contact', 'person'],
+  first: ['first name', 'first_name', 'firstname', 'given name'],
+  last: ['last name', 'last_name', 'lastname', 'surname', 'family name'],
+  linkedin: ['linkedin url', 'linkedin', 'linkedin profile', 'profile url', 'li url', 'linkedin_url'],
+  now_at: ['now at', 'now_at', 'current employer', 'current company', 'company name', 'company', 'employer', 'organization', 'organisation'],
+  years: ['years of experience', 'total experience', 'years experience', 'experience (years)', 'experience', 'years', 'yrs', 'exp'],
+  start_year: ['career start year', 'career start', 'start year', 'working since', 'first job year', 'since'],
+};
+function pickCol(headers, aliases) {
+  for (const a of aliases) { const i = headers.indexOf(a); if (i >= 0) return i; }
+  return -1;
+}
+function normalizeImportRows(text) {
+  const rows = parseCSV(text).filter(r => r.some(c => String(c).trim() !== ''));
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
+  const col = {};
+  for (const k of Object.keys(IMPORT_ALIASES)) col[k] = pickCol(headers, IMPORT_ALIASES[k]);
+  const val = (r, c) => (c >= 0 ? String(r[c] ?? '').trim() : '');
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    let name = val(r, col.name);
+    if (!name && (col.first >= 0 || col.last >= 0)) name = (val(r, col.first) + ' ' + val(r, col.last)).trim();
+    const rec = { name, linkedin: val(r, col.linkedin), now_at: val(r, col.now_at),
+      years: val(r, col.years), start_year: val(r, col.start_year) };
+    if (rec.name || rec.linkedin) out.push(rec);
+  }
+  return out;
+}
+
+function normNameKey(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[®™©]/g, '')
+    .replace(/\b(ca|cfa|cfp|cpa|cs|dr|mr|mrs|ms|phd|mba|frm|jr|sr)\b\.?/g, '')
+    .replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function linkedInKey(u) {
+  const m = String(u || '').match(/linkedin\.com\/in\/([^/?#\s]+)/i);
+  return m ? '/in/' + m[1].toLowerCase() : '';
+}
+function cleanImportEmployer(s) {
+  s = String(s || '').trim().replace(/\s+/g, ' ');
+  if (s.length < 2 || s.length > 80) return '';
+  if (/^(n\/?a|none|null|-|—|unknown|self|freelance|unemployed)$/i.test(s)) return '';
+  return s;
+}
+function importStartYear(rec) {
+  const NOW = new Date().getFullYear();
+  if (rec.start_year) { const y = parseInt(String(rec.start_year).replace(/[^\d]/g, ''), 10); if (y >= 1950 && y <= NOW) return y; }
+  if (rec.years) { const n = parseInt(String(rec.years).replace(/[^\d]/g, ''), 10); if (n >= 0 && n <= 70) return NOW - n; }
+  return null;
+}
+
+// Match normalized records to people and (unless dryRun) write Now At + Exposure.
+async function matchAndApply(env, recs, dryRun) {
+  const { results: people } = await env.DB.prepare(
+    'SELECT id, full_name, linkedin_url, current_employer, career_start_year FROM people'
+  ).all();
+  const byLi = new Map(), byName = new Map();
+  for (const p of people) {
+    const lk = linkedInKey(p.linkedin_url);
+    if (lk) { if (!byLi.has(lk)) byLi.set(lk, []); byLi.get(lk).push(p); }
+    const nk = normNameKey(p.full_name);
+    if (nk) { if (!byName.has(nk)) byName.set(nk, []); byName.get(nk).push(p); }
+  }
+  const updates = new Map();   // person id -> pending field changes
+  const unmatched = [];
+  let matchedRows = 0;
+  for (const rec of recs) {
+    let targets = [];
+    const lk = linkedInKey(rec.linkedin);
+    if (lk && byLi.has(lk)) targets = byLi.get(lk);
+    else { const nk = normNameKey(rec.name); if (nk && byName.has(nk)) targets = byName.get(nk); }
+    if (!targets.length) { unmatched.push(rec.name || rec.linkedin); continue; }
+    matchedRows++;
+    const emp = cleanImportEmployer(rec.now_at);
+    const sy = importStartYear(rec);
+    for (const p of targets) {
+      const u = updates.get(p.id) || { person: p };
+      if (emp) u.current_employer = emp;
+      if (sy != null) u.career_start_year = sy;
+      updates.set(p.id, u);
+    }
+  }
+  const NOW = new Date().toISOString(), thisYear = new Date().getFullYear();
+  let employers = 0, experiences = 0; const samples = [];
+  for (const [id, u] of updates) {
+    const sets = [], binds = [];
+    if ('current_employer' in u) { employers++; sets.push('current_employer = ?'); binds.push(u.current_employer); }
+    if ('career_start_year' in u) { experiences++; sets.push('career_start_year = ?'); binds.push(u.career_start_year); }
+    if (!sets.length) continue;
+    if (samples.length < 8) samples.push({ name: u.person.full_name,
+      now_at: 'current_employer' in u ? u.current_employer : undefined,
+      years: 'career_start_year' in u ? (thisYear - u.career_start_year) : undefined });
+    if (!dryRun) {
+      sets.push('updated_at = ?'); binds.push(NOW); binds.push(id);
+      await env.DB.prepare(`UPDATE people SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
+    }
+  }
+  return { rows: recs.length, matchedRows, updatedPeople: updates.size, employers, experiences,
+    unmatched: unmatched.slice(0, 30), unmatchedCount: unmatched.length, samples, dryRun: !!dryRun };
+}
+
+// Turn any Google Sheets link the user pastes into a CSV endpoint we can fetch.
+function sheetCsvUrl(u) {
+  u = String(u || '').trim();
+  let m = u.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9\-_]+)/);   // already-published link
+  if (m) return `https://docs.google.com/spreadsheets/d/e/${m[1]}/pub?output=csv`;
+  m = u.match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/);          // normal edit/share link
+  if (m) { const g = (u.match(/[#&?]gid=(\d+)/) || [])[1] || '0'; return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${g}`; }
+  return u;                                                     // maybe already a direct CSV link
+}
+async function fetchSheetCsv(url) {
+  try {
+    const r = await fetch(url, { redirect: 'follow', headers: { accept: 'text/csv,*/*' } });
+    if (!r.ok) return { ok: false, error: `sheet fetch failed (${r.status}) — set the sheet to “Anyone with the link · Viewer”.` };
+    const text = await r.text();
+    if (/^\s*<(?:!doctype|html)/i.test(text)) return { ok: false, error: 'got a Google login page, not data — set the sheet to “Anyone with the link · Viewer” (or File → Share → Publish to web → CSV).' };
+    return { ok: true, text };
+  } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+}
+
 // ---- Routing -------------------------------------------------------------
 
 // Make sure columns added after the original schema exist, so the app works
@@ -360,7 +509,20 @@ async function ensureSchema(env) {
   if (schemaEnsured) return;
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN photo_url TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN career_start_year INTEGER').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
+}
+
+async function getSetting(env, k) {
+  try { const r = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(k).first(); return r ? r.value : null; }
+  catch { return null; }
+}
+async function setSetting(env, k, v) {
+  try {
+    await env.DB.prepare(
+      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+    ).bind(k, v).run();
+  } catch { /* best effort */ }
 }
 
 async function handleApi(request, env, url, ctx) {
@@ -542,6 +704,45 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, ...r });
   }
 
+  // POST /api/import -> fill Now At + Exposure from a CSV/paste the user
+  // supplies. Body: { csv?: string, rows?: [...], dryRun?: bool }. Matches to
+  // existing contacts by LinkedIn URL, else name. dryRun returns a preview only.
+  if (path === '/api/import' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    let recs = [];
+    if (typeof body.csv === 'string') recs = normalizeImportRows(body.csv);
+    else if (Array.isArray(body.rows)) recs = body.rows.map(r => ({
+      name: r.name || r.full_name || '', linkedin: r.linkedin || r.linkedin_url || '',
+      now_at: r.now_at || r.current_employer || '', years: r.years || '', start_year: r.start_year || '' }));
+    if (!recs.length) return json({ error: 'no rows found — the file needs a header row and at least one data row (columns like Name, Now At, Years).' }, { status: 400 });
+    const r = await matchAndApply(env, recs, !!body.dryRun);
+    return json({ ok: true, ...r });
+  }
+
+  // POST /api/sync-sheet -> read a published Google Sheet (as CSV) and import
+  // it, saving the URL so the daily cron keeps it in sync. Body: { url, dryRun?,
+  // clear? }.
+  if (path === '/api/sync-sheet' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    if (body.clear) { await setSetting(env, 'sheet_url', ''); return json({ ok: true, cleared: true }); }
+    const raw = (body.url || '').trim();
+    if (!raw) return json({ error: 'url required' }, { status: 400 });
+    const res = await fetchSheetCsv(sheetCsvUrl(raw));
+    if (!res.ok) return json({ error: res.error || 'could not read the sheet' }, { status: 400 });
+    const recs = normalizeImportRows(res.text);
+    if (!recs.length) return json({ error: 'the sheet has no readable rows — needs a header row with Name and a Now At / Company column.' }, { status: 400 });
+    const r = await matchAndApply(env, recs, !!body.dryRun);
+    if (!body.dryRun) await setSetting(env, 'sheet_url', raw);
+    return json({ ok: true, savedUrl: body.dryRun ? undefined : raw, ...r });
+  }
+
+  // GET /api/settings -> non-secret settings the dashboard pre-fills (sheet URL).
+  if (path === '/api/settings' && method === 'GET') {
+    return json({ sheet_url: (await getSetting(env, 'sheet_url')) || '' });
+  }
+
   // GET /api/searches -> recent jobs
   if (path === '/api/searches' && method === 'GET') {
     const { results } = await env.DB.prepare(
@@ -609,6 +810,14 @@ export default {
         for (let k = 0; k < 4; k++) {
           const r = await enrichPhotos(env, { limit: 8 });
           if (!r.tried || r.remaining === 0) break;
+        }
+      } catch { /* best effort */ }
+      // If a Google Sheet is linked, re-sync it so manual top-ups flow in daily.
+      try {
+        const su = await getSetting(env, 'sheet_url');
+        if (su) {
+          const res = await fetchSheetCsv(sheetCsvUrl(su));
+          if (res.ok) { const recs = normalizeImportRows(res.text); if (recs.length) await matchAndApply(env, recs, false); }
         }
       } catch { /* best effort */ }
     })());

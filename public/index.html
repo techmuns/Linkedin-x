@@ -525,6 +525,7 @@
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
       <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) and total experience from their public LinkedIn profile">✨ Enrich</button>
+      <button class="btn sm" id="importBtn" title="Fill Now At + Exposure from a CSV you export (ZoomInfo, any spreadsheet) or a Google Sheet — no scraping, no login shared">⬆ Import</button>
       <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
     </div>
   </div>
@@ -1147,6 +1148,88 @@ async function getPhotos(){
       : `✓ ${emps} companies · ${exp} experience`;
   }catch(e){btn.textContent='⚠ Try again';}
   setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},blocked?5000:2600);
+}
+
+// Import "Now At" + Exposure from a file the user exports themselves (ZoomInfo
+// CSV, any spreadsheet, or a published Google Sheet). No scraping, no login
+// shared — the Worker matches rows to contacts by LinkedIn/name and fills the
+// two columns. Preview before applying; the Sheet option also re-syncs daily.
+$('importBtn').onclick=openImport;
+function impPreviewHtml(d){
+  let s=`<b>${d.matchedRows}</b> of <b>${d.rows}</b> rows matched a contact — Now At for <b>${d.employers}</b>, Exposure for <b>${d.experiences}</b>.`;
+  if(d.samples&&d.samples.length){
+    s+='<div style="margin-top:6px;color:#2a3652">'+d.samples.map(x=>`• ${esc(x.name)}${x.now_at?': now at <b>'+esc(x.now_at)+'</b>':''}${x.years!=null?' · '+x.years+'y exp':''}`).join('<br>')+'</div>';
+  }
+  if(d.unmatchedCount){
+    s+=`<div style="margin-top:6px;color:#6b7794">${d.unmatchedCount} row(s) didn't match anyone${d.unmatched&&d.unmatched.length?': '+esc(d.unmatched.slice(0,8).join(', '))+(d.unmatchedCount>8?'…':''):''}.</div>`;
+  }
+  return s;
+}
+function openImport(){
+  openModal(`<h3>⬆ Import “Now At” + Exposure</h3>
+    <div class="mnote">Fill these columns from data you export yourself — a ZoomInfo CSV, any spreadsheet, or a Google Sheet. Nothing is scraped and no login is shared. Rows match your contacts by LinkedIn URL or name.</div>
+    <h4 style="margin:16px 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">OPTION 1 · UPLOAD A CSV (or paste rows)</h4>
+    <div class="mnote" style="margin-bottom:8px">Header row required. Recognised columns (any order): <b>Name</b> (or First/Last name), <b>LinkedIn</b>, <b>Now At</b> (or Company / Current Employer), and <b>Years</b> of experience (or Start Year).</div>
+    <input type="file" id="imp_file" accept=".csv,text/csv,text/plain" style="width:100%;font-size:13px"/>
+    <textarea id="imp_text" placeholder="…or paste CSV here — first line is the header, e.g.  Name,Now At,Years" style="width:100%;height:84px;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:12px;font-family:ui-monospace,Menlo,monospace"></textarea>
+    <div id="imp_preview" class="mnote" style="margin-top:8px"></div>
+    <div class="acts" style="justify-content:flex-start;margin-top:8px">
+      <button class="btn" id="imp_prev">Preview match</button>
+      <button class="btn primary" id="imp_apply" disabled>Apply</button>
+    </div>
+    <div style="height:1px;background:var(--line);margin:18px 0"></div>
+    <h4 style="margin:0 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">OPTION 2 · GOOGLE SHEET AUTO-SYNC</h4>
+    <div class="mnote" style="margin-bottom:8px">Paste a Google Sheet link set to <b>Anyone with the link · Viewer</b>. Columns: <b>Name</b>, <b>Now At</b>, <b>Years</b>. It syncs now and re-syncs automatically every day — top it up whenever you like.</div>
+    <input id="imp_sheet" placeholder="https://docs.google.com/spreadsheets/d/…" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:13px"/>
+    <div id="imp_sheetmsg" class="mnote" style="margin-top:8px"></div>
+    <div class="acts" style="justify-content:flex-start;margin-top:8px">
+      <button class="btn primary" id="imp_sync">Save &amp; sync now</button>
+      <button class="btn" id="imp_close">Close</button>
+    </div>`);
+  fetch('/api/settings').then(r=>r.json()).then(d=>{if(d&&d.sheet_url)$('imp_sheet').value=d.sheet_url;}).catch(()=>{});
+  let lastText='';
+  const readText=async()=>{const f=$('imp_file').files&&$('imp_file').files[0];return (f?await f.text():$('imp_text').value).trim();};
+  $('imp_prev').onclick=async()=>{
+    if(!TOKEN){setKey();if(!TOKEN)return;}
+    const text=await readText();
+    if(!text){$('imp_preview').textContent='Choose a file or paste some rows first.';return;}
+    lastText=text;const b=$('imp_prev');b.disabled=true;b.textContent='Checking…';
+    try{
+      const r=await fetch('/api/import',{method:'POST',headers:authHeaders(),body:JSON.stringify({csv:text,dryRun:true})});
+      const d=await r.json();
+      if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');$('imp_preview').innerHTML='<span style="color:#b42318">Wrong edit password — click Preview again to re-enter.</span>';}
+      else if(!r.ok){$('imp_preview').innerHTML='<span style="color:#b42318">'+esc(d.error||'import failed')+'</span>';$('imp_apply').disabled=true;}
+      else{$('imp_preview').innerHTML=impPreviewHtml(d);$('imp_apply').disabled=d.updatedPeople===0;}
+    }catch(e){$('imp_preview').textContent='Error: '+e.message;}
+    b.disabled=false;b.textContent='Preview match';
+  };
+  $('imp_apply').onclick=async()=>{
+    if(!TOKEN){setKey();if(!TOKEN)return;}
+    const text=lastText||await readText();if(!text)return;
+    const b=$('imp_apply');b.disabled=true;b.textContent='Applying…';
+    try{
+      const r=await fetch('/api/import',{method:'POST',headers:authHeaders(),body:JSON.stringify({csv:text,dryRun:false})});
+      const d=await r.json();
+      if(!r.ok){$('imp_preview').innerHTML='<span style="color:#b42318">'+esc(d.error||'import failed')+'</span>';}
+      else{$('imp_preview').innerHTML='✅ Applied. '+impPreviewHtml(d);await loadAll();render();}
+    }catch(e){$('imp_preview').textContent='Error: '+e.message;}
+    b.textContent='Apply';
+  };
+  $('imp_sync').onclick=async()=>{
+    if(!TOKEN){setKey();if(!TOKEN)return;}
+    const url=$('imp_sheet').value.trim();
+    if(!url){$('imp_sheetmsg').textContent='Paste a Google Sheet link first.';return;}
+    const b=$('imp_sync');b.disabled=true;b.textContent='Syncing…';
+    try{
+      const r=await fetch('/api/sync-sheet',{method:'POST',headers:authHeaders(),body:JSON.stringify({url})});
+      const d=await r.json();
+      if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');$('imp_sheetmsg').innerHTML='<span style="color:#b42318">Wrong edit password — click again to re-enter.</span>';}
+      else if(!r.ok){$('imp_sheetmsg').innerHTML='<span style="color:#b42318">'+esc(d.error||'sync failed')+'</span>';}
+      else{$('imp_sheetmsg').innerHTML='✅ Synced &amp; saved — re-syncs daily. '+impPreviewHtml(d);await loadAll();render();}
+    }catch(e){$('imp_sheetmsg').textContent='Error: '+e.message;}
+    b.disabled=false;b.textContent='Save & sync now';
+  };
+  $('imp_close').onclick=()=>{$('genBg').style.display='none';};
 }
 
 // add source modal
