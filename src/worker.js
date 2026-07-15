@@ -375,11 +375,11 @@ function parseCSV(text) {
 
 // header (lowercased) -> our field. First matching column wins.
 const IMPORT_ALIASES = {
-  name: ['full name', 'full_name', 'name', 'contact name', 'contact full name', 'contact', 'person'],
+  name: ['full name', 'full_name', 'fullname', 'name', 'contact name', 'contact full name', 'contact', 'person'],
   first: ['first name', 'first_name', 'firstname', 'given name'],
   last: ['last name', 'last_name', 'lastname', 'surname', 'family name'],
-  linkedin: ['linkedin url', 'linkedin', 'linkedin profile', 'profile url', 'li url', 'linkedin_url'],
-  now_at: ['now at', 'now_at', 'current employer', 'current company', 'company name', 'company', 'employer', 'organization', 'organisation'],
+  linkedin: ['linkedin url', 'linkedinurl', 'linkedin', 'linkedin profile', 'profile url', 'profileurl', 'profileurls', 'li url', 'linkedin_url'],
+  now_at: ['now at', 'now_at', 'current employer', 'current company', 'currentcompany', 'company name', 'companyname', 'company', 'employer', 'organization', 'organisation'],
   former_role: ['former role', 'former_role', 'former title', 'past role', 'previous role', 'role at company', 'former position', 'ex role'],
   years: ['years of experience', 'total experience', 'years experience', 'experience (years)', 'experience', 'years', 'yrs', 'exp'],
   start_year: ['career start year', 'career start', 'start year', 'working since', 'first job year', 'since'],
