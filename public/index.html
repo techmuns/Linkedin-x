@@ -305,7 +305,7 @@
   /* table - premium frosted design */
   .table-wrap{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
     overflow:auto;box-shadow:var(--shadow)}
-  table{width:100%;min-width:1200px;border-collapse:collapse;table-layout:fixed}
+  table{width:100%;min-width:1040px;border-collapse:collapse;table-layout:fixed}
   thead{background:linear-gradient(135deg,#6d5ec7 0%,#5b7bc8 100%);color:#fff}
   thead tr{display:table;width:100%;table-layout:fixed}
   tbody{display:table;width:100%}
@@ -327,12 +327,11 @@
   th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;white-space:nowrap}
   td{font-size:13px;color:#3d4a68;border-bottom:1px solid #ebeef6}
   tbody tr:last-child td{border-bottom:none}
-  th:nth-child(1),td:nth-child(1){width:21%}   /* Name */
-  th:nth-child(2),td:nth-child(2){width:15%}   /* Current Role */
-  th:nth-child(3),td:nth-child(3){width:14%}   /* Now At */
-  th:nth-child(4),td:nth-child(4){width:15%}   /* Former Role */
-  th:nth-child(5),td:nth-child(5){width:15%}   /* Exposure */
-  th:nth-child(6),td:nth-child(6){width:20%}   /* Profile */
+  th:nth-child(1),td:nth-child(1){width:26%}   /* Name */
+  th:nth-child(2),td:nth-child(2){width:19%}   /* Current Role */
+  th:nth-child(3),td:nth-child(3){width:17%}   /* Now At */
+  th:nth-child(4),td:nth-child(4){width:18%}   /* Former Role */
+  th:nth-child(5),td:nth-child(5){width:20%}   /* Profile */
   .tcell-name{display:flex;align-items:center;gap:12px}
   .tav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
     font-size:14px;flex:none;background:linear-gradient(135deg,#6d5ec7,#5b4e99);
@@ -980,7 +979,6 @@ function tableRow(p){
             <strong>${esc(p.full_name)}</strong>
             ${p.linkedin_url?'<span class="vchk">✓</span>':''}
           </div>
-          <div class="tsub">${SENLABEL[sen]} · ${p._fn}</div>
           ${chips.length?`<div class="tchips">${chips.join('')}</div>`:''}
         </div>
       </div>
@@ -996,9 +994,6 @@ function tableRow(p){
         ? `<div class="trole-main">${esc(p.former_role)}</div>${co?`<div class="trole-co">at ${esc(co)}</div>`:''}`
         : still ? `<span class="tnowat empty">Current employee</span>`
         : (leftCo&&co ? `<span class="tnowat empty">Ex-${esc(co)}</span>` : `<span class="tnowat empty">—</span>`)}
-    </td>
-    <td>
-      <div class="exposure">${exposureChips(p).map(c=>`<span class="xchip ${c.cls}">${esc(c.text)}</span>`).join('')}</div>
     </td>
     <td>
       <div class="tactions">
@@ -1019,7 +1014,7 @@ function render(){
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   updateShortlistTray();
 }
 function updateShortlistTray(){
