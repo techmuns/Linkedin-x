@@ -352,6 +352,8 @@
   .tnowat{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:650;
     background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b6b8c;border:1px solid #dde1f1}
   .tnowat.empty{background:#f3f4f6;color:#6b7794;border-color:#e5e7eb}
+  .tnowat.still{background:linear-gradient(135deg,#fef4e6 0%,#fde7c9 100%);color:#b54708;border-color:#fbd9a8}
+  .tchip.tg-cur{background:#fff1e0;color:#b54708}
   .ttier{display:flex;align-items:center;gap:8px}
   .ttier-pill{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
     background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
@@ -945,16 +947,26 @@ function exposureChips(p){
 
   return out.slice(0,3);
 }
+// True when the ONLY current-employer signal is the company they were tagged as
+// having left — i.e. LinkedIn still shows them there, so they never actually
+// left. We surface this honestly ("Still at X") instead of a wrong "Now At".
+function stillAtTarget(p){
+  const emp=cleanEmployer(p.current_employer);if(!emp)return false;
+  const n=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  return n(emp)===n(p.company)||n(emp)===n(p.company_label);
+}
 function tableRow(p){
   const co=p.company_label||p.company||'';
   const emp=deriveEmployer(p);
+  const still=!emp&&stillAtTarget(p);
   const leftCo=Number(p.is_current)===0;
   const sen=p.seniority||'other';
 
   // Name chips
   const chips=[];
   if(isNew(p))chips.push(`<span class="tchip newb">NEW</span>`);
-  if(leftCo)chips.push(`<span class="tchip tg-left">Ex-${esc(co)}</span>`);
+  if(still)chips.push(`<span class="tchip tg-cur">At ${esc(co)}</span>`);
+  else if(leftCo)chips.push(`<span class="tchip tg-left">Ex-${esc(co)}</span>`);
   if(['founder','clevel'].includes(p.seniority))chips.push(`<span class="tchip tg-founder">Leadership</span>`);
   else if(p._fn==='Operations')chips.push(`<span class="tchip tg-director">Operations</span>`);
   else if(p._fn==='Finance')chips.push(`<span class="tchip tg-vp">Finance</span>`);
@@ -977,11 +989,12 @@ function tableRow(p){
       <div class="trole-main">${esc(roleTitle(p))}</div>
     </td>
     <td>
-      ${emp?`<span class="tnowat">${esc(emp)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
+      ${emp?`<span class="tnowat">${esc(emp)}</span>`:still?`<span class="tnowat still">Still at ${esc(co)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
     </td>
     <td>
       ${p.former_role
         ? `<div class="trole-main">${esc(p.former_role)}</div>${co?`<div class="trole-co">at ${esc(co)}</div>`:''}`
+        : still ? `<span class="tnowat empty">Current employee</span>`
         : (leftCo&&co ? `<span class="tnowat empty">Ex-${esc(co)}</span>` : `<span class="tnowat empty">—</span>`)}
     </td>
     <td>
