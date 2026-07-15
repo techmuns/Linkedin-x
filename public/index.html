@@ -785,6 +785,27 @@ function outreachDraft(p){
 
 // data
 let COMPANY_DIR=[];
+// Curated private / unlisted companies + sub-brands (not in the stock database),
+// so they still appear as suggestions. [name, parent/context]. Extend anytime.
+const PRIVATE_COS=[
+  // Jewellery & lifestyle sub-brands
+  ['CaratLane','part of Titan'],['Tanishq','part of Titan'],['Mia by Tanishq','part of Titan'],['Zoya','part of Titan'],
+  ['BlueStone',''],['Melorra',''],['GIVA',''],['Aukera',''],['Palmonas',''],['CANDERE','part of Kalyan Jewellers'],['Joyalukkas',''],['Malabar Gold & Diamonds',''],
+  // Logistics & delivery
+  ['Valmo','part of Meesho'],['Shadowfax',''],['Ecom Express',''],['Xpressbees',''],['Porter',''],['Rapido',''],['Dunzo',''],['Shiprocket',''],['LoadShare',''],['Pickrr',''],['Delhivery','listed'],
+  // Quick-commerce & grocery
+  ['Zepto',''],['Blinkit','part of Eternal (Zomato)'],['Swiggy Instamart','part of Swiggy'],['BigBasket','part of Tata'],['Milkbasket','part of Reliance'],['Country Delight',''],['Licious',''],['FreshToHome',''],['Otipy',''],
+  // Marketplaces & retail sub-brands
+  ['Meesho',''],['Udaan',''],['Flipkart','part of Walmart'],['Myntra','part of Flipkart'],['AJIO','part of Reliance'],['Tata CLiQ','part of Tata'],['Tata Neu','part of Tata'],['Tata 1mg','part of Tata'],['Netmeds','part of Reliance'],['Tira','part of Reliance'],['JioMart','part of Reliance'],['Croma','part of Tata'],
+  // Fintech
+  ['PhonePe',''],['Razorpay',''],['CRED',''],['BharatPe',''],['Pine Labs',''],['slice',''],['Jupiter',''],['Fi Money',''],['Groww',''],['Zerodha',''],['Navi',''],['KreditBee',''],
+  // D2C consumer
+  ['boAt',''],['Noise',''],['SUGAR Cosmetics',''],['Mamaearth','Honasa'],['Wakefit',''],['The Sleep Company',''],['mCaffeine',''],['Bombay Shaving Company',''],['Pepperfry',''],['Urban Ladder','part of Reliance'],
+  // Food & beverage
+  ['Rebel Foods',''],['EatSure','part of Rebel Foods'],['Faasos','part of Rebel Foods'],['Behrouz Biryani','part of Rebel Foods'],['Chaayos',''],['Third Wave Coffee',''],['Blue Tokai',''],['Sleepy Owl',''],
+  // Agri, B2B, health, edtech, mobility
+  ['DeHaat',''],['Ninjacart',''],['Zetwerk',''],['OfBusiness',''],['Moglix',''],['Infra.Market',''],['Cars24',''],['Spinny',''],['Urban Company',''],['cult.fit',''],['PharmEasy',''],['Practo',''],['Unacademy',''],['upGrad',''],
+];
 function isNew(p){const t=Date.parse(p.created_at);return !isNaN(t)&&(Date.now()-t)<7*86400000;}
 async function loadAll(){
   const r=await fetch('/api/people');RAW=((await r.json()).people||[]).map(enrich);
@@ -1293,13 +1314,9 @@ function addCompany(){
   const inp=$('coSearch'),list=$('coList');
   let timer=null,seq=0;
   function trk(name){return tracked.has((name||'').toLowerCase())?'<span class="trk">✓ tracked</span>':'';}
-  function render(items,q,fromApi){
+  function render(items,q){
     let html=`<div class="copick add" data-c="${esc(q)}">🔍 Research “${esc(q)}”<span class="addhint">any company · listed or private</span></div>`;
-    if(fromApi){
-      html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}" data-ticker="${esc(c.ticker||'')}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.ticker)}${c.sector?' · '+esc(c.sector):''}</div></div><span style="font-size:11px;color:var(--faint);white-space:nowrap">${esc(c.country||'')} ${trk(c.name)}</span></div>`).join('');
-    }else{
-      html+=items.map(c=>`<div class="copick" data-c="${esc(c)}">${esc(c)}${trk(c)}</div>`).join('');
-    }
+    html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}" data-ticker="${esc(c.ticker||'')}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div>${c.sub?`<div style="font-size:11.5px;color:var(--muted)">${esc(c.sub)}</div>`:''}</div><span style="font-size:11px;white-space:nowrap;color:${c.tag==='Private'?'#6d5ec7':'var(--faint)'};font-weight:${c.tag==='Private'?700:400}">${esc(c.tag||'')} ${trk(c.name)}</span></div>`).join('');
     list.innerHTML=html;
     list.querySelectorAll('.copick').forEach(el=>el.onclick=()=>pickCompany(el.dataset.c,el.dataset.ticker||''));
   }
@@ -1307,13 +1324,19 @@ function addCompany(){
     const q=inp.value.trim();
     if(!q){list.innerHTML='<div class="mnote">Type a company name or ticker to search…</div>';return;}
     const my=++seq;list.innerHTML='<div class="mnote">Searching…</div>';
-    let res=[];
-    try{const r=await fetch('/api/stock-search?q='+encodeURIComponent(q));res=(await r.json()).results||[];}catch{}
+    const ql=q.toLowerCase();
+    // Private / sub-brand matches first, so a listed namesake (e.g. Valmont) never buries the one they want (Valmo).
+    const priv=PRIVATE_COS.filter(c=>c[0].toLowerCase().includes(ql)).slice(0,8)
+      .map(c=>({name:c[0],sub:c[1]?c[1]+' · private / unlisted':'private / unlisted',tag:'Private',ticker:''}));
+    const privNames=new Set(priv.map(p=>p.name.toLowerCase()));
+    let stock=[];
+    try{const r=await fetch('/api/stock-search?q='+encodeURIComponent(q));stock=(await r.json()).results||[];}catch{}
     if(my!==seq)return;
-    if(res.length){render(res,q,true);return;}
-    // fallback to bundled directory
-    const local=COMPANY_DIR.filter(c=>c.toLowerCase().includes(q.toLowerCase())).slice(0,40);
-    render(local,q,false);
+    const listed=stock.filter(c=>!privNames.has((c.name||'').toLowerCase()))
+      .map(c=>({name:c.name,sub:(c.ticker||'')+(c.sector?' · '+c.sector:''),tag:c.country||'',ticker:c.ticker||''}));
+    let items=[...priv,...listed];
+    if(!items.length) items=COMPANY_DIR.filter(c=>c.toLowerCase().includes(ql)).slice(0,20).map(c=>({name:c,sub:'',tag:'',ticker:''}));
+    render(items,q);
   }
   inp.oninput=()=>{clearTimeout(timer);timer=setTimeout(draw,250);};
   inp.onkeydown=e=>{if(e.key==='Enter'&&inp.value.trim())pickCompany(inp.value.trim());};
