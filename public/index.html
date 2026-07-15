@@ -435,7 +435,9 @@
   .refresh-note{color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-right:14px}
   .copick{padding:10px 12px;border-radius:9px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600}
   .copick:hover{background:#f5f3ff}
-  .copick.add{color:var(--brand)}
+  .copick.add{color:#fff;background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 48%,#7c6bcc 100%);font-weight:750;margin-bottom:6px;box-shadow:0 2px 8px rgba(109,94,199,.25)}
+  .copick.add:hover{background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 48%,#7c6bcc 100%);filter:brightness(1.1)}
+  .copick.add .addhint{font-weight:600;opacity:.85;font-size:11.5px}
   .copick .trk{color:var(--green);font-size:11px;font-weight:700}
   /* full-screen analysis takeover */
   .analysis{position:fixed;inset:0;z-index:80;background:radial-gradient(1200px 600px at 50% -10%,#e9ecf5,#f3f4f9 60%);display:none;align-items:center;justify-content:center;padding:22px}
@@ -1247,14 +1249,14 @@ $('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={
 // is a fallback if the API is unavailable.
 function addCompany(){
   const tracked=new Set(RAW.map(p=>(p.company||'').toLowerCase()));
-  openModal(`<h3>Add a company</h3><div class="mnote">Search listed companies by name or ticker, or type any name.</div>
-    <input id="coSearch" placeholder="Search companies… e.g. RELIAN, Kalyan, Delhivery" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
+  openModal(`<h3>Add a company</h3><div class="mnote">Type any company — listed <b>or private / unlisted</b> (e.g. CaratLane, Zepto). Listed names show suggestions; for anything else, click the highlighted <b>“Research …”</b> button at the top.</div>
+    <input id="coSearch" placeholder="Type any company… e.g. CaratLane, Zepto, Kalyan" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
     <div id="coList" style="max-height:360px;overflow:auto;margin-top:8px"></div>`);
   const inp=$('coSearch'),list=$('coList');
   let timer=null,seq=0;
   function trk(name){return tracked.has((name||'').toLowerCase())?'<span class="trk">✓ tracked</span>':'';}
   function render(items,q,fromApi){
-    let html=`<div class="copick add" data-c="${esc(q)}">➕ Add “${esc(q)}” (custom)</div>`;
+    let html=`<div class="copick add" data-c="${esc(q)}">🔍 Research “${esc(q)}”<span class="addhint">any company · listed or private</span></div>`;
     if(fromApi){
       html+=items.map(c=>`<div class="copick" data-c="${esc(c.name)}" data-ticker="${esc(c.ticker||'')}"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(c.ticker)}${c.sector?' · '+esc(c.sector):''}</div></div><span style="font-size:11px;color:var(--faint);white-space:nowrap">${esc(c.country||'')} ${trk(c.name)}</span></div>`).join('');
     }else{
