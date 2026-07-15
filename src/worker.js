@@ -433,8 +433,9 @@ function importStartYear(rec) {
 // Match normalized records to people and (unless dryRun) write Now At + Exposure.
 async function matchAndApply(env, recs, dryRun) {
   const { results: people } = await env.DB.prepare(
-    'SELECT id, full_name, linkedin_url, current_employer, career_start_year FROM people'
+    'SELECT id, full_name, linkedin_url, current_employer, career_start_year, company, company_label FROM people'
   ).all();
+  const sameCo = (a, b) => { const n = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); return !!n(a) && n(a) === n(b); };
   const byLi = new Map(), byName = new Map();
   for (const p of people) {
     const lk = linkedInKey(p.linkedin_url);
@@ -458,7 +459,9 @@ async function matchAndApply(env, recs, dryRun) {
     if (fr.length < 2 || fr.length > 120) fr = '';
     for (const p of targets) {
       const u = updates.get(p.id) || { person: p };
-      if (emp) u.current_employer = emp;
+      // The ex-company is never a valid "Now at" — a scraper that returns the
+      // target company (a stale current position) must not fill this column.
+      if (emp && !sameCo(emp, p.company) && !sameCo(emp, p.company_label)) u.current_employer = emp;
       if (sy != null) u.career_start_year = sy;
       if (fr) u.former_role = fr;
       updates.set(p.id, u);

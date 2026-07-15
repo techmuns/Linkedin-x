@@ -655,22 +655,32 @@ function cleanEmployer(e){
 // ONLY from unambiguous shapes ("… at Company", "Founder Company"). Never a bare
 // "of", which would mangle "Bank of India" → "India".
 function deriveEmployer(p){
+  // The ex-company is never a valid "Now at": if a captured/scraped current
+  // employer equals the company they LEFT (a stale LinkedIn position), ignore
+  // it and read their real current employer from the headline instead.
+  const nrm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const tgt=nrm(p.company), tgtl=nrm(p.company_label);
+  const isTarget=s=>{const n=nrm(s);return !!n&&(n===tgt||n===tgtl);};
   const direct=cleanEmployer(p.current_employer);
-  if(direct)return direct;
+  if(direct&&!isTarget(direct))return direct;
   let h=(p.current_role||'').trim();if(!h)return '';
   h=h.split(/\s*[·|]\s*/)[0].trim();
   const okco=c=>{
     c=(c||'').trim().replace(/\s*[.,]+$/,'').replace(/\s*\.{2,}$/,'').trim();
     if(c.length<2)return '';
     if(/^(ex\b|ex[-\s]|former|self\b|freelance)/i.test(c))return '';
+    if(/^(national|regional|senior|assistant|deputy|global|chief|group|zonal|area|state|country|central|corporate|general|full|part)\b/i.test(c))return '';
     if(/\b(strategist|leader|award|manager|director|officer|head|analyst|consultant|specialist|marketing|operations|strategy)\b/i.test(c))return '';
-    if(p.company&&c.toLowerCase().includes(p.company.toLowerCase()))return '';
+    if(isTarget(c)||(p.company&&c.toLowerCase().includes(p.company.toLowerCase())))return '';
     return c;
   };
   let m=h.match(/\b(?:at|@)\s+([A-Za-z0-9][^,|·]{1,40})$/i);
   if(m){const c=okco(m[1]);if(c)return c;}
   m=h.match(/^(?:co[-\s]?founder|founder|owner|proprietor)\s+(.+)$/i);
   if(m&&/^[A-Z]/.test(m[1].trim())){const c=okco(m[1]);if(c&&!/\b(of|at|the|and|for)\b/i.test(c)&&!/[&]/.test(c)&&c.split(/\s+/).length<=3)return c;}
+  // "Company <department> <title>" — e.g. "AQSA Foods Purchase Head".
+  m=h.match(/^([A-Z][A-Za-z0-9&.\-' ]{1,38}?)\s+(purchase|production|sales|marketing|operations|finance|logistics|procurement|sourcing|category|merchandising|warehouse|quality)\s+(head|manager|lead|director|officer|incharge|in[-\s]?charge)\b/i);
+  if(m){const c=okco(m[1]);if(c)return c;}
   return '';
 }
 function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))return '—';const days=Math.floor((Date.now()-d)/86400000);if(days<=0)return 'today';if(days===1)return '1 day ago';if(days<30)return days+' days ago';const m=Math.floor(days/30);return m+' mo ago';}
