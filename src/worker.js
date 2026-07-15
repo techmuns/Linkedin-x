@@ -63,11 +63,14 @@ function json(data, init = {}) {
 }
 
 function requireAuth(request, env) {
-  // If no token is configured, refuse all writes (fail closed).
-  if (!env.INGEST_TOKEN) return false;
-  const header = request.headers.get('authorization') || '';
-  const token = header.replace(/^Bearer\s+/i, '').trim();
-  return token && token === env.INGEST_TOKEN;
+  // Editing is intentionally OPEN (no password) so the whole team / client can
+  // use the dashboard directly — per the owner's request. Anyone who can reach
+  // this URL can add, edit, import and delete. To lock it back down, restore the
+  // Bearer-token check:
+  //   if (!env.INGEST_TOKEN) return false;
+  //   const token = (request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();
+  //   return token && token === env.INGEST_TOKEN;
+  return true;
 }
 
 // ---- Person upsert -------------------------------------------------------
@@ -644,13 +647,18 @@ async function handleApi(request, env, url, ctx) {
     if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
     const company = normCompany(url.searchParams.get('company'));
     if (!company) return json({ error: 'company required' }, { status: 400 });
-    const res = await env.DB.prepare(
-      `DELETE FROM people
-         WHERE company = ?
-           AND source != 'manual'
-           AND (contacted IS NULL OR contacted = 0 OR contacted = '' OR contacted = 'no')
-           AND (notes IS NULL OR notes = '')`
-    ).bind(company).run();
+    // force=1 removes EVERY contact for the company (used by the "delete company"
+    // button). Without it, manually-added and already-touched rows are kept.
+    const force = url.searchParams.get('force') === '1';
+    const res = force
+      ? await env.DB.prepare('DELETE FROM people WHERE company = ?').bind(company).run()
+      : await env.DB.prepare(
+          `DELETE FROM people
+             WHERE company = ?
+               AND source != 'manual'
+               AND (contacted IS NULL OR contacted = 0 OR contacted = '' OR contacted = 'no')
+               AND (notes IS NULL OR notes = '')`
+        ).bind(company).run();
     return json({ ok: true, deleted: (res.meta && res.meta.changes) || 0 });
   }
 

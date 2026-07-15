@@ -122,6 +122,11 @@
   .copill.active .c{background:rgba(255,255,255,.24);color:#fff}
   .copill.add{border-style:dashed;border-color:#c8cee8;color:#6d5ec7;background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%)}
   .copill.add:hover{border-color:#a78bfa;background:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%)}
+  .codel{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font-size:13px;font-weight:700;line-height:1;opacity:.35;margin-left:-2px;transition:opacity 150ms ease,background 150ms ease,color 150ms ease}
+  .copill:hover .codel{opacity:.7}
+  .codel:hover{opacity:1;background:#fee2e2;color:#dc2626}
+  .copill.active .codel{color:#fff}
+  .copill.active .codel:hover{background:rgba(255,255,255,.25);color:#fff}
   .savedviews{margin-left:auto}
   select.sv{border:1px solid #dde1f1;background:var(--card-bg);border-radius:10px;padding:8px 13px;
     font-weight:650;font-size:12.5px;color:#3d4a68;box-shadow:var(--shadow);cursor:pointer;
@@ -597,7 +602,7 @@
 
 <script>
 const $=id=>document.getElementById(id);
-let TOKEN=localStorage.getItem('lx_token')||'';
+let TOKEN='open';   // editing is open — no password (see setKey)
 let SAVED=new Set(JSON.parse(localStorage.getItem('lx_saved')||'[]'));
 let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';
 
@@ -791,7 +796,7 @@ function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
 function renderPills(){
   const cos=[...new Set(RAW.map(p=>p.company))].map(c=>({company:c,label:RAW.find(x=>x.company===c).company_label,n:RAW.filter(x=>x.company===c).length})).sort((a,b)=>b.n-a.n);
   const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
-    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span></div>`))
+    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
     .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
   const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
   const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
@@ -799,9 +804,24 @@ function renderPills(){
     <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
     <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
   document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
+  document.querySelectorAll('.codel[data-del]').forEach(t=>t.onclick=(e)=>{e.stopPropagation();deleteCompany(t.dataset.del);});
   $('addCo').onclick=addCompany;
   $('savedViews').value=VIEWFILTER;
   $('savedViews').onchange=e=>{VIEWFILTER=e.target.value;render();};
+}
+
+// Delete a tracked company and all of its contacts.
+async function deleteCompany(company){
+  const list=RAW.filter(p=>p.company===company);
+  const label=list[0]?.company_label||company;
+  if(!confirm(`Delete “${label}” and all ${list.length} of its contacts?\n\nThis can’t be undone.`))return;
+  try{
+    const r=await fetch('/api/people?company='+encodeURIComponent(company)+'&force=1',{method:'DELETE',headers:authHeaders()});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){alert('Delete failed: '+(d.error||r.status));return;}
+    if(COMPANY===company)COMPANY='';
+    await loadAll();
+  }catch(e){alert('Delete failed: '+e.message);}
 }
 
 function stypePass(p){
@@ -1026,7 +1046,7 @@ function updateShortlistTray(){
 
 // ---- interactions ----
 function patch(id,body){if(!TOKEN){setKey();if(!TOKEN)return;}return fetch('/api/people/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify(body)}).then(r=>{if(r.status===401){TOKEN='';localStorage.removeItem('lx_token');alert('That edit password was wrong — please re-enter it.');setKey();}});}
-function setKey(){const k=prompt('Enter your edit password to unlock editing.',TOKEN||'');if(k!==null){TOKEN=k.trim();localStorage.setItem('lx_token',TOKEN);}}
+function setKey(){TOKEN='open';}   // password removed — editing is open to anyone using the dashboard
 function toggleSave(id){const p=RAW.find(x=>x.id===id);if(!p)return;p._saved=!p._saved;if(p._saved)SAVED.add(id);else SAVED.delete(id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));render();}
 
 document.addEventListener('click',e=>{
@@ -1267,8 +1287,8 @@ $('m_save').onclick=async()=>{if(!TOKEN){setKey();if(!TOKEN)return;}const body={
 // is a fallback if the API is unavailable.
 function addCompany(){
   const tracked=new Set(RAW.map(p=>(p.company||'').toLowerCase()));
-  openModal(`<h3>Add a company</h3><div class="mnote">Type any company — listed <b>or private / unlisted</b> (e.g. CaratLane, Zepto). Listed names show suggestions; for anything else, click the highlighted <b>“Research …”</b> button at the top.</div>
-    <input id="coSearch" placeholder="Type any company… e.g. CaratLane, Zepto, Kalyan" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
+  openModal(`<h3>Add a company</h3><div class="mnote">Type any company — listed, private/unlisted, or a <b>subsidiary / sub-brand</b> (e.g. <b>Valmo</b> — part of Meesho; <b>CaratLane</b> — part of Titan). Just type the small company's own name and click the highlighted <b>“Research …”</b> button — no need to search the parent.</div>
+    <input id="coSearch" placeholder="Type any company or sub-brand… e.g. Valmo, CaratLane, Zepto" autocomplete="off" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px"/>
     <div id="coList" style="max-height:360px;overflow:auto;margin-top:8px"></div>`);
   const inp=$('coSearch'),list=$('coList');
   let timer=null,seq=0;
