@@ -380,6 +380,7 @@ const IMPORT_ALIASES = {
   last: ['last name', 'last_name', 'lastname', 'surname', 'family name'],
   linkedin: ['linkedin url', 'linkedin', 'linkedin profile', 'profile url', 'li url', 'linkedin_url'],
   now_at: ['now at', 'now_at', 'current employer', 'current company', 'company name', 'company', 'employer', 'organization', 'organisation'],
+  former_role: ['former role', 'former_role', 'former title', 'past role', 'previous role', 'role at company', 'former position', 'ex role'],
   years: ['years of experience', 'total experience', 'years experience', 'experience (years)', 'experience', 'years', 'yrs', 'exp'],
   start_year: ['career start year', 'career start', 'start year', 'working since', 'first job year', 'since'],
 };
@@ -400,7 +401,7 @@ function normalizeImportRows(text) {
     let name = val(r, col.name);
     if (!name && (col.first >= 0 || col.last >= 0)) name = (val(r, col.first) + ' ' + val(r, col.last)).trim();
     const rec = { name, linkedin: val(r, col.linkedin), now_at: val(r, col.now_at),
-      years: val(r, col.years), start_year: val(r, col.start_year) };
+      former_role: val(r, col.former_role), years: val(r, col.years), start_year: val(r, col.start_year) };
     if (rec.name || rec.linkedin) out.push(rec);
   }
   return out;
@@ -453,29 +454,34 @@ async function matchAndApply(env, recs, dryRun) {
     matchedRows++;
     const emp = cleanImportEmployer(rec.now_at);
     const sy = importStartYear(rec);
+    let fr = String(rec.former_role || '').trim().replace(/\s+/g, ' ');
+    if (fr.length < 2 || fr.length > 120) fr = '';
     for (const p of targets) {
       const u = updates.get(p.id) || { person: p };
       if (emp) u.current_employer = emp;
       if (sy != null) u.career_start_year = sy;
+      if (fr) u.former_role = fr;
       updates.set(p.id, u);
     }
   }
   const NOW = new Date().toISOString(), thisYear = new Date().getFullYear();
-  let employers = 0, experiences = 0; const samples = [];
+  let employers = 0, experiences = 0, formerRoles = 0; const samples = [];
   for (const [id, u] of updates) {
     const sets = [], binds = [];
     if ('current_employer' in u) { employers++; sets.push('current_employer = ?'); binds.push(u.current_employer); }
     if ('career_start_year' in u) { experiences++; sets.push('career_start_year = ?'); binds.push(u.career_start_year); }
+    if ('former_role' in u) { formerRoles++; sets.push('former_role = ?'); binds.push(u.former_role); }
     if (!sets.length) continue;
     if (samples.length < 8) samples.push({ name: u.person.full_name,
       now_at: 'current_employer' in u ? u.current_employer : undefined,
+      former_role: 'former_role' in u ? u.former_role : undefined,
       years: 'career_start_year' in u ? (thisYear - u.career_start_year) : undefined });
     if (!dryRun) {
       sets.push('updated_at = ?'); binds.push(NOW); binds.push(id);
       await env.DB.prepare(`UPDATE people SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
     }
   }
-  return { rows: recs.length, matchedRows, updatedPeople: updates.size, employers, experiences,
+  return { rows: recs.length, matchedRows, updatedPeople: updates.size, employers, experiences, formerRoles,
     unmatched: unmatched.slice(0, 30), unmatchedCount: unmatched.length, samples, dryRun: !!dryRun };
 }
 
@@ -509,6 +515,7 @@ async function ensureSchema(env) {
   if (schemaEnsured) return;
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN photo_url TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN career_start_year INTEGER').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN former_role TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
@@ -651,7 +658,7 @@ async function handleApi(request, env, url, ctx) {
     const id = m[1];
     const body = await request.json();
     const editable = ['contacted', 'notes', 'last_role', 'current_employer', 'current_role',
-      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'photo_url', 'location', 'career_start_year'];
+      'tenure_start', 'tenure_end', 'relationship', 'linkedin_url', 'photo_url', 'location', 'career_start_year', 'former_role'];
     const sets = [], binds = [];
     for (const k of editable) {
       if (k in body) { sets.push(`${k} = ?`); binds.push(body[k]); }

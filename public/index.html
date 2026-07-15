@@ -961,11 +961,14 @@ function tableRow(p){
     </td>
     <td>
       <div class="trole-main">${esc(roleTitle(p))}</div>
-      ${co?`<div class="trole-co">${leftCo?'Former: ':'At '}${esc(co)}</div>`:''}
-      ${leftCo&&emp?`<div class="trole-former">Now: ${esc(emp)}</div>`:''}
     </td>
     <td>
       ${emp?`<span class="tnowat">${esc(emp)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
+    </td>
+    <td>
+      ${p.former_role
+        ? `<div class="trole-main">${esc(p.former_role)}</div>${co?`<div class="trole-co">at ${esc(co)}</div>`:''}`
+        : (leftCo&&co ? `<span class="tnowat empty">Ex-${esc(co)}</span>` : `<span class="tnowat empty">—</span>`)}
     </td>
     <td>
       <div class="exposure">${exposureChips(p).map(c=>`<span class="xchip ${c.cls}">${esc(c.text)}</span>`).join('')}</div>
@@ -989,7 +992,7 @@ function render(){
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   updateShortlistTray();
 }
 function updateShortlistTray(){
@@ -1156,9 +1159,9 @@ async function getPhotos(){
 // two columns. Preview before applying; the Sheet option also re-syncs daily.
 $('importBtn').onclick=openImport;
 function impPreviewHtml(d){
-  let s=`<b>${d.matchedRows}</b> of <b>${d.rows}</b> rows matched a contact — Now At for <b>${d.employers}</b>, Exposure for <b>${d.experiences}</b>.`;
+  let s=`<b>${d.matchedRows}</b> of <b>${d.rows}</b> rows matched a contact — Now At for <b>${d.employers}</b>${d.formerRoles?`, Former Role for <b>${d.formerRoles}</b>`:''}, Exposure for <b>${d.experiences}</b>.`;
   if(d.samples&&d.samples.length){
-    s+='<div style="margin-top:6px;color:#2a3652">'+d.samples.map(x=>`• ${esc(x.name)}${x.now_at?': now at <b>'+esc(x.now_at)+'</b>':''}${x.years!=null?' · '+x.years+'y exp':''}`).join('<br>')+'</div>';
+    s+='<div style="margin-top:6px;color:#2a3652">'+d.samples.map(x=>`• ${esc(x.name)}${x.now_at?': now at <b>'+esc(x.now_at)+'</b>':''}${x.former_role?' · was <b>'+esc(x.former_role)+'</b>':''}${x.years!=null?' · '+x.years+'y exp':''}`).join('<br>')+'</div>';
   }
   if(d.unmatchedCount){
     s+=`<div style="margin-top:6px;color:#6b7794">${d.unmatchedCount} row(s) didn't match anyone${d.unmatched&&d.unmatched.length?': '+esc(d.unmatched.slice(0,8).join(', '))+(d.unmatchedCount>8?'…':''):''}.</div>`;
@@ -1169,7 +1172,7 @@ function openImport(){
   openModal(`<h3>⬆ Import “Now At” + Exposure</h3>
     <div class="mnote">Fill these columns from data you export yourself — a ZoomInfo CSV, any spreadsheet, or a Google Sheet. Nothing is scraped and no login is shared. Rows match your contacts by LinkedIn URL or name.</div>
     <h4 style="margin:16px 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">OPTION 1 · UPLOAD A CSV (or paste rows)</h4>
-    <div class="mnote" style="margin-bottom:8px">Header row required. Recognised columns (any order): <b>Name</b> (or First/Last name), <b>LinkedIn</b>, <b>Now At</b> (or Company / Current Employer), and <b>Years</b> of experience (or Start Year).</div>
+    <div class="mnote" style="margin-bottom:8px">Header row required. Recognised columns (any order): <b>Name</b> (or First/Last name), <b>LinkedIn</b>, <b>Now At</b> (or Company / Current Employer), <b>Former Role</b> (their role at the ex-company), and <b>Years</b> of experience (or Start Year).</div>
     <input type="file" id="imp_file" accept=".csv,text/csv,text/plain" style="width:100%;font-size:13px"/>
     <textarea id="imp_text" placeholder="…or paste CSV here — first line is the header, e.g.  Name,Now At,Years" style="width:100%;height:84px;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:12px;font-family:ui-monospace,Menlo,monospace"></textarea>
     <div id="imp_preview" class="mnote" style="margin-top:8px"></div>
@@ -1179,7 +1182,7 @@ function openImport(){
     </div>
     <div style="height:1px;background:var(--line);margin:18px 0"></div>
     <h4 style="margin:0 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">OPTION 2 · GOOGLE SHEET AUTO-SYNC</h4>
-    <div class="mnote" style="margin-bottom:8px">Paste a Google Sheet link set to <b>Anyone with the link · Viewer</b>. Columns: <b>Name</b>, <b>Now At</b>, <b>Years</b>. It syncs now and re-syncs automatically every day — top it up whenever you like.</div>
+    <div class="mnote" style="margin-bottom:8px">Paste a Google Sheet link set to <b>Anyone with the link · Viewer</b>. Columns: <b>Name</b>, <b>Now At</b>, <b>Former Role</b>, <b>Years</b>. It syncs now and re-syncs automatically every day — top it up whenever you like.</div>
     <input id="imp_sheet" placeholder="https://docs.google.com/spreadsheets/d/…" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:13px"/>
     <div id="imp_sheetmsg" class="mnote" style="margin-top:8px"></div>
     <div class="acts" style="justify-content:flex-start;margin-top:8px">
