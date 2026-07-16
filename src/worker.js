@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -106,6 +106,7 @@ async function upsertPerson(env, input) {
     relationship: input.relationship || existing?.relationship || 'ex_employee',
     last_role: input.last_role ?? existing?.last_role ?? null,
     former_role: input.former_role ?? existing?.former_role ?? null,
+    education: input.education ?? existing?.education ?? null,
     current_employer: input.current_employer ?? existing?.current_employer ?? null,
     current_role: input.current_role ?? existing?.current_role ?? null,
     tenure_start: input.tenure_start ?? existing?.tenure_start ?? null,
@@ -125,12 +126,12 @@ async function upsertPerson(env, input) {
   if (existing) {
     await env.DB.prepare(
       `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?, former_role=?,
-         seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
+         education=?, seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
          is_current=?, location=?, linkedin_url=?, photo_url=?, source=?, source_detail=?, score=?,
          updated_at=? WHERE id=?`
     ).bind(
       merged.full_name, merged.company_label, merged.relationship, merged.last_role, merged.former_role,
-      merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
+      merged.education, merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
       merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url, merged.photo_url,
       merged.source, merged.source_detail, merged.score, now, existing.id
     ).run();
@@ -140,13 +141,13 @@ async function upsertPerson(env, input) {
   const id = crypto.randomUUID();
   await env.DB.prepare(
     `INSERT INTO people (id, full_name, company, company_label, relationship, last_role, former_role,
-       seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
+       education, seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
        location, linkedin_url, photo_url, source, source_detail, score, contacted, notes,
        created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, merged.full_name, merged.company, merged.company_label, merged.relationship,
-    merged.last_role, merged.former_role, merged.seniority, merged.current_employer, merged.current_role,
+    merged.last_role, merged.former_role, merged.education, merged.seniority, merged.current_employer, merged.current_role,
     merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
     merged.linkedin_url, merged.photo_url, merged.source, merged.source_detail, merged.score,
     merged.contacted, merged.notes, now, now
@@ -168,6 +169,8 @@ async function setSearch(env, id, status, found, message) {
 // searches row so the dashboard can show progress / completion.
 async function runResearchJob(env, id, company) {
   try {
+    // Phase 1: search + ZoomInfo. Store and mark the search done immediately so
+    // the dashboard shows results fast, even if the slower Apify pass fails.
     const people = await researchCompany(env, company);
     let created = 0, updated = 0;
     for (const p of people) {
@@ -177,6 +180,18 @@ async function runResearchJob(env, id, company) {
     }
     await setSearch(env, id, 'done', people.length,
       `${people.length} people (created ${created}, updated ${updated})`);
+
+    // Phase 2: Apify reads the real profiles and fills the true Now At + Exposure
+    // + education. Best-effort: any failure leaves the phase-1 results intact.
+    if (hasApify(env)) {
+      try {
+        const enriched = await apifyEnrich(env, company, people);
+        for (const p of enriched) await upsertPerson(env, p);
+        const withNow = enriched.filter(p => p.current_employer).length;
+        await setSearch(env, id, 'done', enriched.length,
+          `${enriched.length} people · Now At for ${withNow}`);
+      } catch { /* keep phase-1 result */ }
+    }
     return { people: people.length, created, updated };
   } catch (e) {
     await setSearch(env, id, 'error', 0, String((e && e.message) || e));
@@ -523,6 +538,7 @@ async function ensureSchema(env) {
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN photo_url TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN career_start_year INTEGER').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN former_role TEXT').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN education TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }

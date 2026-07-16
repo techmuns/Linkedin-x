@@ -418,41 +418,196 @@ async function researchZoomInfo(searcher, env, company) {
 
 const firstNonEmpty = (...vals) => { for (const v of vals) if (v != null && v !== '') return v; return null; };
 
-// Merge a LinkedIn-search record (s) and a ZoomInfo record (z) for the same
-// person. ZoomInfo wins on Now At / Exposure / status (it structures those);
-// search keeps the LinkedIn URL and headline (ZoomInfo has neither).
-function combineRecords(s, z) {
+// ---- Apify LinkedIn profile enrichment -------------------------------------
+// The search finds WHO the ex/current employees are (with their LinkedIn URL).
+// Apify then reads each of those actual profiles and returns the real current
+// employer ("Now At"), the exact years at the target company ("Exposure"), and
+// their education. This is what fills Now At for every person the search finds —
+// not just the handful ZoomInfo's free page happens to list.
+//
+// dev_fusion/linkedin-profile-scraper: input { profileUrls: [...] }, output per
+// profile has fullName, headline, companyName (current), jobTitle, experiences[],
+// educations[]. It does not use the user's LinkedIn login (no account risk).
+
+export function hasApify(env) {
+  return !!env.APIFY_TOKEN;
+}
+
+const APIFY_ACTOR = 'dev_fusion~linkedin-profile-scraper';
+const APIFY_MAX = 15;   // profiles per search — bounds cost + Worker run time
+
+function cleanKey(url) {
+  const u = cleanLinkedInUrl(url);
+  return u ? u.toLowerCase() : '';
+}
+
+// A company string from a profile matches the target we're researching?
+function companyMatches(co, target) {
+  const a = normName(co), b = normName(target);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (b.length >= 5 && (a.startsWith(b + ' ') || a.startsWith(b + '-') || a.startsWith(b + ',') || a === b)) return true;
+  if (b.length >= 6 && a.includes(b)) return true;
+  return false;
+}
+
+function yearsIn(text) {
+  const ys = String(text || '').match(/(?:19|20)\d{2}/g);
+  return ys ? ys.map(Number) : [];
+}
+
+// Pull company / title / year-range out of one experiences[] entry, tolerating
+// the several shapes these actors use.
+function expCompany(e) {
+  return e.companyName || e.company || e.subtitle || e.subtitle1 || e.companyName1 || '';
+}
+function expTitle(e) {
+  return e.title || e.jobTitle || e.position || e.role || '';
+}
+function expStillHere(e) {
+  if (e.jobStillWorking === true || e.stillWorking === true || e.current === true) return true;
+  const d = String(e.caption || e.dates || e.duration || e.jobEndedOn || e.endDate || '');
+  return /present|current/i.test(d);
+}
+function expYears(e) {
+  const blob = [e.caption, e.dates, e.duration, e.startDate, e.endDate, e.jobStartedOn, e.jobEndedOn]
+    .filter(Boolean).join(' ');
+  const ys = yearsIn(blob);
+  return { start: ys.length ? String(Math.min(...ys)) : null, end: ys.length > 1 ? String(Math.max(...ys)) : null };
+}
+
+function schoolsOf(item) {
+  const eds = Array.isArray(item.educations) ? item.educations : [];
+  const names = eds.map(e => e.title || e.schoolName || e.school || e.university || e.subtitle || '')
+    .map(s => String(s).trim()).filter(Boolean);
+  return names.length ? [...new Set(names)].join(' | ') : null;
+}
+
+// One Apify profile -> our person shape (relative to the company being researched).
+function parseApifyProfile(item, company) {
+  if (!item || item.succeeded === false) return null;
+  const url = cleanLinkedInUrl(item.linkedinUrl || item.linkedinPublicUrl || item.inputUrl);
+  const name = item.fullName || [item.firstName, item.lastName].filter(Boolean).join(' ').trim();
+  if (!name) return null;
+
+  const nowCompany = (item.companyName || '').trim() || null;   // present employer
+  const nowTitle = (item.jobTitle || item.headline || '').trim() || null;
+  const nowIsTarget = nowCompany && companyMatches(nowCompany, company);
+
+  // Find their stint at the TARGET company (top-level current job first, then history).
+  const exps = Array.isArray(item.experiences) ? item.experiences : [];
+  const topExp = {
+    companyName: item.companyName, title: item.jobTitle,
+    jobStartedOn: item.jobStartedOn, jobEndedOn: item.jobEndedOn, jobStillWorking: item.jobStillWorking,
+  };
+  let tStart = null, tEnd = null, roleAtTarget = null, stillAtTarget = false, found = false;
+  for (const e of [topExp, ...exps]) {
+    const co = expCompany(e);
+    if (!co || !companyMatches(co, company)) continue;
+    const y = expYears(e);
+    const still = expStillHere(e);
+    tStart = y.start; tEnd = still ? null : y.end; roleAtTarget = expTitle(e) || null; stillAtTarget = still; found = true;
+    break;
+  }
+
+  const isCurrent = (nowIsTarget || stillAtTarget) ? 1 : 0;
   return {
-    ...s,
-    current_employer: firstNonEmpty(z.current_employer, s.current_employer),
-    tenure_start: firstNonEmpty(z.tenure_start, s.tenure_start),
-    tenure_end: firstNonEmpty(z.tenure_end, s.tenure_end),
-    last_role: firstNonEmpty(z.last_role, s.last_role),
-    former_role: firstNonEmpty(z.former_role, s.former_role, s.last_role),
-    is_current: z.is_current != null ? z.is_current : s.is_current,
-    relationship: z.relationship || s.relationship,
-    seniority: firstNonEmpty(z.seniority, s.seniority),
-    linkedin_url: firstNonEmpty(s.linkedin_url, z.linkedin_url),
-    current_role: firstNonEmpty(s.current_role, z.current_role),
-    source: 'zoominfo+search',
-    source_detail: firstNonEmpty(s.source_detail, z.source_detail),
+    full_name: name,
+    company,
+    company_label: company,
+    linkedin_url: url,
+    relationship: isCurrent ? 'current_employee' : 'ex_employee',
+    is_current: isCurrent,
+    // Now At: their present employer if it isn't the target; if they're still at
+    // the target, current_employer stays the target so the UI shows "Still at X".
+    current_employer: (nowCompany && !nowIsTarget) ? nowCompany : (isCurrent ? company : null),
+    current_role: nowTitle,
+    former_role: isCurrent ? null : (roleAtTarget || null),
+    last_role: roleAtTarget || nowTitle || null,
+    tenure_start: tStart,
+    tenure_end: tEnd,
+    seniority: seniorityOf(roleAtTarget || nowTitle || item.headline || ''),
+    education: schoolsOf(item),
+    source: 'apify',
+    source_detail: url,
+    _matchedTarget: found,
   };
 }
 
-// Union search people + ZoomInfo people, keyed by normalized name.
-function mergeByName(searchPeople, ziPeople) {
-  const zByName = new Map();
-  for (const p of ziPeople) { const k = normName(p.full_name); if (k && !zByName.has(k)) zByName.set(k, p); }
-  const out = new Map();
-  for (const s of searchPeople) {
-    const k = normName(s.full_name);
-    if (!k) continue;
-    const z = zByName.get(k);
-    out.set(k, z ? combineRecords(s, z) : s);
-    if (z) zByName.delete(k);
+// Run the Apify actor on a batch of profile URLs and return parsed records.
+async function apifyEnrichProfiles(env, urls, company) {
+  const list = [...new Set(urls.filter(Boolean))].slice(0, APIFY_MAX);
+  if (!list.length) return [];
+  // Ask Apify to give up after 120s; abort the fetch at 130s as a hard backstop
+  // so this can never hang the Worker.
+  const endpoint = `https://api.apify.com/v2/acts/${APIFY_ACTOR}/run-sync-get-dataset-items?timeout=120`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 130000);
+  try {
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + env.APIFY_TOKEN, 'content-type': 'application/json' },
+      body: JSON.stringify({ profileUrls: list }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`apify ${r.status}`);
+    const items = await r.json().catch(() => null);
+    if (!Array.isArray(items)) return [];
+    return items.map(it => parseApifyProfile(it, company)).filter(Boolean);
+  } finally {
+    clearTimeout(timer);
   }
-  for (const [k, z] of zByName) if (!out.has(k)) out.set(k, z);
-  return [...out.values()];
+}
+
+// ---- Merge sources ---------------------------------------------------------
+// Layer the three sources by trust. Search is the base (it has the LinkedIn URL).
+// ZoomInfo fills Now At / Exposure it can. Apify — which reads the real profile —
+// overrides everyone on the fields it's authoritative for. Records are matched
+// across sources by LinkedIn URL when present, otherwise by name (ZoomInfo has
+// no URL), so a person found three ways collapses into one row.
+const ZI_FIELDS = ['current_employer', 'tenure_start', 'tenure_end', 'former_role', 'last_role', 'is_current', 'relationship', 'seniority'];
+const APIFY_FIELDS = [...ZI_FIELDS, 'current_role', 'education', 'full_name'];
+
+function mergeSources(searchPeople, ziPeople, apifyPeople) {
+  const map = new Map();       // canonicalKey -> person
+  const nameIdx = new Map();   // normName -> canonicalKey
+  const urlIdx = new Map();    // cleanKey(url) -> canonicalKey
+
+  const locate = r => {
+    const u = cleanKey(r.linkedin_url), n = normName(r.full_name);
+    if (u && urlIdx.has(u)) return urlIdx.get(u);
+    if (n && nameIdx.has(n)) return nameIdx.get(n);
+    return null;
+  };
+  const index = (key, p) => {
+    const u = cleanKey(p.linkedin_url), n = normName(p.full_name);
+    if (u) urlIdx.set(u, key);
+    if (n) nameIdx.set(n, key);
+  };
+  const apply = (records, overrideFields) => {
+    for (const r of records || []) {
+      if (!r || !r.full_name) continue;
+      let key = locate(r);
+      if (key == null) {
+        key = cleanKey(r.linkedin_url) || normName(r.full_name);
+        const copy = { ...r }; map.set(key, copy); index(key, copy);
+        continue;
+      }
+      const merged = { ...map.get(key) };
+      for (const [f, v] of Object.entries(r)) {
+        if (v == null || v === '' || f === 'source' || f === 'source_detail') continue;
+        if (overrideFields.includes(f) || merged[f] == null || merged[f] === '') merged[f] = v;
+      }
+      // Track provenance for the source_detail column (best-effort).
+      merged.source = merged.source === r.source ? merged.source : [merged.source, r.source].filter(Boolean).join('+');
+      map.set(key, merged); index(key, merged);
+    }
+  };
+
+  apply(searchPeople, []);         // base
+  apply(ziPeople, ZI_FIELDS);      // ZoomInfo fills / refines Now At + Exposure
+  apply(apifyPeople, APIFY_FIELDS); // Apify (real profile) overrides
+  return [...map.values()];
 }
 
 // Research one company and return a de-duplicated list of senior ex-employees.
@@ -489,5 +644,24 @@ export async function researchCompany(env, company, opts = {}) {
   if (hasFirecrawl(env)) {
     try { ziPeople = await researchZoomInfo(searcher, env, company); } catch { ziPeople = []; }
   }
-  return mergeByName(searchPeople, ziPeople);
+
+  // NB: Apify enrichment (the real Now At + Exposure + education from each
+  // profile) is deliberately NOT run here. It's a slower call, so the Worker
+  // stores these search + ZoomInfo results first (so the search never comes back
+  // empty), then calls apifyEnrich() as a second pass that updates the rows.
+  return mergeSources(searchPeople, ziPeople, []);
+}
+
+// Second pass: read the actual LinkedIn profiles we found (via Apify) and fold
+// the real Now At + Exposure + education back onto the people. Feed it the base
+// list returned by researchCompany. Best-effort — on any failure it returns the
+// base list unchanged, so a slow/broken Apify never loses the search results.
+export async function apifyEnrich(env, company, basePeople) {
+  if (!hasApify(env) || !Array.isArray(basePeople) || !basePeople.length) return basePeople;
+  const urls = basePeople.map(p => p.linkedin_url).filter(Boolean);
+  if (!urls.length) return basePeople;
+  let apifyPeople = [];
+  try { apifyPeople = await apifyEnrichProfiles(env, urls, company); } catch { return basePeople; }
+  if (!apifyPeople.length) return basePeople;
+  return mergeSources(basePeople, [], apifyPeople);
 }
