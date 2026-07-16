@@ -89,16 +89,10 @@ async function findExisting(env, person) {
   return row || null;
 }
 
-async function upsertPerson(env, input) {
-  if (!input.full_name || !input.company) {
-    return { ok: false, reason: 'missing full_name or company' };
-  }
-  const now = new Date().toISOString();
+// Merge incoming fields onto an existing row (incoming non-empty wins; never
+// clobber the user's contacted/notes).
+function mergePersonFields(existing, input) {
   const company = normCompany(input.company);
-  const existing = await findExisting(env, input);
-
-  // Merge: incoming non-empty fields win, but never clobber the user's
-  // contacted/notes once set.
   const merged = {
     full_name: input.full_name,
     company,
@@ -122,9 +116,15 @@ async function upsertPerson(env, input) {
   };
   merged.seniority = input.seniority || classifySeniority(merged.last_role || merged.current_role);
   merged.score = computeScore(merged);
+  return merged;
+}
 
+// Build (but don't run) the INSERT/UPDATE statement for one person. Returned so
+// callers can run it directly or hand a batch of them to env.DB.batch().
+function buildPersonStatement(env, existing, input, now) {
+  const merged = mergePersonFields(existing, input);
   if (existing) {
-    await env.DB.prepare(
+    const stmt = env.DB.prepare(
       `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?, former_role=?,
          education=?, seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
          is_current=?, location=?, linkedin_url=?, photo_url=?, source=?, source_detail=?, score=?,
@@ -134,12 +134,11 @@ async function upsertPerson(env, input) {
       merged.education, merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
       merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url, merged.photo_url,
       merged.source, merged.source_detail, merged.score, now, existing.id
-    ).run();
-    return { ok: true, id: existing.id, updated: true };
+    );
+    return { stmt, id: existing.id, created: false };
   }
-
   const id = crypto.randomUUID();
-  await env.DB.prepare(
+  const stmt = env.DB.prepare(
     `INSERT INTO people (id, full_name, company, company_label, relationship, last_role, former_role,
        education, seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
        location, linkedin_url, photo_url, source, source_detail, score, contacted, notes,
@@ -151,8 +150,51 @@ async function upsertPerson(env, input) {
     merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
     merged.linkedin_url, merged.photo_url, merged.source, merged.source_detail, merged.score,
     merged.contacted, merged.notes, now, now
-  ).run();
-  return { ok: true, id, created: true };
+  );
+  return { stmt, id, created: true };
+}
+
+async function upsertPerson(env, input) {
+  if (!input.full_name || !input.company) {
+    return { ok: false, reason: 'missing full_name or company' };
+  }
+  const existing = await findExisting(env, input);
+  const { stmt, id, created } = buildPersonStatement(env, existing, input, new Date().toISOString());
+  await stmt.run();
+  return created ? { ok: true, id, created: true } : { ok: true, id, updated: true };
+}
+
+// Upsert many people for one company in a SINGLE D1 round-trip. Loads the
+// company's existing rows once, decides insert-vs-update in memory, then batches
+// every write. This is what keeps a 50-person search from spending its whole
+// Worker time budget on sequential DB calls (which left searches stuck "running").
+async function upsertPeopleBulk(env, company, people) {
+  const co = normCompany(company);
+  const existingRows = await env.DB.prepare('SELECT * FROM people WHERE company = ?').bind(co).all();
+  const byUrl = new Map(), byName = new Map();
+  for (const r of existingRows.results || []) {
+    if (r.linkedin_url) byUrl.set(r.linkedin_url, r);
+    byName.set((r.full_name || '').toLowerCase(), r);
+  }
+  const now = new Date().toISOString();
+  const stmts = [];
+  let created = 0, updated = 0;
+  for (const input of people) {
+    if (!input.full_name || !input.company) continue;
+    const existing = (input.linkedin_url && byUrl.get(input.linkedin_url)) ||
+                     byName.get((input.full_name || '').toLowerCase()) || null;
+    const built = buildPersonStatement(env, existing, input, now);
+    stmts.push(built.stmt);
+    if (built.created) created++; else updated++;
+    // Keep local maps current so a duplicate within this same batch updates the
+    // row we just created rather than inserting twice.
+    const row = { ...(existing || {}), id: built.id, full_name: input.full_name,
+      linkedin_url: input.linkedin_url ?? existing?.linkedin_url ?? null };
+    if (row.linkedin_url) byUrl.set(row.linkedin_url, row);
+    byName.set((input.full_name || '').toLowerCase(), row);
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return { created, updated, total: people.length };
 }
 
 // ---- Research jobs (run inside the Worker) -------------------------------
@@ -169,30 +211,15 @@ async function setSearch(env, id, status, found, message) {
 // searches row so the dashboard can show progress / completion.
 async function runResearchJob(env, id, company) {
   try {
-    // Phase 1: search + ZoomInfo. Store and mark the search done immediately so
-    // the dashboard shows results fast, even if the slower Apify pass fails.
+    // Fast pass only: search + ZoomInfo, then ONE batched write. Kept short so it
+    // finishes well inside the Worker's time budget and the search reliably marks
+    // "done". The slower Apify profile-read happens separately, in /api/enrich-
+    // apify, which the dashboard polls in small batches after the search lands.
     const people = await researchCompany(env, company);
-    let created = 0, updated = 0;
-    for (const p of people) {
-      const r = await upsertPerson(env, p);
-      if (r.ok && r.created) created++;
-      else if (r.ok) updated++;
-    }
+    const r = await upsertPeopleBulk(env, company, people);
     await setSearch(env, id, 'done', people.length,
-      `${people.length} people (created ${created}, updated ${updated})`);
-
-    // Phase 2: Apify reads the real profiles and fills the true Now At + Exposure
-    // + education. Best-effort: any failure leaves the phase-1 results intact.
-    if (hasApify(env)) {
-      try {
-        const enriched = await apifyEnrich(env, company, people);
-        for (const p of enriched) await upsertPerson(env, p);
-        const withNow = enriched.filter(p => p.current_employer).length;
-        await setSearch(env, id, 'done', enriched.length,
-          `${enriched.length} people · Now At for ${withNow}`);
-      } catch { /* keep phase-1 result */ }
-    }
-    return { people: people.length, created, updated };
+      `${people.length} people (created ${r.created}, updated ${r.updated})`);
+    return { people: people.length, ...r };
   } catch (e) {
     await setSearch(env, id, 'error', 0, String((e && e.message) || e));
     return { error: String((e && e.message) || e) };
@@ -722,11 +749,55 @@ async function handleApi(request, env, url, ctx) {
       await setSearch(env, id, 'error', 0, 'No search API key configured (set SERPER_API_KEY).');
       return json({ ok: true, id, ran: false, error: 'no_search_key' });
     }
-    // Run in the background so the request returns immediately; the dashboard
-    // polls /api/searches + /api/people and reveals results when they land.
-    const job = runResearchJob(env, id, company);
-    if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
-    return json({ ok: true, id, ran: true });
+    // Run synchronously and await it: the fast pass (search + ZoomInfo + one
+    // batched write) finishes in a few seconds, and awaiting it in the request
+    // avoids the background-execution (waitUntil) time budget that was cutting the
+    // job off mid-write and leaving searches stuck "running".
+    const r = await runResearchJob(env, id, company);
+    return json({ ok: true, id, ran: true, ...r });
+  }
+
+  // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
+  // small batch of a company's people who haven't been enriched yet, and fill
+  // their true Now At + Exposure + education. Body: { company, limit? }. The
+  // dashboard calls this repeatedly until { remaining: 0 }. Each call reads a few
+  // profiles so it stays inside one request's time budget.
+  if (path === '/api/enrich-apify' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    if (!hasApify(env)) return json({ ok: true, enriched: 0, remaining: 0, disabled: true });
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const limit = Math.min(Math.max(Number(body.limit) || 5, 1), 10);
+    const co = normCompany(company);
+    // People with a LinkedIn URL that Apify hasn't already read (source has no
+    // 'apify'). Seniors first — they matter most and we want them enriched even
+    // if the client stops early.
+    const rows = await env.DB.prepare(
+      `SELECT * FROM people WHERE company = ? AND linkedin_url IS NOT NULL AND linkedin_url != ''
+         AND (source IS NULL OR source NOT LIKE '%apify%')
+       ORDER BY score DESC LIMIT ?`
+    ).bind(co, limit + 1).all();
+    const batch = (rows.results || []).slice(0, limit);
+    const remaining = Math.max(0, (rows.results || []).length - batch.length);
+    if (!batch.length) return json({ ok: true, enriched: 0, remaining: 0 });
+    const enriched = await apifyEnrich(env, company, batch.map(r => ({
+      full_name: r.full_name, company, company_label: r.company_label || company,
+      linkedin_url: r.linkedin_url, current_employer: r.current_employer,
+      current_role: r.current_role, seniority: r.seniority,
+      is_current: r.is_current, relationship: r.relationship, source: r.source,
+    })));
+    // Mark every profile we attempted so it's excluded from the next poll — even
+    // ones Apify couldn't read — otherwise the dashboard's "until remaining==0"
+    // loop would retry the unreadable ones forever and burn credits. ('apifymiss'
+    // still matches the NOT LIKE '%apify%' filter, so those rows drop out too.)
+    for (const p of enriched) {
+      if (!/apify/.test(p.source || '')) p.source = (p.source || 'search') + '+apifymiss';
+    }
+    const r = await upsertPeopleBulk(env, company, enriched);
+    const nowFilled = enriched.filter(p => p.current_employer &&
+      normCompany(p.current_employer) !== co).length;
+    return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining });
   }
 
   // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing

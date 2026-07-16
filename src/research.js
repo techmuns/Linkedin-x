@@ -506,8 +506,14 @@ function parseApifyProfile(item, company) {
     if (!co || !companyMatches(co, company)) continue;
     const y = expYears(e);
     const still = expStillHere(e);
-    tStart = y.start; tEnd = still ? null : y.end; roleAtTarget = expTitle(e) || null; stillAtTarget = still; found = true;
-    break;
+    // Keep the first match, but prefer one that actually carries years — the
+    // top-level job entry sometimes lacks dates while the experiences[] entry
+    // for the same company has them.
+    if (!found || (y.start && !tStart)) {
+      tStart = y.start; tEnd = still ? null : y.end;
+      roleAtTarget = expTitle(e) || roleAtTarget || null; stillAtTarget = still; found = true;
+    }
+    if (y.start) break;
   }
 
   const isCurrent = (nowIsTarget || stillAtTarget) ? 1 : 0;

@@ -310,6 +310,14 @@
     display:none;align-items:center;gap:16px;z-index:100;backdrop-filter:blur(8px);
     animation:traySlideUp 300ms ease-out}
   .shortlist-tray.show{display:flex}
+  .enrich-pill{position:fixed;bottom:24px;left:24px;background:var(--card-bg);border:1px solid #c8cee8;
+    border-radius:999px;padding:9px 16px;box-shadow:0 6px 24px rgba(109,40,217,.18);
+    display:none;align-items:center;gap:9px;z-index:100;font-size:12.5px;font-weight:700;color:#5b4e99;
+    backdrop-filter:blur(8px)}
+  .enrich-pill.show{display:flex}
+  .enrich-pill .spin{width:13px;height:13px;border:2px solid #d6d2ee;border-top-color:#6d5ec7;border-radius:50%;
+    animation:enrspin .8s linear infinite}
+  @keyframes enrspin{to{transform:rotate(360deg)}}
   @keyframes traySlideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
   .shortlist-tray .count{font-size:14px;font-weight:700;color:#3d4a68}
   .shortlist-tray .count span{color:#6d5ec7;font-size:18px;margin-right:4px}
@@ -606,6 +614,9 @@
 
 <!-- Generic modal -->
 <div class="modal-bg" id="genBg"><div class="modal" id="genModal"></div></div>
+
+<!-- Now At enrichment progress -->
+<div class="enrich-pill" id="enrichPill"><span class="spin"></span><span id="enrichPillText">Filling Now At…</span></div>
 
 <!-- Shortlist tray -->
 <div class="shortlist-tray" id="shortlistTray">
@@ -1473,7 +1484,28 @@ function landAnalysis(){
   if(AN.done)return;AN.done=true;clearTimers();
   setBar(100);$('aStage').textContent='Scan complete';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
-  setTimeout(async()=>{$('analysis').style.display='none';COMPANY=AN.company;await loadAll();},900);
+  const co=AN.company;
+  setTimeout(async()=>{$('analysis').style.display='none';COMPANY=co;await loadAll();enrichApifyLoop(co);},900);
+}
+// After a search lands, read the real LinkedIn profiles (Apify) in small batches
+// to fill the true Now At + Exposure. Runs in the background; the table refreshes
+// as data arrives. Safe to no-op when Apify isn't configured.
+let ENRICHING=false;
+function setEnrichPill(text){const p=$('enrichPill');if(!p)return;if(text){$('enrichPillText').textContent=text;p.classList.add('show');}else p.classList.remove('show');}
+async function enrichApifyLoop(company){
+  if(ENRICHING)return;ENRICHING=true;
+  try{
+    setEnrichPill('Filling Now At…');
+    for(let guard=0;guard<40;guard++){
+      let r;
+      try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:5})})).json();}
+      catch{break;}
+      if(!r||r.disabled)break;
+      if(r.updated||r.nowFilled)await loadAll();
+      if(!r.remaining){break;}
+      setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
+    }
+  }finally{ENRICHING=false;setEnrichPill('');}
 }
 function failAnalysis(msg){
   if(AN.done)return;AN.done=true;clearTimers();
