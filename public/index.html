@@ -685,7 +685,12 @@ function deriveEmployer(p){
   // it and read their real current employer from the headline instead.
   const nrm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
   const tgt=nrm(p.company), tgtl=nrm(p.company_label);
-  const isTarget=s=>{const n=nrm(s);return !!n&&(n===tgt||n===tgtl);};
+  // Also treat a sub-brand spelling as the target ("CaratLane - A Tanishq" is
+  // still CaratLane) so we never show the company they're listed under as "Now
+  // At". Prefix-only + length>=5 keeps short/common names from over-matching.
+  const isTarget=s=>{const n=nrm(s);if(!n)return false;
+    const pfx=t=>t&&t.length>=5&&(n===t||n.startsWith(t+' ')||n.startsWith(t+'-'));
+    return n===tgt||n===tgtl||pfx(tgt)||pfx(tgtl);};
   const direct=cleanEmployer(p.current_employer);
   if(direct&&!isTarget(direct))return direct;
   let h=(p.current_role||'').trim();if(!h)return '';
@@ -1036,7 +1041,8 @@ function exposureCell(p){
 function stillAtTarget(p){
   const emp=cleanEmployer(p.current_employer);if(!emp)return false;
   const n=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-  return n(emp)===n(p.company)||n(emp)===n(p.company_label);
+  const e=n(emp),pfx=t=>t&&t.length>=5&&(e===t||e.startsWith(t+' ')||e.startsWith(t+'-'));
+  return e===n(p.company)||e===n(p.company_label)||pfx(n(p.company))||pfx(n(p.company_label));
 }
 function tableRow(p){
   const co=p.company_label||p.company||'';
