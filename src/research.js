@@ -248,6 +248,213 @@ export function hasSearchKey(env) {
   return !!(env.SERPER_API_KEY || (env.GOOGLE_API_KEY && env.GOOGLE_CSE_ID));
 }
 
+// ---- ZoomInfo via Firecrawl ------------------------------------------------
+// LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
+// leaver went NOW. ZoomInfo's public company page does — it lists current
+// employees AND former employees with their present employer and the years they
+// spent at the target company (exactly our "Now At" + "Exposure"). ZoomInfo
+// itself is walled by PerimeterX, but Firecrawl scrapes straight through it and
+// returns clean markdown. So: find the company's ZoomInfo page, scrape it, parse
+// current + former staff. This is what makes "search any company" actually fill
+// Now At automatically — no manual Apify runs.
+
+export function hasFirecrawl(env) {
+  return !!env.FIRECRAWL_API_KEY;
+}
+
+function normName(s) {
+  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// Ask Firecrawl to render a URL and hand back its markdown. ZoomInfo needs a
+// real browser render (PerimeterX), which Firecrawl does server-side.
+async function firecrawlScrape(env, url) {
+  const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      authorization: 'Bearer ' + env.FIRECRAWL_API_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ url, formats: ['markdown'], waitFor: 2500 }),
+  });
+  if (!r.ok) throw new Error(`firecrawl ${r.status}`);
+  const data = await r.json().catch(() => null);
+  if (!data) return null;
+  // v1 shape: { success, data: { markdown, metadata } }
+  return (data.data && data.data.markdown) || data.markdown || null;
+}
+
+// Find the company's ZoomInfo people page: .../pic/<slug>/<id>. That path is the
+// one that lists employees. If the search only turns up the /c/ company profile,
+// convert it to the /pic/ people page (same slug + id).
+async function zoominfoUrlFor(searcher, env, company) {
+  const pickPic = (arr) => {
+    for (const r of arr) {
+      const m = (r.url || '').match(/https?:\/\/(?:www\.)?zoominfo\.com\/pic\/[^/]+\/\d+/i);
+      if (m) return m[0];
+    }
+    return null;
+  };
+  let results = [];
+  try { results = await searcher(`site:zoominfo.com/pic ${company}`, env, 1); } catch { results = []; }
+  let url = pickPic(results);
+  if (url) return url;
+  // fall back: any ZoomInfo company URL, rewritten to the /pic/ people page.
+  try { results = await searcher(`site:zoominfo.com ${company}`, env, 1); } catch { results = []; }
+  for (const r of results) {
+    const m = (r.url || '').match(/https?:\/\/(?:www\.)?zoominfo\.com\/(?:pic|c)\/([^/]+)\/(\d+)/i);
+    if (m) return `https://www.zoominfo.com/pic/${m[1]}/${m[2]}`;
+  }
+  return null;
+}
+
+// Parse ZoomInfo company-page markdown into people records. Two sections:
+//   - Former Employees: name + current employer ("at [X]") + role at target +
+//     tenure "(YYYY-YYYY)"  -> gives us Now At + Exposure.
+//   - Key Employees / Index of contact profiles: current staff + title.
+function parseZoomInfoCompany(md, company) {
+  const out = [];
+  const seen = new Set();
+  const isTarget = s => normName(s) === normName(company);
+
+  // ---- Former employees -------------------------------------------------
+  const fi = md.search(/##\s*Former Employees/i);
+  if (fi >= 0) {
+    let sec = md.slice(fi + 3);
+    const cut = sec.search(/\n##\s/);
+    if (cut > 0) sec = sec.slice(0, cut);
+    const workRe = /Worked as\s+([^\n]+)/ig;
+    let m; const anchors = [];
+    while ((m = workRe.exec(sec))) {
+      anchors.push({ idx: m.index, end: workRe.lastIndex, role: m[1].trim().replace(/\s*\.\.\.\s*$/, '') });
+    }
+    anchors.forEach((a, i) => {
+      const start = i ? anchors[i - 1].end : 0;
+      const before = sec.slice(start, a.idx);
+      const after = sec.slice(a.end, i + 1 < anchors.length ? anchors[i + 1].idx : a.end + 240);
+      // tenure years
+      const tn = after.match(/\((\d{4})\s*[-–]\s*(\d{4}|present)\)/i);
+      const tStart = tn ? tn[1] : null;
+      const tEnd = tn ? (/present/i.test(tn[2]) ? null : tn[2]) : null;
+      // current employer = last "at [X](/c/..)" before the "Worked as", not the target
+      const links = [...before.matchAll(/\bat\s+\[([^\]]+)\]\(https:\/\/www\.zoominfo\.com\/c\//ig)]
+        .map(x => x[1].trim()).filter(x => !isTarget(x));
+      const cur = links.length ? links[links.length - 1] : null;
+      // name: "### [Name]" nearby, else masked -> email/img alt
+      let name = null;
+      const nm = before.match(/###\s*\[([^\]]+)\]/);
+      if (nm) name = nm[1].trim();
+      if (!name) { const em = after.match(/!\[email\s+([^\]]+)\]/i); if (em) name = em[1].trim(); }
+      if (!name) { const im = before.match(/!\[([^,\]]+),[^\]]*\]\(https:\/\/media\.licdn/i); if (im) name = im[1].trim(); }
+      if (name && !seen.has('f' + normName(name))) {
+        seen.add('f' + normName(name));
+        out.push({
+          full_name: name, is_current: 0, relationship: 'ex_employee',
+          current_employer: cur, last_role: a.role,
+          tenure_start: tStart, tenure_end: tEnd, seniority: seniorityOf(a.role),
+        });
+      }
+    });
+  }
+
+  // ---- Current employees (Key Employees + Index) ------------------------
+  const head = fi >= 0 ? md.slice(0, fi) : md;
+  const lines = head.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    // A line may hold several [Name](/p/..) links: initials "[PC]" AND the real
+    // "[Priyanka Chatterjee]". Take the last full name (>=2 words), not the first.
+    const cands = [...lines[i].matchAll(/\[([A-Z][A-Za-z.'\- ]+?)\]\(https:\/\/www\.zoominfo\.com\/p\//g)]
+      .map(x => x[1].trim())
+      .filter(n => n.length >= 4 && n.split(/\s+/).length >= 2);
+    if (!cands.length) continue;
+    const name = cands[cands.length - 1];
+    // title = next non-empty line that reads like a role (skip Email/Direct/location)
+    let title = null;
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      const t = lines[j].replace(/^[-\s]+/, '').trim();
+      if (!t) continue;
+      if (/^Email|Direct$|^\[|^!\[/.test(t)) continue;
+      if (/^\s*\[?India|Karnataka|Colony/.test(t)) break;
+      title = t; break;
+    }
+    if (!seen.has('c' + normName(name))) {
+      seen.add('c' + normName(name));
+      out.push({
+        full_name: name, is_current: 1, relationship: 'current_employee',
+        current_employer: company, last_role: title, current_role: title,
+        seniority: seniorityOf(title),
+      });
+    }
+  }
+  return out;
+}
+
+// Scrape + parse one company's ZoomInfo page into person records ready to store.
+async function researchZoomInfo(searcher, env, company) {
+  const url = await zoominfoUrlFor(searcher, env, company);
+  if (!url) return [];
+  let md = null;
+  try { md = await firecrawlScrape(env, url); } catch { return []; }
+  if (!md) return [];
+  return parseZoomInfoCompany(md, company).map(p => ({
+    full_name: p.full_name,
+    company,
+    company_label: company,
+    relationship: p.relationship,
+    is_current: p.is_current,
+    current_employer: p.current_employer || null,
+    last_role: p.last_role || null,
+    // role AT the target company is this person's "Former Role"
+    former_role: p.is_current ? null : (p.last_role || null),
+    current_role: p.is_current ? (p.current_role || p.last_role || null) : null,
+    tenure_start: p.tenure_start || null,
+    tenure_end: p.tenure_end || null,
+    seniority: p.seniority,
+    linkedin_url: null,
+    source: 'zoominfo',
+    source_detail: url,
+  }));
+}
+
+const firstNonEmpty = (...vals) => { for (const v of vals) if (v != null && v !== '') return v; return null; };
+
+// Merge a LinkedIn-search record (s) and a ZoomInfo record (z) for the same
+// person. ZoomInfo wins on Now At / Exposure / status (it structures those);
+// search keeps the LinkedIn URL and headline (ZoomInfo has neither).
+function combineRecords(s, z) {
+  return {
+    ...s,
+    current_employer: firstNonEmpty(z.current_employer, s.current_employer),
+    tenure_start: firstNonEmpty(z.tenure_start, s.tenure_start),
+    tenure_end: firstNonEmpty(z.tenure_end, s.tenure_end),
+    last_role: firstNonEmpty(z.last_role, s.last_role),
+    former_role: firstNonEmpty(z.former_role, s.former_role, s.last_role),
+    is_current: z.is_current != null ? z.is_current : s.is_current,
+    relationship: z.relationship || s.relationship,
+    seniority: firstNonEmpty(z.seniority, s.seniority),
+    linkedin_url: firstNonEmpty(s.linkedin_url, z.linkedin_url),
+    current_role: firstNonEmpty(s.current_role, z.current_role),
+    source: 'zoominfo+search',
+    source_detail: firstNonEmpty(s.source_detail, z.source_detail),
+  };
+}
+
+// Union search people + ZoomInfo people, keyed by normalized name.
+function mergeByName(searchPeople, ziPeople) {
+  const zByName = new Map();
+  for (const p of ziPeople) { const k = normName(p.full_name); if (k && !zByName.has(k)) zByName.set(k, p); }
+  const out = new Map();
+  for (const s of searchPeople) {
+    const k = normName(s.full_name);
+    if (!k) continue;
+    const z = zByName.get(k);
+    out.set(k, z ? combineRecords(s, z) : s);
+    if (z) zByName.delete(k);
+  }
+  for (const [k, z] of zByName) if (!out.has(k)) out.set(k, z);
+  return [...out.values()];
+}
+
 // Research one company and return a de-duplicated list of senior ex-employees.
 export async function researchCompany(env, company, opts = {}) {
   const hint = opts.hint || env.COMPANY_HINT || 'India';
@@ -273,5 +480,14 @@ export async function researchCompany(env, company, opts = {}) {
   }
   await run(buildQueries(company, hint), classify);                 // senior EX-employees
   await run(buildCurrentQueries(company, hint), classifyCurrent);   // senior CURRENT employees
-  return [...byKey.values()];
+  const searchPeople = [...byKey.values()];
+
+  // ZoomInfo (via Firecrawl) adds Now At + Exposure for leavers, plus current
+  // staff — the data LinkedIn snippets can't give us. Best-effort: if the key is
+  // missing or the scrape fails, we still return the search results.
+  let ziPeople = [];
+  if (hasFirecrawl(env)) {
+    try { ziPeople = await researchZoomInfo(searcher, env, company); } catch { ziPeople = []; }
+  }
+  return mergeByName(searchPeople, ziPeople);
 }

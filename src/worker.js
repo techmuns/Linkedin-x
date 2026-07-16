@@ -105,6 +105,7 @@ async function upsertPerson(env, input) {
     company_label: input.company_label || input.company,
     relationship: input.relationship || existing?.relationship || 'ex_employee',
     last_role: input.last_role ?? existing?.last_role ?? null,
+    former_role: input.former_role ?? existing?.former_role ?? null,
     current_employer: input.current_employer ?? existing?.current_employer ?? null,
     current_role: input.current_role ?? existing?.current_role ?? null,
     tenure_start: input.tenure_start ?? existing?.tenure_start ?? null,
@@ -123,12 +124,12 @@ async function upsertPerson(env, input) {
 
   if (existing) {
     await env.DB.prepare(
-      `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?,
+      `UPDATE people SET full_name=?, company_label=?, relationship=?, last_role=?, former_role=?,
          seniority=?, current_employer=?, current_role=?, tenure_start=?, tenure_end=?,
          is_current=?, location=?, linkedin_url=?, photo_url=?, source=?, source_detail=?, score=?,
          updated_at=? WHERE id=?`
     ).bind(
-      merged.full_name, merged.company_label, merged.relationship, merged.last_role,
+      merged.full_name, merged.company_label, merged.relationship, merged.last_role, merged.former_role,
       merged.seniority, merged.current_employer, merged.current_role, merged.tenure_start,
       merged.tenure_end, merged.is_current, merged.location, merged.linkedin_url, merged.photo_url,
       merged.source, merged.source_detail, merged.score, now, existing.id
@@ -138,14 +139,14 @@ async function upsertPerson(env, input) {
 
   const id = crypto.randomUUID();
   await env.DB.prepare(
-    `INSERT INTO people (id, full_name, company, company_label, relationship, last_role,
+    `INSERT INTO people (id, full_name, company, company_label, relationship, last_role, former_role,
        seniority, current_employer, current_role, tenure_start, tenure_end, is_current,
        location, linkedin_url, photo_url, source, source_detail, score, contacted, notes,
        created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, merged.full_name, merged.company, merged.company_label, merged.relationship,
-    merged.last_role, merged.seniority, merged.current_employer, merged.current_role,
+    merged.last_role, merged.former_role, merged.seniority, merged.current_employer, merged.current_role,
     merged.tenure_start, merged.tenure_end, merged.is_current, merged.location,
     merged.linkedin_url, merged.photo_url, merged.source, merged.source_detail, merged.score,
     merged.contacted, merged.notes, now, now
@@ -175,7 +176,7 @@ async function runResearchJob(env, id, company) {
       else if (r.ok) updated++;
     }
     await setSearch(env, id, 'done', people.length,
-      `${people.length} ex-employees (created ${created}, updated ${updated})`);
+      `${people.length} people (created ${created}, updated ${updated})`);
     return { people: people.length, created, updated };
   } catch (e) {
     await setSearch(env, id, 'error', 0, String((e && e.message) || e));

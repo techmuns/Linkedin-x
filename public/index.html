@@ -318,7 +318,7 @@
   /* table - premium frosted design */
   .table-wrap{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
     overflow:auto;box-shadow:var(--shadow)}
-  table{width:100%;min-width:1040px;border-collapse:collapse;table-layout:fixed}
+  table{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed}
   thead{background:linear-gradient(135deg,#6d5ec7 0%,#5b7bc8 100%);color:#fff}
   thead tr{display:table;width:100%;table-layout:fixed}
   tbody{display:table;width:100%}
@@ -340,11 +340,12 @@
   th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;white-space:nowrap}
   td{font-size:13px;color:#3d4a68;border-bottom:1px solid #ebeef6}
   tbody tr:last-child td{border-bottom:none}
-  th:nth-child(1),td:nth-child(1){width:26%}   /* Name */
-  th:nth-child(2),td:nth-child(2){width:19%}   /* Current Role */
-  th:nth-child(3),td:nth-child(3){width:17%}   /* Now At */
-  th:nth-child(4),td:nth-child(4){width:18%}   /* Former Role */
-  th:nth-child(5),td:nth-child(5){width:20%}   /* Profile */
+  th:nth-child(1),td:nth-child(1){width:24%}   /* Name */
+  th:nth-child(2),td:nth-child(2){width:17%}   /* Current Role */
+  th:nth-child(3),td:nth-child(3){width:16%}   /* Now At */
+  th:nth-child(4),td:nth-child(4){width:16%}   /* Former Role */
+  th:nth-child(5),td:nth-child(5){width:11%}   /* Exposure */
+  th:nth-child(6),td:nth-child(6){width:16%}   /* Profile */
   .tcell-name{display:flex;align-items:center;gap:12px}
   .tav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
     font-size:14px;flex:none;background:linear-gradient(135deg,#6d5ec7,#5b4e99);
@@ -1005,6 +1006,25 @@ function exposureChips(p){
 
   return out.slice(0,3);
 }
+// Exposure cell (table): years the person spent AT the target company only —
+// the client wants tenure at the ex-company, NOT their whole-career experience.
+// Built from real tenure dates (e.g. from ZoomInfo); when we don't know them we
+// say "Not mapped" rather than invent a number.
+function exposureCell(p){
+  const ts=tenureYear(p.tenure_start), te=tenureYear(p.tenure_end);
+  const isCurrent=Number(p.is_current)===1;
+  const nowY=new Date().getFullYear();
+  if(ts&&te&&te>=ts&&te-ts<=60){
+    const y=te-ts;
+    return `<div class="exposure"><span class="xchip exp">${y<1?'<1':y} yr${y===1?'':'s'}</span><span class="xchip unclear">${ts}–${te}</span></div>`;
+  }
+  if(ts&&isCurrent){
+    const y=Math.max(1,nowY-ts);
+    return `<div class="exposure"><span class="xchip exp">${y}+ yrs</span><span class="xchip fresh">since ${ts}</span></div>`;
+  }
+  if(ts) return `<div class="exposure"><span class="xchip unclear">Since ${ts}</span></div>`;
+  return `<span class="tnowat empty">Not mapped</span>`;
+}
 // True when the ONLY current-employer signal is the company they were tagged as
 // having left — i.e. LinkedIn still shows them there, so they never actually
 // left. We surface this honestly ("Still at X") instead of a wrong "Now At".
@@ -1055,6 +1075,9 @@ function tableRow(p){
         : (leftCo&&co ? `<span class="tnowat empty">Ex-${esc(co)}</span>` : `<span class="tnowat empty">—</span>`)}
     </td>
     <td>
+      ${exposureCell(p)}
+    </td>
+    <td>
       <div class="tactions">
         <a href="${esc(searchUrl(p))}" target="_blank" rel="noopener" class="btn" data-noopen onclick="event.stopPropagation()">View Profile ↗</a>
         <button class="star iconbtn ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</button>
@@ -1078,7 +1101,7 @@ function render(){
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   updateShortlistTray();
 }
 function updateShortlistTray(){
