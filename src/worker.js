@@ -781,16 +781,23 @@ async function handleApi(request, env, url, ctx) {
     const batch = (rows.results || []).slice(0, limit);
     const remaining = Math.max(0, (rows.results || []).length - batch.length);
     if (!batch.length) return json({ ok: true, enriched: 0, remaining: 0 });
-    const enriched = await apifyEnrich(env, company, batch.map(r => ({
+    const res = await apifyEnrich(env, company, batch.map(r => ({
       full_name: r.full_name, company, company_label: r.company_label || company,
       linkedin_url: r.linkedin_url, current_employer: r.current_employer,
       current_role: r.current_role, seniority: r.seniority,
       is_current: r.is_current, relationship: r.relationship, source: r.source,
     })));
-    // Mark every profile we attempted so it's excluded from the next poll — even
-    // ones Apify couldn't read — otherwise the dashboard's "until remaining==0"
-    // loop would retry the unreadable ones forever and burn credits. ('apifymiss'
-    // still matches the NOT LIKE '%apify%' filter, so those rows drop out too.)
+    // Whole-batch failure (bad token, actor not approved, credits, timeout): do
+    // NOT touch these rows — return the error so the dashboard stops looping and
+    // can tell the user, and the profiles stay eligible for a later retry.
+    if (!res.ok) {
+      return json({ ok: false, error: 'apify_error', detail: res.error, enriched: 0, remaining });
+    }
+    const enriched = res.people;
+    // Mark every profile we actually attempted so it's excluded from the next
+    // poll — even ones Apify ran but couldn't read — otherwise the "until
+    // remaining==0" loop would retry them forever. ('apifymiss' still matches the
+    // NOT LIKE '%apify%' filter, so those rows drop out too.)
     for (const p of enriched) {
       if (!/apify/.test(p.source || '')) p.source = (p.source || 'search') + '+apifymiss';
     }
@@ -798,34 +805,6 @@ async function handleApi(request, env, url, ctx) {
     const nowFilled = enriched.filter(p => p.current_employer &&
       normCompany(p.current_employer) !== co).length;
     return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining });
-  }
-
-  // TEMP DIAGNOSTIC: POST /api/apify-debug -> run the Apify actor on one known
-  // public profile and return the raw HTTP status + first item, so we can see
-  // exactly why enrichment isn't filling. Remove once Apify is confirmed working.
-  if (path === '/api/apify-debug' && method === 'POST') {
-    if (!hasApify(env)) return json({ error: 'no APIFY_TOKEN' });
-    const body = await request.json().catch(() => ({}));
-    const actor = (body.actor || 'dev_fusion~linkedin-profile-scraper');
-    const urls = body.profileUrls || ['https://www.linkedin.com/in/williamhgates'];
-    const out = { actor };
-    try {
-      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?timeout=120`, {
-        method: 'POST',
-        headers: { authorization: 'Bearer ' + env.APIFY_TOKEN, 'content-type': 'application/json' },
-        body: JSON.stringify({ profileUrls: urls }),
-      });
-      out.status = r.status; out.ok = r.ok;
-      const txt = await r.text();
-      out.bodyStart = txt.slice(0, 900);
-      try {
-        const j = JSON.parse(txt);
-        out.isArray = Array.isArray(j);
-        out.count = Array.isArray(j) ? j.length : undefined;
-        out.firstItemKeys = (Array.isArray(j) && j[0]) ? Object.keys(j[0]).slice(0, 40) : undefined;
-      } catch { /* not json */ }
-    } catch (e) { out.fetchError = String((e && e.message) || e); }
-    return json(out);
   }
 
   // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing

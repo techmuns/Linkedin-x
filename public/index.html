@@ -1493,7 +1493,7 @@ function landAnalysis(){
 let ENRICHING=false;
 function setEnrichPill(text){const p=$('enrichPill');if(!p)return;if(text){$('enrichPillText').textContent=text;p.classList.add('show');}else p.classList.remove('show');}
 async function enrichApifyLoop(company){
-  if(ENRICHING)return;ENRICHING=true;
+  if(ENRICHING)return;ENRICHING=true;let holdMsg=false;
   try{
     setEnrichPill('Filling Now At…');
     for(let guard=0;guard<40;guard++){
@@ -1501,11 +1501,12 @@ async function enrichApifyLoop(company){
       try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:5})})).json();}
       catch{break;}
       if(!r||r.disabled)break;
+      if(r.error==='apify_error'){setEnrichPill('⚠ Now At paused — approve the LinkedIn actor in Apify once');holdMsg=true;break;}
       if(r.updated||r.nowFilled)await loadAll();
       if(!r.remaining){break;}
       setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
     }
-  }finally{ENRICHING=false;setEnrichPill('');}
+  }finally{ENRICHING=false;if(holdMsg)setTimeout(()=>setEnrichPill(''),9000);else setEnrichPill('');}
 }
 function failAnalysis(msg){
   if(AN.done)return;AN.done=true;clearTimers();

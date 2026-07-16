@@ -671,12 +671,17 @@ export async function researchCompany(env, company, opts = {}) {
 // the real Now At + Exposure + education back onto the people. Feed it the base
 // list returned by researchCompany. Best-effort — on any failure it returns the
 // base list unchanged, so a slow/broken Apify never loses the search results.
+// Returns { ok, people, error }. ok:false means the Apify CALL itself failed
+// (e.g. permissions/credits/timeout) — the caller must NOT mark these profiles
+// as "tried", because it's a whole-batch problem, not a per-profile miss.
 export async function apifyEnrich(env, company, basePeople) {
-  if (!hasApify(env) || !Array.isArray(basePeople) || !basePeople.length) return basePeople;
+  if (!hasApify(env) || !Array.isArray(basePeople) || !basePeople.length) {
+    return { ok: true, people: basePeople || [] };
+  }
   const urls = basePeople.map(p => p.linkedin_url).filter(Boolean);
-  if (!urls.length) return basePeople;
-  let apifyPeople = [];
-  try { apifyPeople = await apifyEnrichProfiles(env, urls, company); } catch { return basePeople; }
-  if (!apifyPeople.length) return basePeople;
-  return mergeSources(basePeople, [], apifyPeople);
+  if (!urls.length) return { ok: true, people: basePeople };
+  let apifyPeople;
+  try { apifyPeople = await apifyEnrichProfiles(env, urls, company); }
+  catch (e) { return { ok: false, error: String((e && e.message) || e), people: basePeople }; }
+  return { ok: true, people: mergeSources(basePeople, [], apifyPeople) };
 }
