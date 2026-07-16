@@ -1492,16 +1492,17 @@ function landAnalysis(){
 // as data arrives. Safe to no-op when Apify isn't configured.
 let ENRICHING=false;
 function setEnrichPill(text){const p=$('enrichPill');if(!p)return;if(text){$('enrichPillText').textContent=text;p.classList.add('show');}else p.classList.remove('show');}
+let APIFY_OFF=false;
 async function enrichApifyLoop(company){
-  if(ENRICHING)return;ENRICHING=true;let holdMsg=false;
+  if(ENRICHING||APIFY_OFF)return;ENRICHING=true;let holdMsg=false;
   try{
     setEnrichPill('Filling Now At…');
     for(let guard=0;guard<40;guard++){
       let r;
       try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:5})})).json();}
       catch{break;}
-      if(!r||r.disabled)break;
-      if(r.error==='apify_error'){setEnrichPill('⚠ Now At paused — approve the LinkedIn actor in Apify once');holdMsg=true;break;}
+      if(!r||r.disabled){APIFY_OFF=true;break;}
+      if(r.error==='apify_error'){APIFY_OFF=true;setEnrichPill('⚠ Auto Now At needs a paid Apify plan — using ZoomInfo only');holdMsg=true;break;}
       if(r.updated||r.nowFilled)await loadAll();
       if(!r.remaining){break;}
       setEnrichPill('Filling Now At… '+r.remaining+' profiles left');

@@ -807,31 +807,6 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining });
   }
 
-  // TEMP DIAGNOSTIC: POST /api/apify-debug -> run the actor on one real profile
-  // and return the FULL raw first item so we can see the actual field shape.
-  if (path === '/api/apify-debug' && method === 'POST') {
-    if (!hasApify(env)) return json({ error: 'no APIFY_TOKEN' });
-    const body = await request.json().catch(() => ({}));
-    const urls = body.profileUrls || ['https://www.linkedin.com/in/williamhgates'];
-    const out = {};
-    try {
-      const r = await fetch(`https://api.apify.com/v2/acts/dev_fusion~linkedin-profile-scraper/run-sync-get-dataset-items?timeout=120`, {
-        method: 'POST',
-        headers: { authorization: 'Bearer ' + env.APIFY_TOKEN, 'content-type': 'application/json' },
-        body: JSON.stringify({ profileUrls: urls }),
-      });
-      out.status = r.status;
-      const txt = await r.text();
-      try {
-        const j = JSON.parse(txt);
-        out.isArray = Array.isArray(j);
-        out.count = Array.isArray(j) ? j.length : undefined;
-        out.firstItem = Array.isArray(j) ? j[0] : j;   // FULL raw item
-      } catch { out.bodyStart = txt.slice(0, 1500); }
-    } catch (e) { out.fetchError = String((e && e.message) || e); }
-    return json(out);
-  }
-
   // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing
   // one, a small paced batch at a time. Body: { company?, limit? }. Call
   // repeatedly until { remaining: 0 }.

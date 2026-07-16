@@ -568,6 +568,13 @@ async function apifyEnrichProfiles(env, urls, company) {
     if (!r.ok) throw new Error(`apify ${r.status}`);
     const items = await r.json().catch(() => null);
     if (!Array.isArray(items)) return [];
+    // Apify can return a 2xx whose items are error objects rather than profiles
+    // (e.g. the free plan blocks API runs: "can run the actor through the UI and
+    // not via other methods"). Surface that as a failure so the caller reports it
+    // instead of silently enriching nothing.
+    if (items.length && items.every(it => it && it.error && !it.fullName && !it.linkedinUrl && !it.publicIdentifier)) {
+      throw new Error(String(items[0].error).replace(/[^\x20-\x7E]/g, '').trim().slice(0, 200) || 'apify returned an error');
+    }
     return items.map(it => parseApifyProfile(it, company)).filter(Boolean);
   } finally {
     clearTimeout(timer);
