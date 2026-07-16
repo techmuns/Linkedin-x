@@ -120,6 +120,8 @@
     box-shadow:0 3px 10px rgba(109,94,199,.4)}
   .copill .c{background:rgba(91,78,153,.12);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
   .copill.active .c{background:rgba(255,255,255,.24);color:#fff}
+  .coneed{display:inline-flex;align-items:center;background:#fef3c7;color:#b45309;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700;white-space:nowrap}
+  .copill.active .coneed{background:rgba(255,255,255,.26);color:#fff}
   .copill.add{border-style:dashed;border-color:#c8cee8;color:#6d5ec7;background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%)}
   .copill.add:hover{border-color:#a78bfa;background:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%)}
   .codel{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font-size:13px;font-weight:700;line-height:1;opacity:.35;margin-left:-2px;transition:opacity 150ms ease,background 150ms ease,color 150ms ease}
@@ -815,9 +817,12 @@ async function loadAll(){
 function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
 
 function renderPills(){
-  const cos=[...new Set(RAW.map(p=>p.company))].map(c=>({company:c,label:RAW.find(x=>x.company===c).company_label,n:RAW.filter(x=>x.company===c).length})).sort((a,b)=>b.n-a.n);
+  const cos=[...new Set(RAW.map(p=>p.company))].map(c=>{
+    const rows=RAW.filter(x=>x.company===c);
+    return {company:c,label:rows[0].company_label,n:rows.length,need:rows.filter(x=>!deriveEmployer(x)&&!stillAtTarget(x)).length};
+  }).sort((a,b)=>b.n-a.n);
   const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
-    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
+    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span>${c.need?`<span class="coneed" title="${c.need} contact${c.need>1?'s':''} still need a “Now At” — run ✨ Enrich / Apify for this company">⚠ ${c.need}</span>`:''}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
     .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
   const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
   const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
@@ -1381,7 +1386,8 @@ function startAnalysis(name,ticker){
   AN.timer=setInterval(()=>{
     AN.seconds++;$('aTimer').textContent=String(Math.floor(AN.seconds/60)).padStart(2,'0')+':'+String(AN.seconds%60).padStart(2,'0');
     if(!AN.done&&AN.pct<92){AN.pct+=Math.max(0.4,(92-AN.pct)*0.03);setBar(AN.pct);$('aStage').textContent=STAGES[Math.min(STAGES.length-1,Math.floor(AN.pct/92*STAGES.length))];}
-    if(AN.seconds===150&&!AN.done)$('aNote').textContent='Still running — deep scans can take a few minutes. You can close this; results appear automatically when ready.';
+    if(AN.seconds===35&&!AN.done)$('aNote').textContent='Still searching — almost there…';
+    if(AN.seconds>=75&&!AN.done)landStalled();   // hard stop so it never spins forever
   },1000);
   AN.poll=setInterval(pollAnalysis,4000);setTimeout(pollAnalysis,2500);
 }
@@ -1400,6 +1406,14 @@ function landEmpty(){
   if(AN.done)return;AN.done=true;clearTimers();setBar(100);
   $('aStage').textContent='No public ex-employees found';
   $('aNote').textContent='Search finished, but no senior person on public LinkedIn is labelled “ex/former '+$('aCoName').textContent+'”. Smaller or regional companies often have none — the only public profiles are current staff. Close and try another company.';
+  refreshUpdate($('aCoName').textContent,'done');renderRecent();
+}
+// Backstop: if a search hasn't landed after the timeout, stop the spinner and
+// say so clearly instead of loading forever.
+function landStalled(){
+  if(AN.done)return;AN.done=true;clearTimers();setBar(100);
+  $('aStage').textContent='No results found';
+  $('aNote').textContent='No senior ex-employees came back for “'+$('aCoName').textContent+'”. Either there are none on public LinkedIn, or the search stalled — close this and try again, or try a more specific name.';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
 }
 function landAnalysis(){
