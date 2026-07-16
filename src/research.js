@@ -442,7 +442,10 @@ export function hasApify(env) {
   return !!env.APIFY_TOKEN;
 }
 
-const APIFY_ACTOR = 'dev_fusion~linkedin-profile-scraper';
+// harvestapi's LinkedIn Profile Scraper — no cookies (no account risk) and,
+// unlike dev_fusion's, it runs via API on the free plan. Pay-per-result (~$4/1k),
+// so the free monthly credit covers a healthy number of profiles.
+const APIFY_ACTOR = 'harvestapi~linkedin-profile-scraper';
 const APIFY_MAX = 15;   // profiles per search — bounds cost + Worker run time
 
 function cleanKey(url) {
@@ -460,71 +463,57 @@ function companyMatches(co, target) {
   return false;
 }
 
-function yearsIn(text) {
-  const ys = String(text || '').match(/(?:19|20)\d{2}/g);
-  return ys ? ys.map(Number) : [];
+// harvestapi dates are { year, text } (or { text:"Present" }). Pull the year.
+function ymYear(d) {
+  if (!d) return null;
+  if (typeof d === 'object') {
+    if (d.year) return String(d.year);
+    const m = String(d.text || '').match(/(?:19|20)\d{2}/);
+    return m ? m[0] : null;
+  }
+  const m = String(d).match(/(?:19|20)\d{2}/);
+  return m ? m[0] : null;
+}
+function ymPresent(d) {
+  if (!d) return true;                 // no end date => still there
+  if (typeof d === 'object') return /present|current/i.test(d.text || '') || (!d.year && !d.text);
+  return /present|current/i.test(String(d));
 }
 
-// Pull company / title / year-range out of one experiences[] entry, tolerating
-// the several shapes these actors use.
-function expCompany(e) {
-  return e.companyName || e.company || e.subtitle || e.subtitle1 || e.companyName1 || '';
-}
-function expTitle(e) {
-  return e.title || e.jobTitle || e.position || e.role || '';
-}
-function expStillHere(e) {
-  if (e.jobStillWorking === true || e.stillWorking === true || e.current === true) return true;
-  const d = String(e.caption || e.dates || e.duration || e.jobEndedOn || e.endDate || '');
-  return /present|current/i.test(d);
-}
-function expYears(e) {
-  const blob = [e.caption, e.dates, e.duration, e.startDate, e.endDate, e.jobStartedOn, e.jobEndedOn]
-    .filter(Boolean).join(' ');
-  const ys = yearsIn(blob);
-  return { start: ys.length ? String(Math.min(...ys)) : null, end: ys.length > 1 ? String(Math.max(...ys)) : null };
-}
-
-function schoolsOf(item) {
-  const eds = Array.isArray(item.educations) ? item.educations : [];
-  const names = eds.map(e => e.title || e.schoolName || e.school || e.university || e.subtitle || '')
-    .map(s => String(s).trim()).filter(Boolean);
-  return names.length ? [...new Set(names)].join(' | ') : null;
-}
-
-// One Apify profile -> our person shape (relative to the company being researched).
+// One harvestapi profile -> our person shape (relative to the company researched).
+// Shape: { firstName, lastName, headline, currentPosition:[{position,companyName,
+//   startDate,endDate}], experience:[{position,companyName,startDate,endDate}],
+//   education:[{schoolName,...}] }.
 function parseApifyProfile(item, company) {
-  if (!item || item.succeeded === false) return null;
-  const url = cleanLinkedInUrl(item.linkedinUrl || item.linkedinPublicUrl || item.inputUrl);
-  const name = item.fullName || [item.firstName, item.lastName].filter(Boolean).join(' ').trim();
+  if (!item || item.error) return null;
+  const url = cleanLinkedInUrl(item.linkedinUrl || item.publicUrl ||
+    (item.publicIdentifier ? 'https://www.linkedin.com/in/' + item.publicIdentifier : null));
+  const name = (item.fullName || [item.firstName, item.lastName].filter(Boolean).join(' ')).trim();
   if (!name) return null;
 
-  const nowCompany = (item.companyName || '').trim() || null;   // present employer
-  const nowTitle = (item.jobTitle || item.headline || '').trim() || null;
+  const curPos = Array.isArray(item.currentPosition) ? item.currentPosition : [];
+  const cur = curPos[0] || null;
+  const nowCompany = (cur && cur.companyName) ? String(cur.companyName).trim() : null;
+  const nowTitle = (cur && cur.position) || item.headline || null;
   const nowIsTarget = nowCompany && companyMatches(nowCompany, company);
 
-  // Find their stint at the TARGET company (top-level current job first, then history).
-  const exps = Array.isArray(item.experiences) ? item.experiences : [];
-  const topExp = {
-    companyName: item.companyName, title: item.jobTitle,
-    jobStartedOn: item.jobStartedOn, jobEndedOn: item.jobEndedOn, jobStillWorking: item.jobStillWorking,
-  };
+  // Find their stint at the TARGET company. currentPosition entries first (they
+  // carry the "still here" signal), then the full experience history.
+  const exps = Array.isArray(item.experience) ? item.experience : [];
   let tStart = null, tEnd = null, roleAtTarget = null, stillAtTarget = false, found = false;
-  for (const e of [topExp, ...exps]) {
-    const co = expCompany(e);
-    if (!co || !companyMatches(co, company)) continue;
-    const y = expYears(e);
-    const still = expStillHere(e);
-    // Keep the first match, but prefer one that actually carries years — the
-    // top-level job entry sometimes lacks dates while the experiences[] entry
-    // for the same company has them.
-    if (!found || (y.start && !tStart)) {
-      tStart = y.start; tEnd = still ? null : y.end;
-      roleAtTarget = expTitle(e) || roleAtTarget || null; stillAtTarget = still; found = true;
+  for (const e of [...curPos, ...exps]) {
+    if (!e || !e.companyName || !companyMatches(e.companyName, company)) continue;
+    const sy = ymYear(e.startDate);
+    const present = ymPresent(e.endDate);
+    const ey = present ? null : ymYear(e.endDate);
+    if (!found || (sy && !tStart)) {
+      tStart = sy; tEnd = ey; roleAtTarget = e.position || roleAtTarget || null; stillAtTarget = present; found = true;
     }
-    if (y.start) break;
+    if (sy) break;
   }
 
+  const schools = [...new Set((Array.isArray(item.education) ? item.education : [])
+    .map(e => e && e.schoolName).filter(Boolean).map(s => String(s).trim()))];
   const isCurrent = (nowIsTarget || stillAtTarget) ? 1 : 0;
   return {
     full_name: name,
@@ -542,7 +531,7 @@ function parseApifyProfile(item, company) {
     tenure_start: tStart,
     tenure_end: tEnd,
     seniority: seniorityOf(roleAtTarget || nowTitle || item.headline || ''),
-    education: schoolsOf(item),
+    education: schools.length ? schools.join(' | ') : null,
     source: 'apify',
     source_detail: url,
     _matchedTarget: found,
@@ -562,7 +551,7 @@ async function apifyEnrichProfiles(env, urls, company) {
     const r = await fetch(endpoint, {
       method: 'POST',
       headers: { authorization: 'Bearer ' + env.APIFY_TOKEN, 'content-type': 'application/json' },
-      body: JSON.stringify({ profileUrls: list }),
+      body: JSON.stringify({ urls: list }),
       signal: ctrl.signal,
     });
     if (!r.ok) throw new Error(`apify ${r.status}`);
