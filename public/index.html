@@ -122,6 +122,12 @@
   .copill.active .c{background:rgba(255,255,255,.24);color:#fff}
   .coneed{display:inline-flex;align-items:center;background:#fef3c7;color:#b45309;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:700;white-space:nowrap}
   .copill.active .coneed{background:rgba(255,255,255,.26);color:#fff}
+  .tabbar{display:flex;gap:6px;margin:16px 0 2px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);border:1px solid #dde1f1;border-radius:12px;padding:5px;width:fit-content;box-shadow:0 1px 2px rgba(109,40,217,.05)}
+  .tabbar button{border:none;background:transparent;color:#5b6b8c;font-weight:700;font-size:13.5px;padding:9px 18px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 180ms ease,color 180ms ease,box-shadow 180ms ease}
+  .tabbar button:hover{color:#3d4a68}
+  .tabbar button.on{background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 100%);color:#fff;box-shadow:0 2px 8px rgba(109,94,199,.3)}
+  .tabbar .tc{background:rgba(91,78,153,.12);border-radius:999px;padding:1px 9px;font-size:11.5px;font-weight:800}
+  .tabbar button.on .tc{background:rgba(255,255,255,.26);color:#fff}
   .copill.add{border-style:dashed;border-color:#c8cee8;color:#6d5ec7;background:linear-gradient(135deg,#fafbfd 0%,#f6f8fc 100%)}
   .copill.add:hover{border-color:#a78bfa;background:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%)}
   .codel{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font-size:13px;font-weight:700;line-height:1;opacity:.35;margin-left:-2px;transition:opacity 150ms ease,background 150ms ease,color 150ms ease}
@@ -520,6 +526,11 @@
 <div class="wrap">
   <div class="pillrow" id="pillrow"></div>
 
+  <div class="tabbar" id="tabbar">
+    <button data-tab="ex" class="on">🕒 Senior ex-employees <span class="tc" id="tcEx">0</span></button>
+    <button data-tab="current">👥 Current employees <span class="tc" id="tcCur">0</span></button>
+  </div>
+
   <div class="brief" id="brief"></div>
 
   <div class="fpanel">
@@ -606,7 +617,7 @@
 const $=id=>document.getElementById(id);
 let TOKEN='open';   // editing is open — no password (see setKey)
 let SAVED=new Set(JSON.parse(localStorage.getItem('lx_saved')||'[]'));
-let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';
+let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';let TAB='ex';
 
 const RELLABEL={ex_employee:'Ex-employee',competitor_ex:'Competitor exec',franchise_partner:'Franchise partner',vendor:'Supplier / vendor',consultant:'Consultant',board:'Board member',investor:'Investor',expert:'Industry expert',other:'Stakeholder'};
 const SENLABEL={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director / Head',manager:'Manager',other:'Professional'};
@@ -861,6 +872,8 @@ function stypePass(p){
 function applyFilters(list){
   const q=$('q').value.trim().toLowerCase();
   let r=list.filter(p=>{
+    if(TAB==='ex'&&Number(p.is_current)!==0)return false;        // ex-employees tab
+    if(TAB==='current'&&Number(p.is_current)!==1)return false;   // current-employees tab
     if(!stypePass(p))return false;
     if(VIEWFILTER==='__saved'){if(!p._saved)return false;}else if(VIEWFILTER&&p.contacted!==VIEWFILTER)return false;
     if(q){const blob=(p.full_name+' '+(p.last_role||'')+' '+(p.current_employer||'')+' '+(p.current_role||'')+' '+p._fn).toLowerCase();if(!blob.includes(q))return false;}
@@ -1053,9 +1066,14 @@ function tableRow(p){
 
 function render(){
   const scope=scopeList();
+  $('tcEx').textContent=scope.filter(p=>Number(p.is_current)===0).length;
+  $('tcCur').textContent=scope.filter(p=>Number(p.is_current)===1).length;
   renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
+  if(!has)$('empty').innerHTML=TAB==='current'
+    ?'<div class="big">👥</div><div>No current employees mapped yet.<br>Search a company (or re-run one) to pull in its current senior staff.</div>'
+    :'<div class="big">🔍</div><div>No sources match. Adjust filters or add a company.</div>';
   $('empty').style.display=has?'none':'block';
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
@@ -1190,6 +1208,7 @@ $('sourceType').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('sourceTy
 $('q').addEventListener('input',render);
 $('viewCards').onclick=()=>{VIEW='cards';$('viewCards').classList.add('on');$('viewTable').classList.remove('on');render();};
 $('viewTable').onclick=()=>{VIEW='table';$('viewTable').classList.add('on');$('viewCards').classList.remove('on');render();};
+$('tabbar').querySelectorAll('button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;$('tabbar').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render();});
 
 // ---- header actions ----
 $('exportBtn').onclick=openExport;

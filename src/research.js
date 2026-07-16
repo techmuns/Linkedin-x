@@ -92,6 +92,16 @@ function buildQueries(company, hint = '') {
   ];
 }
 
+// Current senior employees: the company is their PRESENT employer. We exclude the
+// obvious "ex/former" phrasing so leavers don't come back through this path.
+function buildCurrentQueries(company, hint = '') {
+  const h = hint ? ` ${hint}` : '';
+  return [
+    `site:linkedin.com/in "at ${company}"${h} ${SENIOR_TERMS} -"ex ${company}" -"ex-${company}" -"former ${company}"`,
+    `site:linkedin.com/in ("at ${company}" OR "@ ${company}")${h} (Founder OR CEO OR CFO OR CTO OR COO OR President OR "Vice President" OR Director OR "Head of" OR "General Manager") -"ex-${company}" -"former ${company}"`,
+  ];
+}
+
 function cleanRole(s) {
   const cleaned = s.trim()
     .replace(/^(linkedin|profile|ex|ex-|former|formerly|previously|the|a|an|at)\b[\s-]*/gi, '')
@@ -156,6 +166,56 @@ function classify(r, company) {
   };
 }
 
+// Decide whether a search result is a genuine senior CURRENT employee of `company`.
+// (The client also wants current juniors from ISB/IIM/IIT — that needs each
+// profile's EDUCATION, which isn't reliably in a search snippet, so it's left for
+// the profile-data step. Here we keep it to senior current staff.)
+function classifyCurrent(r, company) {
+  const blob = `${r.title} ${r.snippet}`.toLowerCase();
+  const c = company.toLowerCase();
+  if (!blob.includes(c)) return null;
+
+  const parsed = parseLinkedInTitle(r.title);
+  if (!parsed) return null;
+
+  // Drop surname matches ("Danny Bluestone").
+  const nameLow = parsed.name.toLowerCase();
+  const tokens = c.split(/\s+/).filter(t => t.length >= 5);
+  if (nameLow.includes(c) || tokens.some(t => nameLow.includes(t))) return null;
+
+  // Must NOT read as an ex — reject any "ex/former/previously <company>".
+  const cEsc = c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`\\b(ex[-.\\s]+|former(ly)?[-.\\s]+|previously\\s+(at\\s+)?)${cEsc}\\b`).test(blob)) return null;
+
+  // Senior only (education-based juniors need profile data we can't read here).
+  if (!(looksSenior(r.title) || looksSenior(r.snippet))) return null;
+
+  // Must currently work there: the company sits in their headline's employer slot.
+  const headline = parsed.headline || '';
+  const employer = employerFromHeadline(headline);
+  const atCompany = (employer && employer.toLowerCase().includes(c))
+    || new RegExp(`\\b(?:at|@)\\s+${cEsc}\\b`, 'i').test(headline)
+    || new RegExp(`[·|,]\\s*${cEsc}\\b`, 'i').test(headline);
+  if (!atCompany) return null;
+
+  const role = roleAtCompany(headline, blob, company);
+  const seniority = seniorityOf(role || headline);
+
+  return {
+    full_name: parsed.name,
+    company,
+    last_role: role,
+    seniority: seniority === 'other' ? 'director' : seniority,
+    current_employer: company,           // they are currently here
+    current_role: headline || null,
+    is_current: 1,
+    relationship: 'current_employee',
+    linkedin_url: cleanLinkedInUrl(r.url),
+    source: 'search',
+    source_detail: r.url,
+  };
+}
+
 async function serperSearch(query, env, page = 1) {
   const r = await fetch('https://google.serper.dev/search', {
     method: 'POST',
@@ -195,19 +255,23 @@ export async function researchCompany(env, company, opts = {}) {
   const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
 
   const byKey = new Map();
-  for (const q of buildQueries(company, hint)) {
-    for (let page = 1; page <= pages; page++) {
-      let results = [];
-      try { results = await searcher(q, env, page); }
-      catch { break; }
-      if (!results.length) break;
-      for (const r of results) {
-        const person = classify(r, company);
-        if (!person) continue;
-        const key = (person.linkedin_url || person.full_name).toLowerCase();
-        if (!byKey.has(key)) byKey.set(key, person);
+  async function run(queries, classifier) {
+    for (const q of queries) {
+      for (let page = 1; page <= pages; page++) {
+        let results = [];
+        try { results = await searcher(q, env, page); }
+        catch { break; }
+        if (!results.length) break;
+        for (const r of results) {
+          const person = classifier(r, company);
+          if (!person) continue;
+          const key = (person.linkedin_url || person.full_name).toLowerCase();
+          if (!byKey.has(key)) byKey.set(key, person);   // ex pass runs first, so it wins on any tie
+        }
       }
     }
   }
+  await run(buildQueries(company, hint), classify);                 // senior EX-employees
+  await run(buildCurrentQueries(company, hint), classifyCurrent);   // senior CURRENT employees
   return [...byKey.values()];
 }
