@@ -800,6 +800,34 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining });
   }
 
+  // TEMP DIAGNOSTIC: POST /api/apify-debug -> run the Apify actor on one known
+  // public profile and return the raw HTTP status + first item, so we can see
+  // exactly why enrichment isn't filling. Remove once Apify is confirmed working.
+  if (path === '/api/apify-debug' && method === 'POST') {
+    if (!hasApify(env)) return json({ error: 'no APIFY_TOKEN' });
+    const body = await request.json().catch(() => ({}));
+    const actor = (body.actor || 'dev_fusion~linkedin-profile-scraper');
+    const urls = body.profileUrls || ['https://www.linkedin.com/in/williamhgates'];
+    const out = { actor };
+    try {
+      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?timeout=120`, {
+        method: 'POST',
+        headers: { authorization: 'Bearer ' + env.APIFY_TOKEN, 'content-type': 'application/json' },
+        body: JSON.stringify({ profileUrls: urls }),
+      });
+      out.status = r.status; out.ok = r.ok;
+      const txt = await r.text();
+      out.bodyStart = txt.slice(0, 900);
+      try {
+        const j = JSON.parse(txt);
+        out.isArray = Array.isArray(j);
+        out.count = Array.isArray(j) ? j.length : undefined;
+        out.firstItemKeys = (Array.isArray(j) && j[0]) ? Object.keys(j[0]).slice(0, 40) : undefined;
+      } catch { /* not json */ }
+    } catch (e) { out.fetchError = String((e && e.message) || e); }
+    return json(out);
+  }
+
   // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing
   // one, a small paced batch at a time. Body: { company?, limit? }. Call
   // repeatedly until { remaining: 0 }.
