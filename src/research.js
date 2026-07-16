@@ -269,19 +269,28 @@ function normName(s) {
 // Ask Firecrawl to render a URL and hand back its markdown. ZoomInfo needs a
 // real browser render (PerimeterX), which Firecrawl does server-side.
 async function firecrawlScrape(env, url) {
-  const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: {
-      authorization: 'Bearer ' + env.FIRECRAWL_API_KEY,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ url, formats: ['markdown'], waitFor: 2500 }),
-  });
-  if (!r.ok) throw new Error(`firecrawl ${r.status}`);
-  const data = await r.json().catch(() => null);
-  if (!data) return null;
-  // v1 shape: { success, data: { markdown, metadata } }
-  return (data.data && data.data.markdown) || data.markdown || null;
+  // Abort at 30s so a slow ZoomInfo render can't stall the (now synchronous)
+  // search request.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  try {
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + env.FIRECRAWL_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ url, formats: ['markdown'], waitFor: 2500 }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`firecrawl ${r.status}`);
+    const data = await r.json().catch(() => null);
+    if (!data) return null;
+    // v1 shape: { success, data: { markdown, metadata } }
+    return (data.data && data.data.markdown) || data.markdown || null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Find the company's ZoomInfo people page: .../pic/<slug>/<id>. That path is the
