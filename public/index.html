@@ -667,6 +667,11 @@ function cleanEmployer(e){
   if(s.length<2)return '';
   if(/^(ex(\b|[-\s])|former|formerly|previously|past\b|self\b|freelance|open to|looking|seeking)/i.test(low))return '';
   if(s.split(/\s+/).length>=3 && /\b(architect|architecting|manager|director|\bhead\b|officer|engineer|analyst|consultant|specialist|coordinator|associate|intern|professional|logistics|supply\s*chain|operations|marketing|strategy|business development|transformation)\b/i.test(low))return '';
+  // A value that is ONLY job-function words ("Growth, Retention & Retail") is a
+  // role descriptor mis-captured as an employer — not a company. Reject it.
+  const fwords=low.replace(/[,&/]/g,' ').split(/\s+/).filter(w=>w&&!/^(and|of|the|for|a|an)$/.test(w));
+  const FUNC=/^(growth|retention|acquisition|retail|sales|marketing|operations|ops|strategy|finance|category|merchandising|enablement|excellence|transformation|revenue|commercial|procurement|sourcing|logistics|supply|chain|product|brand|digital|ecommerce|e-commerce|expansion|partnerships|partnership)$/;
+  if(fwords.length>=2 && fwords.every(w=>FUNC.test(w)))return '';
   if(s.split(/\s+/).length>6)return '';
   return s;
 }
@@ -696,7 +701,7 @@ function deriveEmployer(p){
   };
   let m=h.match(/\b(?:at|@)\s+([A-Za-z0-9][^,|·]{1,40})$/i);
   if(m){const c=okco(m[1]);if(c)return c;}
-  m=h.match(/^(?:co[-\s]?founder|founder|owner|proprietor)\s+(.+)$/i);
+  m=h.match(/^(?:co[-\s]?founder|founder|owner|proprietor)\s+(?:of\s+|at\s+|@\s+)?(.+)$/i);
   if(m&&/^[A-Z]/.test(m[1].trim())){const c=okco(m[1]);if(c&&!/\b(of|at|the|and|for)\b/i.test(c)&&!/[&]/.test(c)&&c.split(/\s+/).length<=3)return c;}
   // "Company <department> <title>" — e.g. "AQSA Foods Purchase Head".
   m=h.match(/^([A-Z][A-Za-z0-9&.\-' ]{1,38}?)\s+(purchase|production|sales|marketing|operations|finance|logistics|procurement|sourcing|category|merchandising|warehouse|quality)\s+(head|manager|lead|director|officer|incharge|in[-\s]?charge)\b/i);
