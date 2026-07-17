@@ -914,14 +914,13 @@ let CODROP_LISTENER=false;
 function renderPills(){
   const cos=[...new Set(RAW.map(p=>p.company))].map(c=>{
     const rows=RAW.filter(x=>x.company===c);
-    return {company:c,label:rows[0].company_label,n:rows.length,need:rows.filter(x=>!deriveEmployer(x)&&!stillAtTarget(x)).length};
+    return {company:c,label:rows[0].company_label,n:rows.length};
   }).sort((a,b)=>b.n-a.n);
   const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
   const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
   const savedHtml=`<div class="savedviews">${rnote}<select class="sv" id="savedViews">
     <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
     <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
-  const needBadge=c=>c.need?`<span class="coneed" title="${c.need} contact${c.need>1?'s':''} still need a “Now At”">⚠ ${c.need}</span>`:'';
 
   // Once there are several companies, collapse the pill row into a compact
   // searchable dropdown so the bar never clutters as the client adds more.
@@ -930,7 +929,7 @@ function renderPills(){
     const selLabel=sel?(sel.label||sel.company):'All companies';
     const selCount=sel?sel.n:RAW.length;
     const items=[`<div class="codrop-item ${COMPANY===''?'active':''}" data-co=""><span class="lbl">All companies</span><span class="c">${RAW.length}</span></div>`]
-      .concat(cos.map(c=>`<div class="codrop-item ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}"><span class="lbl">${esc(c.label||c.company)}</span><span class="c">${c.n}</span>${needBadge(c)}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`));
+      .concat(cos.map(c=>`<div class="codrop-item ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}"><span class="lbl">${esc(c.label||c.company)}</span><span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`));
     // "Add company" sits OUTSIDE the dropdown, right beside it, as its own button.
     $('pillrow').innerHTML=`<div class="codrop" id="coDrop"><button class="codrop-btn" id="coDropBtn"><span class="lbl">${esc(selLabel)}</span> <span class="c">${selCount}</span> <span class="carq">▾</span></button><div class="codrop-menu"><input class="codrop-search" id="coDropSearch" placeholder="Filter companies…"/>${items.join('')}</div></div><div class="copill add" id="addCo">＋ Add company</div>`+savedHtml;
     const drop=$('coDrop');
@@ -943,7 +942,7 @@ function renderPills(){
     if(!CODROP_LISTENER){CODROP_LISTENER=true;document.addEventListener('click',()=>{const d=$('coDrop');if(d)d.classList.remove('open');});}
   }else{
     const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
-      .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span>${needBadge(c)}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
+      .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
       .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
     $('pillrow').innerHTML=pills.join('')+savedHtml;
     document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
