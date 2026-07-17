@@ -1518,7 +1518,9 @@ async function enrichApifyLoop(company){
       try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:12})})).json();}
       catch{break;}
       if(!r||r.disabled){APIFY_OFF=true;break;}
-      if(r.error==='apify_error'){APIFY_OFF=true;setEnrichPill('⚠ Auto Now At needs a paid Apify plan — using ZoomInfo only');holdMsg=true;break;}
+      // Apify's free runs are used up (or errored): fall back to the free ZoomInfo
+      // data silently — no paid-plan nag in front of the client.
+      if(r.error==='apify_error'){APIFY_OFF=true;break;}
       if(r.updated||r.nowFilled||r.deduped)await loadAll();
       if(!r.remaining){break;}
       setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
