@@ -135,6 +135,25 @@
   .codel:hover{opacity:1;background:#fee2e2;color:#dc2626}
   .copill.active .codel{color:#fff}
   .copill.active .codel:hover{background:rgba(255,255,255,.25);color:#fff}
+  /* Company dropdown (used once there are many companies, so the bar never clutters) */
+  .codrop{position:relative;display:inline-block}
+  .codrop-btn{display:inline-flex;align-items:center;gap:9px;border:1px solid #5b4e99;border-radius:999px;cursor:pointer;
+    background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 100%);color:#fff;font-weight:750;font-size:13.5px;padding:9px 16px;
+    box-shadow:0 2px 8px rgba(109,94,199,.28)}
+  .codrop-btn .c{background:rgba(255,255,255,.24);color:#fff;border-radius:999px;padding:1px 9px;font-size:11.5px;font-weight:800}
+  .codrop-btn .carq{font-size:11px;opacity:.85;transition:transform 160ms ease}
+  .codrop.open .codrop-btn .carq{transform:rotate(180deg)}
+  .codrop-menu{position:absolute;top:calc(100% + 6px);left:0;background:var(--card-bg);border:1px solid #dde1f1;border-radius:14px;
+    box-shadow:0 12px 36px rgba(109,40,217,.18);padding:6px;min-width:300px;max-height:360px;overflow:auto;z-index:200;display:none}
+  .codrop.open .codrop-menu{display:block}
+  .codrop-search{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12.5px;margin-bottom:6px}
+  .codrop-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:650;color:#3d4a68;white-space:nowrap}
+  .codrop-item:hover{background:#f4f6fc}
+  .codrop-item.active{background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 100%);color:#fff}
+  .codrop-item .lbl{overflow:hidden;text-overflow:ellipsis}
+  .codrop-item .c{margin-left:auto;background:rgba(91,78,153,.12);border-radius:999px;padding:1px 9px;font-size:11px;font-weight:800;color:#5b4e99}
+  .codrop-item.active .c{background:rgba(255,255,255,.24);color:#fff}
+  .codrop-item.addrow{color:#6d5ec7;border-top:1px solid var(--line);border-radius:0;margin-top:4px;padding-top:11px}
   .savedviews{margin-left:auto}
   select.sv{border:1px solid #dde1f1;background:var(--card-bg);border-radius:10px;padding:8px 13px;
     font-weight:650;font-size:12.5px;color:#3d4a68;box-shadow:var(--shadow);cursor:pointer;
@@ -318,6 +337,14 @@
   .enrich-pill .spin{width:13px;height:13px;border:2px solid #d6d2ee;border-top-color:#6d5ec7;border-radius:50%;
     animation:enrspin .8s linear infinite}
   @keyframes enrspin{to{transform:rotate(360deg)}}
+  /* Background-search banner (top center) so a search never blocks the client */
+  .search-pill{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--card-bg);border:1px solid #c8cee8;
+    border-radius:999px;padding:9px 18px;box-shadow:0 8px 28px rgba(109,40,217,.2);display:none;align-items:center;gap:10px;
+    z-index:120;font-size:13px;font-weight:750;color:#5b4e99;backdrop-filter:blur(8px)}
+  .search-pill.show{display:flex}
+  .search-pill.ready{cursor:pointer;color:#067647;border-color:#b6ecca;background:linear-gradient(135deg,#ecfdf3 0%,#f4fff9 100%)}
+  .search-pill .spin{width:13px;height:13px;border:2px solid #d6d2ee;border-top-color:#6d5ec7;border-radius:50%;animation:enrspin .8s linear infinite}
+  .search-pill.ready .spin{display:none}
   @keyframes traySlideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
   .shortlist-tray .count{font-size:14px;font-weight:700;color:#3d4a68}
   .shortlist-tray .count span{color:#6d5ec7;font-size:18px;margin-right:4px}
@@ -587,7 +614,8 @@
       </div>
       <div class="astage"><span id="aStage">Sending request payload</span><span id="aPct">5%</span></div>
       <div class="abar" id="aBar"></div>
-      <div class="afoot"><div class="anote" id="aNote">Leave this tab open — the dashboard will appear automatically when the analysis lands.</div>
+      <div class="afoot"><div class="anote" id="aNote">Searching in the background is fine — you can keep working and it'll finish on its own.</div>
+        <button class="btn" id="aBackground">⇊ Continue in background</button>
         <button class="btn" id="aCancel">✕ Cancel</button></div>
       <div class="arecent">
         <div class="arh"><span>RECENT REFRESHES</span><span id="aStored">0 STORED LOCALLY</span></div>
@@ -622,6 +650,8 @@
 
 <!-- Now At enrichment progress -->
 <div class="enrich-pill" id="enrichPill"><span class="spin"></span><span id="enrichPillText">Filling Now At…</span></div>
+<!-- Background search banner (search keeps running while the client browses) -->
+<div class="search-pill" id="searchPill"><span class="spin"></span><span id="searchPillText">Searching…</span></div>
 
 <!-- Shortlist tray -->
 <div class="shortlist-tray" id="shortlistTray">
@@ -880,21 +910,45 @@ async function loadAll(){
 }
 function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
 
+let CODROP_LISTENER=false;
 function renderPills(){
   const cos=[...new Set(RAW.map(p=>p.company))].map(c=>{
     const rows=RAW.filter(x=>x.company===c);
     return {company:c,label:rows[0].company_label,n:rows.length,need:rows.filter(x=>!deriveEmployer(x)&&!stillAtTarget(x)).length};
   }).sort((a,b)=>b.n-a.n);
-  const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
-    .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span>${c.need?`<span class="coneed" title="${c.need} contact${c.need>1?'s':''} still need a “Now At” — run ✨ Enrich / Apify for this company">⚠ ${c.need}</span>`:''}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
-    .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
   const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
   const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
-  $('pillrow').innerHTML=pills.join('')+`<div class="savedviews">${rnote}<select class="sv" id="savedViews">
+  const savedHtml=`<div class="savedviews">${rnote}<select class="sv" id="savedViews">
     <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
     <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
-  document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
-  document.querySelectorAll('.codel[data-del]').forEach(t=>t.onclick=(e)=>{e.stopPropagation();deleteCompany(t.dataset.del);});
+  const needBadge=c=>c.need?`<span class="coneed" title="${c.need} contact${c.need>1?'s':''} still need a “Now At”">⚠ ${c.need}</span>`:'';
+
+  // Once there are several companies, collapse the pill row into a compact
+  // searchable dropdown so the bar never clutters as the client adds more.
+  if(cos.length>5){
+    const sel=COMPANY?cos.find(c=>c.company===COMPANY):null;
+    const selLabel=sel?(sel.label||sel.company):'All companies';
+    const selCount=sel?sel.n:RAW.length;
+    const items=[`<div class="codrop-item ${COMPANY===''?'active':''}" data-co=""><span class="lbl">All companies</span><span class="c">${RAW.length}</span></div>`]
+      .concat(cos.map(c=>`<div class="codrop-item ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}"><span class="lbl">${esc(c.label||c.company)}</span><span class="c">${c.n}</span>${needBadge(c)}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
+      .concat([`<div class="codrop-item addrow" id="addCo">＋ Add a company</div>`]);
+    $('pillrow').innerHTML=`<div class="codrop" id="coDrop"><button class="codrop-btn" id="coDropBtn"><span class="lbl">${esc(selLabel)}</span> <span class="c">${selCount}</span> <span class="carq">▾</span></button><div class="codrop-menu"><input class="codrop-search" id="coDropSearch" placeholder="Filter companies…"/>${items.join('')}</div></div>`+savedHtml;
+    const drop=$('coDrop');
+    drop.onclick=e=>e.stopPropagation();  // clicks inside never bubble to the close-on-outside handler
+    $('coDropBtn').onclick=()=>{drop.classList.toggle('open');const s=$('coDropSearch');if(drop.classList.contains('open')&&s){s.value='';setTimeout(()=>s.focus(),30);}};
+    const sInp=$('coDropSearch');
+    if(sInp)sInp.oninput=()=>{const q=sInp.value.toLowerCase();drop.querySelectorAll('.codrop-item[data-co]').forEach(it=>{it.style.display=(it.dataset.co===''||it.textContent.toLowerCase().includes(q))?'':'none';});};
+    drop.querySelectorAll('.codrop-item[data-co]').forEach(t=>t.onclick=(e)=>{if(e.target.classList.contains('codel'))return;COMPANY=t.dataset.co;drop.classList.remove('open');renderPills();render();});
+    drop.querySelectorAll('.codel[data-del]').forEach(t=>t.onclick=(e)=>{e.stopPropagation();deleteCompany(t.dataset.del);});
+    if(!CODROP_LISTENER){CODROP_LISTENER=true;document.addEventListener('click',()=>{const d=$('coDrop');if(d)d.classList.remove('open');});}
+  }else{
+    const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
+      .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span>${needBadge(c)}<span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
+      .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
+    $('pillrow').innerHTML=pills.join('')+savedHtml;
+    document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
+    document.querySelectorAll('.codel[data-del]').forEach(t=>t.onclick=(e)=>{e.stopPropagation();deleteCompany(t.dataset.del);});
+  }
   $('addCo').onclick=addCompany;
   $('savedViews').value=VIEWFILTER;
   $('savedViews').onchange=e=>{VIEWFILTER=e.target.value;render();};
@@ -1471,7 +1525,8 @@ function setBar(pct){const N=10,on=Math.round(pct/100*N);$('aBar').innerHTML=Arr
 function clearTimers(){if(AN.timer)clearInterval(AN.timer);if(AN.poll)clearInterval(AN.poll);AN.timer=AN.poll=null;}
 function startAnalysis(name,ticker){
   clearTimers();
-  AN={timer:null,poll:null,seconds:0,pct:5,done:false,company:name.toLowerCase(),baseline:RAW.filter(p=>p.company===name.toLowerCase()).length};
+  AN={timer:null,poll:null,seconds:0,pct:5,done:false,bg:false,company:name.toLowerCase(),baseline:RAW.filter(p=>p.company===name.toLowerCase()).length};
+  setSearchPill('');   // clear any stale background-search banner
   $('aCoName').textContent=name;
   if(ticker){$('aCoTicker').textContent=ticker;$('aCoTicker').style.display='';}else $('aCoTicker').style.display='none';
   $('aStage').textContent=STAGES[0];$('aTimer').textContent='00:00';
@@ -1497,11 +1552,26 @@ async function pollAnalysis(){
     if(rec&&rec.status==='error')return failAnalysis(rec.message);
   }catch{}
 }
+// Compact top banner shown while a search runs in the background (client kept
+// working). `ready` styles it green + makes it a click-to-view button.
+function setSearchPill(text,ready,onclick){
+  const p=$('searchPill');if(!p)return;
+  if(text){$('searchPillText').textContent=text;p.classList.add('show');p.classList.toggle('ready',!!ready);p.onclick=onclick||null;}
+  else{p.classList.remove('show');p.classList.remove('ready');p.onclick=null;}
+}
+// Dismiss the full-screen search overlay but keep the search running — the client
+// can browse other companies/tabs and it lands on its own. No interruption.
+function minimizeAnalysis(){
+  if(AN.done)return;
+  AN.bg=true;$('analysis').style.display='none';
+  setSearchPill('🔍 Searching '+$('aCoName').textContent+'…',false);
+}
 function landEmpty(){
   if(AN.done)return;AN.done=true;clearTimers();setBar(100);
   $('aStage').textContent='No public ex-employees found';
   $('aNote').textContent='Search finished, but no senior person on public LinkedIn is labelled “ex/former '+$('aCoName').textContent+'”. Smaller or regional companies often have none — the only public profiles are current staff. Close and try another company.';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
+  if(AN.bg)setSearchPill('○ '+$('aCoName').textContent+': no results — dismiss',true,()=>setSearchPill(''));
 }
 // Backstop: if a search hasn't landed after the timeout, stop the spinner and
 // say so clearly instead of loading forever.
@@ -1510,12 +1580,20 @@ function landStalled(){
   $('aStage').textContent='No results found';
   $('aNote').textContent='No senior ex-employees came back for “'+$('aCoName').textContent+'”. Either there are none on public LinkedIn, or the search stalled — close this and try again, or try a more specific name.';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
+  if(AN.bg)setSearchPill('○ '+$('aCoName').textContent+': no results — dismiss',true,()=>setSearchPill(''));
 }
 function landAnalysis(){
   if(AN.done)return;AN.done=true;clearTimers();
   setBar(100);$('aStage').textContent='Scan complete';
   refreshUpdate($('aCoName').textContent,'done');renderRecent();
-  const co=AN.company;
+  const co=AN.company, coName=$('aCoName').textContent;
+  if(AN.bg){
+    // Client is browsing — don't yank their view. Refresh + enrich in the
+    // background and offer a click to jump to the results when they're ready.
+    loadAll().then(()=>enrichApifyLoop(co));
+    setSearchPill('✓ '+coName+' ready — view results',true,()=>{setSearchPill('');COMPANY=co;render();});
+    return;
+  }
   setTimeout(async()=>{$('analysis').style.display='none';COMPANY=co;await loadAll();enrichApifyLoop(co);},900);
 }
 // After a search lands, read the real LinkedIn profiles (Apify) in small batches
@@ -1549,8 +1627,9 @@ function failAnalysis(msg){
   $('aNote').textContent=(msg||'Something went wrong')+' — you can close and retry.';
   refreshUpdate($('aCoName').textContent,'failed');renderRecent();
 }
-function closeAnalysis(){clearTimers();AN.done=true;$('analysis').style.display='none';}
+function closeAnalysis(){clearTimers();AN.done=true;$('analysis').style.display='none';setSearchPill('');}
 $('aCancel').onclick=closeAnalysis;
+$('aBackground').onclick=minimizeAnalysis;
 
 // generic modal
 function openModal(html){$('genModal').innerHTML=html;$('genBg').style.display='flex';}
