@@ -673,6 +673,28 @@ function avatarEl(p,cls){
 }
 function firstName(n){return (n||'').split(/\s+/)[0]||'They';}
 function roleTitle(p){let t=(p.current_role||p.last_role||'').split(/\s+(?:at|@)\s+|[|·]/i)[0].trim();return t||SENLABEL[p.seniority||'other'];}
+// Company-name matcher that ignores the noise that makes the SAME company look
+// different: "&" vs "and", "Ltd/Limited/Pvt/Inc" suffixes, punctuation. This is
+// what stops "Sky Gold & Diamonds Ltd" from being read as a different company
+// than "Sky Gold and Diamonds" (which wrongly tagged current staff as "Ex").
+function normCo(s){
+  return String(s||'').toLowerCase()
+    .replace(/&/g,' and ')
+    .replace(/[.,\-–—/()'"]/g,' ')
+    .replace(/\b(private limited|pvt ltd|pvt|private|limited|ltd|llp|plc|inc|incorporated|corporation|corp|company)\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function coMatch(a,b){
+  a=normCo(a);b=normCo(b);
+  if(!a||!b)return false;
+  if(a===b)return true;
+  if(Math.min(a.length,b.length)<5)return false;      // too short to prefix-match safely
+  return a.startsWith(b+' ')||b.startsWith(a+' ');     // "Shadowfax" ~ "Shadowfax Technologies"
+}
+// A person is effectively CURRENT when their present employer is the company we
+// searched (whatever the stored is_current says) — used so they land in the
+// right tab and never read "Ex-X" while working at X.
+function effCurrent(p){return stillAtTarget(p)?1:Number(p.is_current);}
 // Clean the "now at" value: reject leftover "Ex…" fragments and role phrases
 // that the scraper mistook for a current company.
 function cleanEmployer(e){
@@ -699,14 +721,9 @@ function deriveEmployer(p){
   // The ex-company is never a valid "Now at": if a captured/scraped current
   // employer equals the company they LEFT (a stale LinkedIn position), ignore
   // it and read their real current employer from the headline instead.
-  const nrm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-  const tgt=nrm(p.company), tgtl=nrm(p.company_label);
-  // Also treat a sub-brand spelling as the target ("CaratLane - A Tanishq" is
-  // still CaratLane) so we never show the company they're listed under as "Now
-  // At". Prefix-only + length>=5 keeps short/common names from over-matching.
-  const isTarget=s=>{const n=nrm(s);if(!n)return false;
-    const pfx=t=>t&&t.length>=5&&(n===t||n.startsWith(t+' ')||n.startsWith(t+'-'));
-    return n===tgt||n===tgtl||pfx(tgt)||pfx(tgtl);};
+  // The ex-company is never a valid "Now At" — and we match it tolerantly
+  // (& vs and, Ltd/Pvt suffixes, sub-brand spellings like "CaratLane - A Tanishq").
+  const isTarget=s=>coMatch(s,p.company)||coMatch(s,p.company_label);
   const direct=cleanEmployer(p.current_employer);
   if(direct&&!isTarget(direct))return direct;
   let h=(p.current_role||'').trim();if(!h)return '';
@@ -909,8 +926,8 @@ function stypePass(p){
 function applyFilters(list){
   const q=$('q').value.trim().toLowerCase();
   let r=list.filter(p=>{
-    if(TAB==='ex'&&Number(p.is_current)!==0)return false;        // ex-employees tab
-    if(TAB==='current'&&Number(p.is_current)!==1)return false;   // current-employees tab
+    if(TAB==='ex'&&effCurrent(p)!==0)return false;        // ex-employees tab
+    if(TAB==='current'&&effCurrent(p)!==1)return false;   // current-employees tab
     if(!stypePass(p))return false;
     if(VIEWFILTER==='__saved'){if(!p._saved)return false;}else if(VIEWFILTER&&p.contacted!==VIEWFILTER)return false;
     if(q){const blob=(p.full_name+' '+(p.last_role||'')+' '+(p.current_employer||'')+' '+(p.current_role||'')+' '+p._fn).toLowerCase();if(!blob.includes(q))return false;}
@@ -1066,9 +1083,7 @@ function exposureCell(p){
 // left. We surface this honestly ("Still at X") instead of a wrong "Now At".
 function stillAtTarget(p){
   const emp=cleanEmployer(p.current_employer);if(!emp)return false;
-  const n=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-  const e=n(emp),pfx=t=>t&&t.length>=5&&(e===t||e.startsWith(t+' ')||e.startsWith(t+'-'));
-  return e===n(p.company)||e===n(p.company_label)||pfx(n(p.company))||pfx(n(p.company_label));
+  return coMatch(emp,p.company)||coMatch(emp,p.company_label);
 }
 function tableRow(p){
   const co=p.company_label||p.company||'';
@@ -1127,8 +1142,8 @@ function tableRow(p){
 
 function render(){
   const scope=scopeList();
-  $('tcEx').textContent=scope.filter(p=>Number(p.is_current)===0).length;
-  $('tcCur').textContent=scope.filter(p=>Number(p.is_current)===1).length;
+  $('tcEx').textContent=scope.filter(p=>effCurrent(p)===0).length;
+  $('tcCur').textContent=scope.filter(p=>effCurrent(p)===1).length;
   renderBrief(scope);
   const rows=applyFilters(scope);
   const has=rows.length>0;
