@@ -1515,7 +1515,7 @@ async function enrichApifyLoop(company){
     setEnrichPill('Filling Now At…');
     for(let guard=0;guard<40;guard++){
       let r;
-      try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:5})})).json();}
+      try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:12})})).json();}
       catch{break;}
       if(!r||r.disabled){APIFY_OFF=true;break;}
       if(r.error==='apify_error'){APIFY_OFF=true;setEnrichPill('⚠ Auto Now At needs a paid Apify plan — using ZoomInfo only');holdMsg=true;break;}

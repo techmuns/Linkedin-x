@@ -257,7 +257,7 @@ async function cronEnrichApify(env, budget) {
   for (let round = 0; round < 20 && done < budget; round++) {
     const rows = (await env.DB.prepare(
       `SELECT * FROM people WHERE linkedin_url IS NOT NULL AND linkedin_url != '' AND enriched_at IS NULL
-       ORDER BY updated_at DESC LIMIT 5`
+       ORDER BY updated_at DESC LIMIT 12`
     ).all()).results || [];
     if (!rows.length) break;
     const byCo = new Map();
@@ -855,7 +855,10 @@ async function handleApi(request, env, url, ctx) {
     const body = await request.json().catch(() => ({}));
     const company = (body.company || '').trim();
     if (!company) return json({ error: 'company required' }, { status: 400 });
-    const limit = Math.min(Math.max(Number(body.limit) || 5, 1), 10);
+    // Read many profiles per call: each call is ONE Apify run, and free Apify
+    // accounts cap the number of runs — so we pack each run full instead of
+    // wasting a run on a handful.
+    const limit = Math.min(Math.max(Number(body.limit) || 12, 1), 15);
     const co = normCompany(company);
     // People with a LinkedIn URL we haven't read yet (enriched_at is NULL).
     // Seniors first — they matter most and we want them enriched even if the
