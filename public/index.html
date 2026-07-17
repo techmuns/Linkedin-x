@@ -375,6 +375,10 @@
   .tnowat.empty{background:#f3f4f6;color:#6b7794;border-color:#e5e7eb}
   .tnowat.still{background:linear-gradient(135deg,#fef4e6 0%,#fde7c9 100%);color:#b54708;border-color:#fbd9a8}
   .tchip.tg-cur{background:#fff1e0;color:#b54708}
+  .tchip.tg-elite{background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);color:#4338ca;border:1px solid #c7d2fe}
+  .elitebadge{display:inline-block;background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);color:#4338ca;
+    font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;
+    letter-spacing:.3px;border:1px solid #c7d2fe}
   .ttier{display:flex;align-items:center;gap:8px}
   .ttier-pill{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
     background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
@@ -551,6 +555,7 @@
         <button data-st="ops">📦 Ops &amp; Supply Chain</button>
         <button data-st="ceo">👑 People near CEO</button>
         <button data-st="left">🕒 Recently left</button>
+        <button data-st="elite" title="Studied at ISB, IIM or IIT (from their profile)">🎓 ISB/IIM/IIT</button>
       </div>
     </div>
     <div class="fright">
@@ -739,7 +744,16 @@ function fnOf(p){const t=((p.last_role||'')+' '+(p.current_role||'')+' '+(p.seni
   return 'Operations';}
 function tierOf(s){s=s||0;return s>=100?1:s>=85?2:s>=70?3:s>=55?4:5;}
 function reachOf(p){let r=18;if(p.linkedin_url)r+=46;if(p.current_employer)r+=20;if(Number(p.is_current)===0)r+=16;return Math.min(100,r);}
-function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._in=!!p.linkedin_url&&p._reach>=55;return p;}
+// Detect a top-tier Indian school from the person's education (filled by the
+// profile read). The client wants ISB / IIM / IIT flagged even for juniors.
+function eliteSchool(edu){
+  const s=String(edu||'');
+  if(/indian school of business|\bisb\b/i.test(s))return 'ISB';
+  if(/indian institute of management|\biim\b/i.test(s))return 'IIM';
+  if(/indian institute of technology|\biit\b/i.test(s))return 'IIT';
+  return '';
+}
+function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._elite=eliteSchool(p.education);p._in=!!p.linkedin_url&&p._reach>=55;return p;}
 
 const BESTFOR={Leadership:['Strategy & positioning','Leadership quality'],Finance:['Unit economics','Margins & cash'],Operations:['Operational insight','Execution at scale'],Technology:['Product & tech','Data maturity'],Marketing:['Brand & CAC','Growth channels'],'Supply Chain':['Sourcing & vendors','Inventory & WC']};
 function bestFor(p){return BESTFOR[p._fn]||['Sector view','Competitive read'];}
@@ -889,6 +903,7 @@ function stypePass(p){
   if(STYPE==='ops')return p._fn==='Operations'||p._fn==='Supply Chain';
   if(STYPE==='ceo')return ['founder','clevel'].includes(p.seniority);
   if(STYPE==='left')return Number(p.is_current)===0;
+  if(STYPE==='elite')return !!p._elite;
   return true;
 }
 function applyFilters(list){
@@ -980,7 +995,7 @@ function rowHtml(p){
     <div class="rl">
       ${avatarEl(p,'rav')}
       <div class="rid">
-        <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
+        <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${p._elite?` <span class="elitebadge" title="Studied at ${p._elite}">🎓 ${p._elite}</span>`:''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
       </div>
@@ -1065,6 +1080,7 @@ function tableRow(p){
   // Name chips
   const chips=[];
   if(isNew(p))chips.push(`<span class="tchip newb">NEW</span>`);
+  if(p._elite)chips.push(`<span class="tchip tg-elite">🎓 ${p._elite}</span>`);
   if(still)chips.push(`<span class="tchip tg-cur">At ${esc(co)}</span>`);
   else if(leftCo)chips.push(`<span class="tchip tg-left">Ex-${esc(co)}</span>`);
   if(['founder','clevel'].includes(p.seniority))chips.push(`<span class="tchip tg-founder">Leadership</span>`);
@@ -1503,10 +1519,11 @@ async function enrichApifyLoop(company){
       catch{break;}
       if(!r||r.disabled){APIFY_OFF=true;break;}
       if(r.error==='apify_error'){APIFY_OFF=true;setEnrichPill('⚠ Auto Now At needs a paid Apify plan — using ZoomInfo only');holdMsg=true;break;}
-      if(r.updated||r.nowFilled)await loadAll();
+      if(r.updated||r.nowFilled||r.deduped)await loadAll();
       if(!r.remaining){break;}
       setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
     }
+    await loadAll();   // final refresh (reflects the end-of-loop dedupe)
   }finally{ENRICHING=false;if(holdMsg)setTimeout(()=>setEnrichPill(''),9000);else setEnrichPill('');}
 }
 function failAnalysis(msg){

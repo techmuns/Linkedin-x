@@ -197,6 +197,49 @@ async function upsertPeopleBulk(env, company, people) {
   return { created, updated, total: people.length };
 }
 
+// Merge duplicate rows for a company. Two rows are the same person when their
+// names match after normalizing (lowercase, drop "(...)" asides, strip
+// punctuation) — UNLESS they carry two different LinkedIn URLs, which means they
+// really are different people. The richest row survives; the others' non-empty
+// fields are folded in, then the extras are deleted. Runs after enrichment and
+// on demand via /api/dedupe.
+async function dedupeCompany(env, company) {
+  const co = normCompany(company);
+  const rows = (await env.DB.prepare('SELECT * FROM people WHERE company = ?').bind(co).all()).results || [];
+  const nkey = s => String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const urlOf = r => (r.linkedin_url || '').toLowerCase().replace(/\/+$/, '');
+  const filled = r => ['linkedin_url', 'current_employer', 'tenure_start', 'education', 'former_role', 'current_role']
+    .reduce((n, f) => n + ((r[f] != null && r[f] !== '') ? 1 : 0), 0);
+  const groups = new Map();
+  for (const r of rows) { const k = nkey(r.full_name); if (!k) continue; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  const stmts = []; let removed = 0;
+  for (const grp of groups.values()) {
+    if (grp.length < 2) continue;
+    if ([...new Set(grp.map(urlOf).filter(Boolean))].length > 1) continue;   // distinct URLs => different people
+    grp.sort((a, b) => filled(b) - filled(a) || (Date.parse(b.updated_at || 0) - Date.parse(a.updated_at || 0)));
+    const keep = { ...grp[0] };
+    for (const other of grp.slice(1)) {
+      for (const f of ['last_role', 'former_role', 'education', 'current_employer', 'current_role', 'tenure_start',
+        'tenure_end', 'linkedin_url', 'photo_url', 'location', 'seniority', 'relationship', 'source']) {
+        if ((keep[f] == null || keep[f] === '') && other[f] != null && other[f] !== '') keep[f] = other[f];
+      }
+      if ((!keep.contacted || keep.contacted === 'no') && other.contacted && other.contacted !== 'no') keep.contacted = other.contacted;
+      if ((keep.notes == null || keep.notes === '') && other.notes) keep.notes = other.notes;
+      stmts.push(env.DB.prepare('DELETE FROM people WHERE id = ?').bind(other.id));
+      removed++;
+    }
+    stmts.push(env.DB.prepare(
+      `UPDATE people SET last_role=?, former_role=?, education=?, current_employer=?, current_role=?,
+         tenure_start=?, tenure_end=?, linkedin_url=?, photo_url=?, location=?, seniority=?, relationship=?,
+         is_current=?, source=?, contacted=?, notes=?, updated_at=? WHERE id=?`
+    ).bind(keep.last_role, keep.former_role, keep.education, keep.current_employer, keep.current_role,
+      keep.tenure_start, keep.tenure_end, keep.linkedin_url, keep.photo_url, keep.location, keep.seniority,
+      keep.relationship, keep.is_current, keep.source, keep.contacted || 'no', keep.notes, new Date().toISOString(), keep.id));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return { removed };
+}
+
 // ---- Research jobs (run inside the Worker) -------------------------------
 
 async function setSearch(env, id, status, found, message) {
@@ -804,7 +847,23 @@ async function handleApi(request, env, url, ctx) {
     const r = await upsertPeopleBulk(env, company, enriched);
     const nowFilled = enriched.filter(p => p.current_employer &&
       normCompany(p.current_employer) !== co).length;
-    return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining });
+    // When the last batch finishes, collapse any duplicate rows the enrichment
+    // may have exposed (same person under two name spellings).
+    let deduped = 0;
+    if (!remaining) { try { deduped = (await dedupeCompany(env, company)).removed; } catch { /* best effort */ } }
+    return json({ ok: true, enriched: batch.length, updated: r.updated, nowFilled, remaining, deduped });
+  }
+
+  // POST /api/dedupe -> merge duplicate rows (same person, different name
+  // spellings). Body: { company? } — one company, or all when omitted.
+  if (path === '/api/dedupe' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    if (body.company) return json({ ok: true, ...(await dedupeCompany(env, body.company)) });
+    const cos = (await env.DB.prepare('SELECT DISTINCT company FROM people').all()).results || [];
+    let removed = 0;
+    for (const c of cos) removed += (await dedupeCompany(env, c.company)).removed;
+    return json({ ok: true, removed, companies: cos.length });
   }
 
   // POST /api/enrich-photos -> fetch public LinkedIn photos for people missing
