@@ -93,19 +93,25 @@ async function findExisting(env, person) {
 // clobber the user's contacted/notes).
 function mergePersonFields(existing, input) {
   const company = normCompany(input.company);
+  // Once a person is enriched from their real profile, that profile data is the
+  // truth — a later search/ZoomInfo pass must not overwrite it. `pick` keeps the
+  // enriched value when locked, otherwise takes incoming-non-empty then existing.
+  const locked = !!(existing && existing.enriched_at) && input.source !== 'apify';
+  const pick = (f, inc) => (locked && existing[f] != null && existing[f] !== '')
+    ? existing[f] : (inc ?? existing?.[f] ?? null);
   const merged = {
     full_name: input.full_name,
     company,
     company_label: input.company_label || input.company,
-    relationship: input.relationship || existing?.relationship || 'ex_employee',
-    last_role: input.last_role ?? existing?.last_role ?? null,
-    former_role: input.former_role ?? existing?.former_role ?? null,
-    education: input.education ?? existing?.education ?? null,
-    current_employer: input.current_employer ?? existing?.current_employer ?? null,
-    current_role: input.current_role ?? existing?.current_role ?? null,
-    tenure_start: input.tenure_start ?? existing?.tenure_start ?? null,
-    tenure_end: input.tenure_end ?? existing?.tenure_end ?? null,
-    is_current: input.is_current != null ? (input.is_current ? 1 : 0) : (existing?.is_current ?? 0),
+    relationship: (locked && existing?.relationship) ? existing.relationship : (input.relationship || existing?.relationship || 'ex_employee'),
+    last_role: pick('last_role', input.last_role),
+    former_role: pick('former_role', input.former_role),
+    education: pick('education', input.education),
+    current_employer: pick('current_employer', input.current_employer),
+    current_role: pick('current_role', input.current_role),
+    tenure_start: pick('tenure_start', input.tenure_start),
+    tenure_end: pick('tenure_end', input.tenure_end),
+    is_current: locked ? (existing?.is_current ?? 0) : (input.is_current != null ? (input.is_current ? 1 : 0) : (existing?.is_current ?? 0)),
     location: input.location ?? existing?.location ?? null,
     linkedin_url: input.linkedin_url ?? existing?.linkedin_url ?? null,
     photo_url: input.photo_url ?? existing?.photo_url ?? null,
@@ -238,6 +244,39 @@ async function dedupeCompany(env, company) {
   }
   if (stmts.length) await env.DB.batch(stmts);
   return { removed };
+}
+
+// Self-healing enrichment: fill Now At + Exposure + education for any people
+// (across all companies) that haven't been read yet — no search or user action
+// needed. Bounded per run so it stays inside the cron's time budget; it makes
+// progress every day and picks up wherever it left off. This is what fills
+// companies the client searched but never let the browser finish enriching.
+async function cronEnrichApify(env, budget) {
+  if (!hasApify(env)) return 0;
+  let done = 0;
+  for (let round = 0; round < 20 && done < budget; round++) {
+    const rows = (await env.DB.prepare(
+      `SELECT * FROM people WHERE linkedin_url IS NOT NULL AND linkedin_url != '' AND enriched_at IS NULL
+       ORDER BY updated_at DESC LIMIT 5`
+    ).all()).results || [];
+    if (!rows.length) break;
+    const byCo = new Map();
+    for (const r of rows) { const c = r.company_label || r.company; if (!byCo.has(c)) byCo.set(c, []); byCo.get(c).push(r); }
+    for (const [company, list] of byCo) {
+      const res = await apifyEnrich(env, company, list.map(r => ({
+        full_name: r.full_name, company, company_label: r.company_label || company,
+        linkedin_url: r.linkedin_url, current_employer: r.current_employer, current_role: r.current_role,
+        seniority: r.seniority, is_current: r.is_current, relationship: r.relationship, source: r.source,
+      })));
+      if (!res.ok) return done;                 // hard failure (token/credits) — stop
+      await upsertPeopleBulk(env, company, res.people);
+      const now = new Date().toISOString();
+      await env.DB.batch(list.map(r => env.DB.prepare('UPDATE people SET enriched_at = ? WHERE id = ?').bind(now, r.id)));
+      try { await dedupeCompany(env, company); } catch { /* best effort */ }
+      done += list.length;
+    }
+  }
+  return done;
 }
 
 // ---- Research jobs (run inside the Worker) -------------------------------
@@ -609,6 +648,11 @@ async function ensureSchema(env) {
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN career_start_year INTEGER').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN former_role TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN education TEXT').run(); } catch { /* already exists */ }
+  // enriched_at: set once we've read a person's real profile (via Apify). It
+  // survives daily re-research, so a person is read at most once — the enrichment
+  // is sticky and never re-billed. Backfill rows already enriched earlier.
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN enriched_at TEXT').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare("UPDATE people SET enriched_at = updated_at WHERE enriched_at IS NULL AND source LIKE '%apify%'").run(); } catch { /* best effort */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
@@ -813,12 +857,12 @@ async function handleApi(request, env, url, ctx) {
     if (!company) return json({ error: 'company required' }, { status: 400 });
     const limit = Math.min(Math.max(Number(body.limit) || 5, 1), 10);
     const co = normCompany(company);
-    // People with a LinkedIn URL that Apify hasn't already read (source has no
-    // 'apify'). Seniors first — they matter most and we want them enriched even
-    // if the client stops early.
+    // People with a LinkedIn URL we haven't read yet (enriched_at is NULL).
+    // Seniors first — they matter most and we want them enriched even if the
+    // client stops early.
     const rows = await env.DB.prepare(
       `SELECT * FROM people WHERE company = ? AND linkedin_url IS NOT NULL AND linkedin_url != ''
-         AND (source IS NULL OR source NOT LIKE '%apify%')
+         AND enriched_at IS NULL
        ORDER BY score DESC LIMIT ?`
     ).bind(co, limit + 1).all();
     const batch = (rows.results || []).slice(0, limit);
@@ -837,14 +881,12 @@ async function handleApi(request, env, url, ctx) {
       return json({ ok: false, error: 'apify_error', detail: res.error, enriched: 0, remaining });
     }
     const enriched = res.people;
-    // Mark every profile we actually attempted so it's excluded from the next
-    // poll — even ones Apify ran but couldn't read — otherwise the "until
-    // remaining==0" loop would retry them forever. ('apifymiss' still matches the
-    // NOT LIKE '%apify%' filter, so those rows drop out too.)
-    for (const p of enriched) {
-      if (!/apify/.test(p.source || '')) p.source = (p.source || 'search') + '+apifymiss';
-    }
     const r = await upsertPeopleBulk(env, company, enriched);
+    // Stamp every profile we attempted (even ones Apify couldn't read) so the
+    // "until remaining==0" loop can't retry them forever, and a later re-search
+    // won't re-bill them. Sticky across everything.
+    const stampedAt = new Date().toISOString();
+    await env.DB.batch(batch.map(b => env.DB.prepare('UPDATE people SET enriched_at = ? WHERE id = ?').bind(stampedAt, b.id)));
     const nowFilled = enriched.filter(p => p.current_employer &&
       normCompany(p.current_employer) !== co).length;
     // When the last batch finishes, collapse any duplicate rows the enrichment
@@ -957,6 +999,9 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       await ensureSchema(env);
+      // First, fill Now At + Exposure for anyone not yet read — this clears
+      // companies the client searched but never enriched, with no re-run needed.
+      try { await cronEnrichApify(env, 40); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {
         const names = new Map();
