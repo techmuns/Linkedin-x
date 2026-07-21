@@ -1131,23 +1131,25 @@ function leftCell(p){
   if(te){const age=nowY-te;const cls=age<=1?'fresh':age<=4?'warm':'old';return `<span class="gleft ${cls}">${te}</span>`;}
   return '<span class="gleft old">—</span>';
 }
-function tableRow(p){
-  const co=titleCo(p.company_label||p.company||'');
+// Renders only the columns named in `keys` (order preserved) so the Current tab
+// can drop Now At / Exposure / Left, which don't apply to people still there.
+function tableRow(p,keys){
   const emp=deriveEmployer(p);
   const still=!emp&&stillAtTarget(p);
   const roleAtCo=p.former_role||roleTitle(p)||'—';
   const nowText=emp||(still?'Still here':'Not mapped');
   const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
-  return `<tr class="sen-${seniorityCls(p)}" data-id="${p.id}">
-    <td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>
-    <td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>
-    <td title="${esc(p._fn||'')}">${esc(p._fn||'—')}</td>
-    <td title="${esc(roleAtCo)}">${esc(roleAtCo)}</td>
-    <td class="gexp">${expMini(p)}</td>
-    <td title="${esc(nowText)}">${nowCell}</td>
-    <td>${leftCell(p)}</td>
-    <td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">in</a></td>
-  </tr>`;
+  const C={
+    name:`<td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>`,
+    sen:`<td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>`,
+    fn:`<td title="${esc(p._fn||'')}">${esc(p._fn||'—')}</td>`,
+    role:`<td title="${esc(roleAtCo)}">${esc(roleAtCo)}</td>`,
+    exp:`<td class="gexp">${expMini(p)}</td>`,
+    now:`<td title="${esc(nowText)}">${nowCell}</td>`,
+    left:`<td>${leftCell(p)}</td>`,
+    act:`<td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">in</a></td>`,
+  };
+  return `<tr class="sen-${seniorityCls(p)}" data-id="${p.id}">${keys.map(k=>C[k]).join('')}</tr>`;
 }
 
 // Company snapshot bar — a quick read on the cohort, only when a company is picked.
@@ -1214,15 +1216,13 @@ function sortRows(rows){
     return c?c*SORT.dir:((b.score||0)-(a.score||0));   // ties fall back to relevance
   });
 }
-const GRID_HEADS=[
-  {k:'name',t:'Name'},{k:'sen',t:'Seniority'},{k:'fn',t:'Function'},
-  {k:'role',t:'Former role'},{k:'exp',t:'Exposure'},{k:'now',t:'Now At'},{k:'left',t:'Left'}
-];
 function render(){
   const scope=scopeList();
   $('tcEx').textContent=scope.filter(p=>effCurrent(p)===0).length;
   $('tcCur').textContent=scope.filter(p=>effCurrent(p)===1).length;
   renderSnapshot(scope);
+  // Current tab drops the exposure/now-at/left columns — don't stay sorted by a hidden one.
+  if(TAB==='current'&&['exp','now','left'].includes(SORT.col)){SORT.col='';SORT.dir=-1;}
   const rows=sortRows(applyFilters(scope));
   const has=rows.length>0;
   if(!has)$('empty').innerHTML=TAB==='current'
@@ -1234,14 +1234,19 @@ function render(){
   if(VIEW==='cards'){$('rows').innerHTML=rows.map(rowHtml).join('');}
   else{
     const roleLabel=COMPANY?('Role at '+titleCo(scope[0]?.company_label||COMPANY)):'Former role';
-    const th=GRID_HEADS.map(h=>{
-      const label=h.k==='role'?roleLabel:h.t;
-      const on=SORT.col===h.k;const ar=on?(SORT.dir===1?'▲':'▼'):'▾';
-      return `<th class="sortable${on?' sorted':''}" data-sort="${h.k}">${esc(label)}<span class="sar">${ar}</span></th>`;
+    // Column set + widths depend on the tab. Current employees have no Now At / Exposure / Left,
+    // so the remaining columns widen to fill the table (fixed layout → no empty gaps).
+    const COLS=(TAB==='current')
+      ?[{k:'name',t:'Name',w:28},{k:'sen',t:'Seniority',w:15},{k:'fn',t:'Function',w:17},{k:'role',t:roleLabel,w:32},{k:'act',t:'',w:8}]
+      :[{k:'name',t:'Name',w:23},{k:'sen',t:'Seniority',w:11},{k:'fn',t:'Function',w:11},{k:'role',t:roleLabel,w:15},{k:'exp',t:'Exposure',w:10},{k:'now',t:'Now At',w:14},{k:'left',t:'Left',w:8},{k:'act',t:'',w:8}];
+    const keys=COLS.map(c=>c.k);
+    const cg=`<colgroup>${COLS.map(c=>`<col style="width:${c.w}%">`).join('')}</colgroup>`;
+    const th=COLS.map(c=>{
+      if(c.k==='act')return '<th></th>';
+      const on=SORT.col===c.k;const ar=on?(SORT.dir===1?'▲':'▼'):'▾';
+      return `<th class="sortable${on?' sorted':''}" data-sort="${c.k}">${esc(c.t)}<span class="sar">${ar}</span></th>`;
     }).join('');
-    // fixed proportionate column widths so every column fits in one view (no side-scroll); long text truncates with a hover tooltip
-    const cg=`<colgroup><col style="width:23%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:14%"><col style="width:8%"><col style="width:8%"></colgroup>`;
-    $('tableWrap').innerHTML=`<div class="table-wrap"><table class="grid">${cg}<thead><tr>${th}<th></th></tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+    $('tableWrap').innerHTML=`<div class="table-wrap"><table class="grid">${cg}<thead><tr>${th}</tr></thead><tbody>${rows.map(p=>tableRow(p,keys)).join('')}</tbody></table></div>`;
   }
   updateShortlistTray();
 }
