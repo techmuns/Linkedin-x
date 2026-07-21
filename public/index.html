@@ -107,7 +107,9 @@
   }
 
   /* ---------- BODY ---------- */
-  .wrap{max-width:1080px;margin:0 auto;padding:18px 34px 70px}
+  /* wide context bars (snapshot, filters) vs. a concise, centred data table */
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 34px 70px}
+  :root{--data-w:1040px}
   .pillrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .copill{border:1px solid #dde1f1;background:linear-gradient(135deg,#f8f9fd 0%,#f4f6fc 100%);border-radius:999px;
     padding:7px 16px;cursor:pointer;font-weight:650;font-size:13px;color:#3d4a68;display:flex;align-items:center;gap:8px;
@@ -211,7 +213,7 @@
     box-shadow:0 2px 6px rgba(109,94,199,.28);transform:scale(1.02)}
 
   /* ---------- CONTACT ROWS ---------- */
-  .rows{margin-top:16px;display:flex;flex-direction:column;gap:14px}
+  .rows{margin:16px auto 0;max-width:var(--data-w);display:flex;flex-direction:column;gap:14px}
   .row{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
     box-shadow:var(--shadow-card);display:grid;grid-template-columns:280px 1fr 210px;cursor:pointer;overflow:hidden;
     will-change:transform;
@@ -373,7 +375,7 @@
     padding:5px 11px;border-radius:8px;border:1px solid #e4def6}
 
   /* Dense research grid (default view) */
-  .table-wrap{margin-top:14px;overflow-x:auto}
+  .table-wrap{margin:14px auto 0;overflow-x:auto;max-width:var(--data-w)}
   table.grid{width:100%;border-collapse:separate;border-spacing:0;background:var(--card-bg);
     border:1px solid #e6e6f3;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card)}
   .grid thead th{background:linear-gradient(180deg,#f3f2fb,#ecedf7);color:#5a5480;font-size:11px;font-weight:750;letter-spacing:.4px;
