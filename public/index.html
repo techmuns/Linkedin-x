@@ -1155,30 +1155,40 @@ function renderSnapshot(scope){
   const snap=$('snapshot');
   if(!COMPANY){snap.style.display='none';return;}
   const nowY=new Date().getFullYear();
-  const ex=scope.filter(p=>effCurrent(p)===0);
-  const base=ex.length?ex:scope;
+  const isCurrent=TAB==='current';
+  const base=scope.filter(p=>effCurrent(p)===(isCurrent?1:0));   // metrics reflect the active tab
   const label=titleCo(scope[0]?.company_label||COMPANY);
   const seniorCnt=base.filter(p=>['founder','clevel','vp','director'].includes(p.seniority)).length;
   const seniorPct=base.length?Math.round(seniorCnt/base.length*100):0;
   const tens=base.map(p=>{const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end)||(effCurrent(p)?nowY:null);return (ts&&te&&te>=ts&&te-ts<=60)?te-ts:null;}).filter(v=>v!=null);
   const avgTen=tens.length?(tens.reduce((a,b)=>a+b,0)/tens.length):0;
-  const leftRecent=base.filter(p=>{const te=tenureYear(p.tenure_end);return te&&!effCurrent(p)&&(nowY-te)<=2;}).length;
+  const avgStr=avgTen?avgTen.toFixed(1)+' yrs':'—';
   const elite=base.filter(p=>p._elite).length;
-  const dest={};base.forEach(p=>{const e=deriveEmployer(p);if(e){const k=e.trim();dest[k]=(dest[k]||0)+1;}});
-  const tops=Object.entries(dest).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const chips=tops.length
-    ?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join('')
-    :`<span class="cosub">No destinations mapped yet — run Enrich to fill “Now At”.</span>`;
+  const stat=(v,l)=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  let sub,stats,sideLabel,chips;
+  if(isCurrent){
+    // Current employees haven't "left" and have no "destination" — show recent joins + functional makeup.
+    const joined=base.filter(p=>{const ts=tenureYear(p.tenure_start);return ts&&(nowY-ts)<=2;}).length;
+    const fn={};base.forEach(p=>{const f=p._fn;if(f)fn[f]=(fn[f]||0)+1;});
+    const tops=Object.entries(fn).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    sub=`${base.length} current employees tracked`;
+    stats=stat(seniorPct+'%','Senior +')+stat(avgStr,'Avg tenure')+stat(joined,'Joined ≤ 2 yrs')+stat(elite,'🎓 ISB/IIM/IIT');
+    sideLabel='Top functions';
+    chips=tops.length?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join(''):`<span class="cosub">No functions mapped yet.</span>`;
+  }else{
+    const leftRecent=base.filter(p=>{const te=tenureYear(p.tenure_end);return te&&(nowY-te)<=2;}).length;
+    const dest={};base.forEach(p=>{const e=deriveEmployer(p);if(e){const k=e.trim();dest[k]=(dest[k]||0)+1;}});
+    const tops=Object.entries(dest).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    sub=`${base.length} senior ex-employees tracked`;
+    stats=stat(seniorPct+'%','Senior +')+stat(avgStr,'Avg tenure')+stat(leftRecent,'Left ≤ 2 yrs')+stat(elite,'🎓 ISB/IIM/IIT');
+    sideLabel='Top destinations';
+    chips=tops.length?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join(''):`<span class="cosub">No destinations mapped yet — run Enrich to fill “Now At”.</span>`;
+  }
   snap.innerHTML=`
     <div class="cohead"><div class="colg">${esc(initials(label))}</div>
-      <div><div class="con">${esc(label)}</div><div class="cosub">${base.length} ${ex.length?'senior ex-employees':'profiles'} tracked</div></div></div>
-    <div class="stats">
-      <div class="stat"><div class="v">${seniorPct}%</div><div class="l">Senior +</div></div>
-      <div class="stat"><div class="v">${avgTen?avgTen.toFixed(1)+' yrs':'—'}</div><div class="l">Avg tenure</div></div>
-      <div class="stat"><div class="v">${leftRecent}</div><div class="l">Left ≤ 2 yrs</div></div>
-      <div class="stat"><div class="v">${elite}</div><div class="l">🎓 ISB/IIM/IIT</div></div>
-    </div>
-    <div class="dest"><div class="l">Top destinations</div><div class="dchips">${chips}</div></div>`;
+      <div><div class="con">${esc(label)}</div><div class="cosub">${sub}</div></div></div>
+    <div class="stats">${stats}</div>
+    <div class="dest"><div class="l">${sideLabel}</div><div class="dchips">${chips}</div></div>`;
   snap.style.display='flex';
 }
 
