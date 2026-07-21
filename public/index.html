@@ -106,7 +106,7 @@
   }
 
   /* ---------- BODY ---------- */
-  .wrap{max-width:1320px;margin:0 auto;padding:18px 30px 70px}
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 34px 70px}
   .pillrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .copill{border:1px solid #dde1f1;background:linear-gradient(135deg,#f8f9fd 0%,#f4f6fc 100%);border-radius:999px;
     padding:7px 16px;cursor:pointer;font-weight:650;font-size:13px;color:#3d4a68;display:flex;align-items:center;gap:8px;
@@ -350,86 +350,64 @@
   .shortlist-tray .count span{color:#6d5ec7;font-size:18px;margin-right:4px}
   .shortlist-tray .btn{padding:8px 16px;font-size:13px}
 
-  /* table - premium frosted design */
-  .table-wrap{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
-    overflow:auto;box-shadow:var(--shadow)}
-  table{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed}
-  thead{background:linear-gradient(135deg,#6d5ec7 0%,#5b7bc8 100%);color:#fff}
-  thead tr{display:table;width:100%;table-layout:fixed}
-  tbody{display:table;width:100%}
-  tbody tr{display:table;width:100%;table-layout:fixed;position:relative;
-    background:linear-gradient(135deg,#fafbfd 0%,#f8f9fd 100%);
-    transition:transform 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
-  tbody tr::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tier,#6b7590);
-    transition:width 180ms ease-out,filter 180ms ease-out,box-shadow 180ms ease-out}
-  tbody tr.t1{--tier:#6C5CE7;--tglow:rgba(108,92,231,.4)}
-  tbody tr.t2{--tier:#4d6bb8;--tglow:rgba(77,107,184,.4)}
-  tbody tr.t3{--tier:#9d6b3a;--tglow:rgba(157,107,58,.38)}
-  tbody tr.t4{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
-  tbody tr.t5{--tier:#6b7590;--tglow:rgba(107,117,144,.32)}
-  tbody tr:hover{transform:translateY(-2px);
-    background:linear-gradient(135deg,#f5f7fd 0%,#f0f2fb 100%);
-    box-shadow:0 2px 8px rgba(109,40,217,.12),0 6px 16px rgba(109,40,217,.08),-4px 0 16px -6px var(--tglow)}
-  tbody tr:hover::before{width:4px;filter:brightness(1.2) saturate(1.4);box-shadow:0 0 12px 2px var(--tglow)}
-  th,td{padding:14px 16px;border:none;text-align:left;display:table-cell;vertical-align:middle}
-  th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;white-space:nowrap}
-  td{font-size:13px;color:#3d4a68;border-bottom:1px solid #ebeef6}
-  tbody tr:last-child td{border-bottom:none}
-  th:nth-child(1),td:nth-child(1){width:24%}   /* Name */
-  th:nth-child(2),td:nth-child(2){width:17%}   /* Current Role */
-  th:nth-child(3),td:nth-child(3){width:16%}   /* Now At */
-  th:nth-child(4),td:nth-child(4){width:16%}   /* Former Role */
-  th:nth-child(5),td:nth-child(5){width:11%}   /* Exposure */
-  th:nth-child(6),td:nth-child(6){width:16%}   /* Profile */
-  .tcell-name{display:flex;align-items:center;gap:12px}
-  .tav{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:750;
-    font-size:14px;flex:none;background:linear-gradient(135deg,#6d5ec7,#5b4e99);
-    box-shadow:0 0 0 2px rgba(109,94,199,.12),0 2px 8px rgba(109,94,199,.25);
-    transition:transform 180ms ease-out,box-shadow 180ms ease-out}
-  tbody tr:hover .tav{transform:scale(1.05);box-shadow:0 0 0 2px rgba(109,94,199,.2),0 4px 12px rgba(109,94,199,.35)}
-  .tname-info{min-width:0;flex:1}
-  .tname{font-weight:750;font-size:14px;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .tsub{font-size:12px;color:var(--muted);margin-top:3px}
-  .tchips{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-  .tchip{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;letter-spacing:.2px;
-    transition:filter 180ms ease-out,transform 180ms ease-out}
-  tbody tr:hover .tchip{filter:saturate(1.2) contrast(1.08);transform:translateY(-1px)}
-  .trole-main{font-weight:650;font-size:13.5px;color:#3d4a68;margin-bottom:4px}
-  .trole-co{font-size:12px;color:#6d5ec7;font-weight:600}
-  .trole-former{font-size:11.5px;color:var(--muted);margin-top:2px}
-  .tnowat{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:650;
-    background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);color:#5b6b8c;border:1px solid #dde1f1}
-  .tnowat.empty{background:#f3f4f6;color:#6b7794;border-color:#e5e7eb}
-  .tnowat.still{background:linear-gradient(135deg,#fef4e6 0%,#fde7c9 100%);color:#b54708;border-color:#fbd9a8}
-  .tchip.tg-cur{background:#fff1e0;color:#b54708}
-  .tchip.tg-elite{background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);color:#4338ca;border:1px solid #c7d2fe}
-  .elitebadge{display:inline-block;background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);color:#4338ca;
-    font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;
-    letter-spacing:.3px;border:1px solid #c7d2fe}
-  .ttier{display:flex;align-items:center;gap:8px}
-  .ttier-pill{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
-    background:linear-gradient(135deg,#edeeff 0%,#e5e9fd 100%);color:#5b4e99;border:1px solid #d5dcf3}
-  .tstars{color:#f59e0b;font-size:13px;letter-spacing:1px}
-  .ttier-label{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
-  /* Exposure column — compact frosted chips (depth + freshness) */
-  .exposure{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
-  .xchip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.2px;line-height:1.25;
-    padding:3px 9px;border-radius:999px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;
-    transition:filter 180ms ease-out,transform 180ms ease-out}
-  tbody tr:hover .xchip{filter:saturate(1.18) contrast(1.05);transform:translateY(-1px)}
-  .xchip.total{background:linear-gradient(135deg,#eef2ff 0%,#e5e9fd 100%);color:#4d5bb8;border:1px solid #dae0f7}
-  .xchip.exp{background:linear-gradient(135deg,#f3edff 0%,#eaddff 100%);color:#6941c6;border:1px solid #e4d5fb}
-  .xchip.fresh{background:linear-gradient(135deg,#ecfdf3 0%,#d6f7e4 100%);color:#067647;border:1px solid #b6ecca}
-  .xchip.warm{background:linear-gradient(135deg,#fef4e6 0%,#fde7c9 100%);color:#b54708;border:1px solid #fbd9a8}
-  .xchip.unclear{background:linear-gradient(135deg,#f1f3f9 0%,#e9edf5 100%);color:#6b7794;border:1px solid #dde1f1}
-  .tactions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
-  .tactions .btn{padding:7px 14px;font-size:12.5px;white-space:nowrap;border:none;color:#fff;font-weight:750;
-    background:linear-gradient(135deg,#6d5ec7 0%,#5b4e99 48%,#7c6bcc 100%);background-size:200% 100%;background-position:0% 0%;
-    box-shadow:0 2px 6px rgba(91,78,153,.28),0 4px 12px rgba(109,94,199,.22);
-    transition:background-position 200ms ease-out,box-shadow 180ms ease,transform 180ms ease,filter 200ms ease}
-  .tactions .btn:hover{background-position:100% 0%;filter:brightness(1.12);
-    box-shadow:0 3px 10px rgba(109,94,199,.34);transform:translateY(-1px)}
-  .tactions .iconbtn{width:32px;height:32px;font-size:15px}
+  /* Company snapshot bar */
+  .snap{background:var(--card-bg);border:1px solid #e6e8f2;border-radius:16px;padding:15px 20px;margin-top:14px;
+    box-shadow:0 1px 3px rgba(30,34,51,.05);display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .snap .cohead{display:flex;align-items:center;gap:13px;padding-right:22px;border-right:1px solid #eef0f7}
+  .snap .colg{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#eef0fd,#e2e6fb);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#5b4e99;font-size:16px;flex:none}
+  .snap .con{font-weight:800;font-size:17px;color:#1e2233}
+  .snap .cosub{font-size:12px;color:#8790ab;margin-top:2px}
+  .snap .stats{display:flex;gap:26px;padding:0 22px;align-items:center;flex-wrap:wrap}
+  .snap .stat .v{font-weight:800;font-size:19px;color:#2e2266}
+  .snap .stat .l{font-size:10.5px;color:#8790ab;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+  .snap .dest{flex:1;min-width:230px;padding-left:22px;border-left:1px solid #eef0f7;display:flex;flex-direction:column;justify-content:center}
+  .snap .dest .l{font-size:10.5px;color:#8790ab;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+  .snap .dchips{display:flex;gap:6px;flex-wrap:wrap}
+  .snap .dchip{background:#f2f0fb;color:#5b4e99;font-weight:650;font-size:12px;padding:4px 10px;border-radius:7px}
+
+  /* Dense research grid (default view) */
+  .table-wrap{margin-top:14px;overflow-x:auto}
+  table.grid{width:100%;border-collapse:separate;border-spacing:0;background:var(--card-bg);
+    border:1px solid #e6e8f2;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(30,34,51,.05)}
+  .grid thead th{background:#f7f8fc;color:#6b7391;font-size:11px;font-weight:750;letter-spacing:.4px;
+    text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:1px solid #e6e8f2;white-space:nowrap}
+  .grid thead th.sortable{cursor:pointer;user-select:none}
+  .grid thead th .sar{color:#c0c5d8;margin-left:4px;font-size:9px}
+  .grid thead th.sorted{color:#5b4e99}
+  .grid thead th.sorted .sar{color:#6d5ec7}
+  .grid tbody td{padding:11px 14px;border-bottom:1px solid #f0f1f7;font-size:13px;color:#3d4a68;vertical-align:middle;white-space:nowrap}
+  .grid tbody tr:last-child td{border-bottom:none}
+  .grid tbody tr{cursor:pointer;transition:background 140ms ease}
+  .grid tbody tr:hover{background:#faf9ff}
+  /* spacer column: absorbs all free width so real columns stay tight together on the left */
+  .grid .gsp{width:100%;padding:0;min-width:26px}
+  .gname{display:flex;align-items:center;gap:10px}
+  .gav{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c6bcc,#5b4e99);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none}
+  .gnm{font-weight:700;color:#1e2233}
+  .gvk{color:#12b76a;font-size:12px;margin-left:2px}
+  .gschool{display:inline-block;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;padding:1px 6px;
+    border-radius:5px;margin-left:5px;vertical-align:middle}
+  .gnew{display:inline-block;background:#d1fae5;color:#047857;font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:5px;margin-left:5px;vertical-align:middle}
+  .gsen{font-weight:750;font-size:12px;padding:3px 10px;border-radius:6px;display:inline-block;white-space:nowrap}
+  .gsen.founder{background:#f4ebff;color:#6941c6}.gsen.clevel{background:#fee4e2;color:#b42318}
+  .gsen.vp{background:#fef0c7;color:#b54708}.gsen.director{background:#e0eaff;color:#3538cd}
+  .gsen.manager{background:#eef2f6;color:#5b6b8c}.gsen.other{background:#f1f3f9;color:#6b7794}
+  .gexp b{font-weight:750;color:#2e2266;font-size:13px}
+  .gexp small{display:block;color:#98a0b8;font-weight:500;font-size:11px;margin-top:1px}
+  .gexp .muted{color:#b0b6c8}
+  .gnow{font-weight:650;color:#1e2233}
+  .gnow.still{color:#b54708}.gnow.empty{color:#b0b6c8;font-weight:500}
+  .gleft{font-weight:700}.gleft.fresh{color:#067647}.gleft.warm{color:#b54708}.gleft.old{color:#98a0b8}.gleft.pres{color:#067647}
+  .gact{text-align:right;white-space:nowrap}
+  .gstar{opacity:0;color:#c0c5d8;font-size:16px;margin-right:9px;cursor:pointer;transition:opacity 140ms}
+  .grid tbody tr:hover .gstar{opacity:1}
+  .gstar.on{opacity:1;color:#f59e0b}
+  .gli{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#6d5ec7,#5b4e99);color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;text-decoration:none;vertical-align:middle}
+  .gli:hover{filter:brightness(1.1)}
+  .elitebadge{display:inline-block;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:.3px}
 
   /* drawer - premium frosted blue-lilac */
   .drawer-bg{position:fixed;inset:0;background:rgba(26,24,69,.55);backdrop-filter:blur(4px);
@@ -572,7 +550,7 @@
     <button data-tab="current">👥 Current employees <span class="tc" id="tcCur">0</span></button>
   </div>
 
-  <div class="brief" id="brief"></div>
+  <div class="snap" id="snapshot" style="display:none"></div>
 
   <div class="fpanel">
     <div class="fgroup">
@@ -591,7 +569,7 @@
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
       <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) and total experience from their public LinkedIn profile">✨ Enrich</button>
       <button class="btn sm" id="importBtn" title="Fill Now At + Exposure from a CSV you export (ZoomInfo, any spreadsheet) or a Google Sheet — no scraping, no login shared">⬆ Import</button>
-      <div class="toggle"><button id="viewCards" class="on">▦ Cards</button><button id="viewTable">▤ Table</button></div>
+      <div class="toggle"><button id="viewTable" class="on">▤ Table</button><button id="viewCards">▦ Cards</button></div>
     </div>
   </div>
 
@@ -665,7 +643,9 @@
 const $=id=>document.getElementById(id);
 let TOKEN='open';   // editing is open — no password (see setKey)
 let SAVED=new Set(JSON.parse(localStorage.getItem('lx_saved')||'[]'));
-let RAW=[];let COMPANY='';let STYPE='all';let VIEW='cards';let VIEWFILTER='';let TAB='ex';
+let RAW=[];let COMPANY='';let STYPE='all';let VIEW='table';let VIEWFILTER='';let TAB='ex';
+let SORT={col:'',dir:-1};                 // '' = default (relevance/score); dir 1=asc, -1=desc
+const SEN_RANK={founder:6,clevel:5,vp:4,director:3,manager:2,other:1};
 
 const RELLABEL={ex_employee:'Ex-employee',competitor_ex:'Competitor exec',franchise_partner:'Franchise partner',vendor:'Supplier / vendor',consultant:'Consultant',board:'Board member',investor:'Investor',expert:'Industry expert',other:'Stakeholder'};
 const SENLABEL={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director / Head',manager:'Manager',other:'Professional'};
@@ -991,26 +971,6 @@ function applyFilters(list){
   return r;
 }
 
-function renderBrief(list){
-  if(!COMPANY){$('brief').style.display='none';return;}
-  $('brief').style.display='';
-  const label=list[0]?.company_label||COMPANY;const intel=CO_INTEL[COMPANY]||{industry:'—',employees:'—',comps:[]};
-  const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);
-  const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);const covered=FUNCTIONS.length-gaps.length;const covPct=Math.round(covered/FUNCTIONS.length*100);
-  const strongest=FUNCTIONS.slice().sort((a,b)=>fnCount[b]-fnCount[a])[0];
-  const stage=covPct>=83?['Stage 2','#067647','#ecfdf3']:covPct>=50?['Stage 1 → 2','#b54708','#fef3e6']:['Stage 1','#6d28d9','#efe6ff'];
-  $('brief').innerHTML=`<div class="bt"><div class="blogo" style="background:${avColor(label)}">${esc(initials(label))}</div>
-    <div><div class="bn">${esc(label)}</div><div class="bs">${esc(intel.industry)}</div></div>
-    <span class="bstage" style="color:${stage[1]};background:${stage[2]}">${stage[0]}</span></div>
-    <div class="bfacts">
-      <div><span class="k">Employees</span><b>${esc(intel.employees)}</b></div>
-      <div><span class="k">Sources</span><b>${list.length}</b></div>
-      <div><span class="k">Coverage</span><b>${covPct}%</b></div>
-      <div style="flex:1"><span class="k">Competitors</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">${(intel.comps||[]).map(c=>`<span class="chip comp">${esc(c)}</span>`).join('')}</div></div>
-    </div>
-    <div class="bsum"><span class="ai">SUMMARY</span> Strong <b>${strongest}</b> coverage.${gaps.length?` Need <b>${gaps[0]}</b> interviews${gaps.length>1?` (also ${gaps.slice(1).join(', ')})`:''}.`:' All functions covered.'}</div>`;
-}
-
 function sigBars(score){const lvl=Math.max(1,Math.min(4,Math.ceil((score||0)/33)));let h='';for(let i=1;i<=4;i++)h+=`<i style="height:${3+i*2.5}px;opacity:${i<=lvl?1:.22}"></i>`;return `<span class="sig">${h}</span>`;}
 
 // LinkedIn URL if we have it, else a LinkedIn people search for the person.
@@ -1135,25 +1095,6 @@ function exposureChips(p){
 
   return out.slice(0,3);
 }
-// Exposure cell (table): years the person spent AT the target company only —
-// the client wants tenure at the ex-company, NOT their whole-career experience.
-// Built from real tenure dates (e.g. from ZoomInfo); when we don't know them we
-// say "Not mapped" rather than invent a number.
-function exposureCell(p){
-  const ts=tenureYear(p.tenure_start), te=tenureYear(p.tenure_end);
-  const isCurrent=Number(p.is_current)===1;
-  const nowY=new Date().getFullYear();
-  if(ts&&te&&te>=ts&&te-ts<=60){
-    const y=te-ts;
-    return `<div class="exposure"><span class="xchip exp">${y<1?'<1':y} yr${y===1?'':'s'}</span><span class="xchip unclear">${ts}–${te}</span></div>`;
-  }
-  if(ts&&isCurrent){
-    const y=Math.max(1,nowY-ts);
-    return `<div class="exposure"><span class="xchip exp">${y}+ yrs</span><span class="xchip fresh">since ${ts}</span></div>`;
-  }
-  if(ts) return `<div class="exposure"><span class="xchip unclear">Since ${ts}</span></div>`;
-  return `<span class="tnowat empty">Not mapped</span>`;
-}
 // True when the ONLY current-employer signal is the company they were tagged as
 // having left — i.e. LinkedIn still shows them there, so they never actually
 // left. We surface this honestly ("Still at X") instead of a wrong "Now At".
@@ -1161,67 +1102,108 @@ function stillAtTarget(p){
   const emp=cleanEmployer(p.current_employer);if(!emp)return false;
   return coMatch(emp,p.company)||coMatch(emp,p.company_label);
 }
+const SENIORITY_DISPLAY={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director',manager:'Manager',other:'Senior'};
+function seniorityCls(p){const s=p.seniority||'other';return ['founder','clevel','vp','director','manager'].includes(s)?s:'other';}
+function initialsOf(n){return (String(n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('')||'?').toUpperCase();}
+// Compact exposure for the grid: "4 yrs" bold + the year range below.
+function expMini(p){
+  const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end),nowY=new Date().getFullYear();
+  const cur=Number(p.is_current)===1||stillAtTarget(p);
+  if(ts&&te&&te>=ts&&te-ts<=60){const y=te-ts;return `<b>${y<1?'<1':y} yr${y===1?'':'s'}</b><small>${ts}–${te}</small>`;}
+  if(ts&&cur){const y=Math.max(1,nowY-ts);return `<b>${y}+ yrs</b><small>since ${ts}</small>`;}
+  if(ts)return `<small>since ${ts}</small>`;
+  return '<small class="muted">—</small>';
+}
+// "Left" cell: year they left, colored by recency (fresher = more candid); or "Present".
+function leftCell(p){
+  if(Number(p.is_current)===1||stillAtTarget(p))return '<span class="gleft pres">Present</span>';
+  const te=tenureYear(p.tenure_end),nowY=new Date().getFullYear();
+  if(te){const age=nowY-te;const cls=age<=1?'fresh':age<=4?'warm':'old';return `<span class="gleft ${cls}">${te}</span>`;}
+  return '<span class="gleft old">—</span>';
+}
 function tableRow(p){
   const co=titleCo(p.company_label||p.company||'');
   const emp=deriveEmployer(p);
   const still=!emp&&stillAtTarget(p);
-  const leftCo=Number(p.is_current)===0;
-  const sen=p.seniority||'other';
-
-  // Name chips
-  const chips=[];
-  if(isNew(p))chips.push(`<span class="tchip newb">NEW</span>`);
-  if(p._elite)chips.push(`<span class="tchip tg-elite">🎓 ${p._elite}</span>`);
-  if(still)chips.push(`<span class="tchip tg-cur">At ${esc(co)}</span>`);
-  else if(leftCo)chips.push(`<span class="tchip tg-left">Ex-${esc(co)}</span>`);
-  if(['founder','clevel'].includes(p.seniority))chips.push(`<span class="tchip tg-founder">Leadership</span>`);
-  else if(p._fn==='Operations')chips.push(`<span class="tchip tg-director">Operations</span>`);
-  else if(p._fn==='Finance')chips.push(`<span class="tchip tg-vp">Finance</span>`);
-
-  return `<tr class="t${p._tier}" data-id="${p.id}">
-    <td>
-      <div class="tcell-name">
-        ${avatarEl(p,'tav')}
-        <div class="tname-info">
-          <div class="tname">
-            <strong>${esc(p.full_name)}</strong>
-            ${p.linkedin_url?'<span class="vchk">✓</span>':''}
-          </div>
-          ${chips.length?`<div class="tchips">${chips.join('')}</div>`:''}
-        </div>
-      </div>
-    </td>
-    <td>
-      <div class="trole-main">${esc(roleTitle(p))}</div>
-    </td>
-    <td>
-      ${emp?`<span class="tnowat">${esc(emp)}</span>`:still?`<span class="tnowat still">Still at ${esc(co)}</span>`:`<span class="tnowat empty">Not mapped</span>`}
-    </td>
-    <td>
-      ${p.former_role
-        ? `<div class="trole-main">${esc(p.former_role)}</div>${co?`<div class="trole-co">at ${esc(co)}</div>`:''}`
-        : still ? `<span class="tnowat empty">Current employee</span>`
-        : (leftCo&&co ? `<span class="tnowat empty">Ex-${esc(co)}</span>` : `<span class="tnowat empty">—</span>`)}
-    </td>
-    <td>
-      ${exposureCell(p)}
-    </td>
-    <td>
-      <div class="tactions">
-        <a href="${esc(searchUrl(p))}" target="_blank" rel="noopener" class="btn" data-noopen onclick="event.stopPropagation()">View Profile ↗</a>
-        <button class="star iconbtn ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</button>
-        <button class="iconbtn" data-act="menu" data-id="${p.id}" onclick="event.stopPropagation()" title="More">⋯</button>
-      </div>
-    </td>
+  const roleAtCo=p.former_role||roleTitle(p)||'—';
+  const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
+  return `<tr data-id="${p.id}">
+    <td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>
+    <td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>
+    <td>${esc(p._fn||'—')}</td>
+    <td>${esc(roleAtCo)}</td>
+    <td class="gexp">${expMini(p)}</td>
+    <td>${nowCell}</td>
+    <td>${leftCell(p)}</td>
+    <td class="gsp"></td>
+    <td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">in</a></td>
   </tr>`;
 }
 
+// Company snapshot bar — a quick read on the cohort, only when a company is picked.
+function renderSnapshot(scope){
+  const snap=$('snapshot');
+  if(!COMPANY){snap.style.display='none';return;}
+  const nowY=new Date().getFullYear();
+  const ex=scope.filter(p=>effCurrent(p)===0);
+  const base=ex.length?ex:scope;
+  const label=titleCo(scope[0]?.company_label||COMPANY);
+  const seniorCnt=base.filter(p=>['founder','clevel','vp','director'].includes(p.seniority)).length;
+  const seniorPct=base.length?Math.round(seniorCnt/base.length*100):0;
+  const tens=base.map(p=>{const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end)||(effCurrent(p)?nowY:null);return (ts&&te&&te>=ts&&te-ts<=60)?te-ts:null;}).filter(v=>v!=null);
+  const avgTen=tens.length?(tens.reduce((a,b)=>a+b,0)/tens.length):0;
+  const leftRecent=base.filter(p=>{const te=tenureYear(p.tenure_end);return te&&!effCurrent(p)&&(nowY-te)<=2;}).length;
+  const elite=base.filter(p=>p._elite).length;
+  const dest={};base.forEach(p=>{const e=deriveEmployer(p);if(e){const k=e.trim();dest[k]=(dest[k]||0)+1;}});
+  const tops=Object.entries(dest).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const chips=tops.length
+    ?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join('')
+    :`<span class="cosub">No destinations mapped yet — run Enrich to fill “Now At”.</span>`;
+  snap.innerHTML=`
+    <div class="cohead"><div class="colg">${esc(initials(label))}</div>
+      <div><div class="con">${esc(label)}</div><div class="cosub">${base.length} ${ex.length?'senior ex-employees':'profiles'} tracked</div></div></div>
+    <div class="stats">
+      <div class="stat"><div class="v">${seniorPct}%</div><div class="l">Senior +</div></div>
+      <div class="stat"><div class="v">${avgTen?avgTen.toFixed(1)+' yrs':'—'}</div><div class="l">Avg tenure</div></div>
+      <div class="stat"><div class="v">${leftRecent}</div><div class="l">Left ≤ 2 yrs</div></div>
+      <div class="stat"><div class="v">${elite}</div><div class="l">🎓 ISB/IIM/IIT</div></div>
+    </div>
+    <div class="dest"><div class="l">Top destinations</div><div class="dchips">${chips}</div></div>`;
+  snap.style.display='flex';
+}
+
+// Sorting for the grid. Default (SORT.col==='') keeps the relevance order from applyFilters.
+function sortComparable(p,col){
+  const nowY=new Date().getFullYear();
+  switch(col){
+    case 'name':return (p.full_name||'').toLowerCase();
+    case 'sen':return SEN_RANK[p.seniority]||0;
+    case 'fn':return (p._fn||'').toLowerCase();
+    case 'role':return (p.former_role||roleTitle(p)||'').toLowerCase();
+    case 'exp':{const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end)||(effCurrent(p)?nowY:null);return (ts&&te&&te>=ts&&te-ts<=60)?te-ts:-1;}
+    case 'now':{const e=deriveEmployer(p);return e?e.toLowerCase():'￿';}   // blanks sort last (asc)
+    case 'left':return effCurrent(p)?9999:(tenureYear(p.tenure_end)||0);
+    default:return 0;
+  }
+}
+function sortRows(rows){
+  if(!SORT.col)return rows;
+  return rows.slice().sort((a,b)=>{
+    const av=sortComparable(a,SORT.col),bv=sortComparable(b,SORT.col);
+    const c=av<bv?-1:av>bv?1:0;
+    return c?c*SORT.dir:((b.score||0)-(a.score||0));   // ties fall back to relevance
+  });
+}
+const GRID_HEADS=[
+  {k:'name',t:'Name'},{k:'sen',t:'Seniority'},{k:'fn',t:'Function'},
+  {k:'role',t:'Former role'},{k:'exp',t:'Exposure'},{k:'now',t:'Now At'},{k:'left',t:'Left'}
+];
 function render(){
   const scope=scopeList();
   $('tcEx').textContent=scope.filter(p=>effCurrent(p)===0).length;
   $('tcCur').textContent=scope.filter(p=>effCurrent(p)===1).length;
-  renderBrief(scope);
-  const rows=applyFilters(scope);
+  renderSnapshot(scope);
+  const rows=sortRows(applyFilters(scope));
   const has=rows.length>0;
   if(!has)$('empty').innerHTML=TAB==='current'
     ?'<div class="big">👥</div><div>No current employees mapped yet.<br>Search a company (or re-run one) to pull in its current senior staff.</div>'
@@ -1229,8 +1211,16 @@ function render(){
   $('empty').style.display=has?'none':'block';
   $('rows').style.display=(VIEW==='cards'&&has)?'flex':'none';
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
-  if(VIEW==='cards')$('rows').innerHTML=rows.map(rowHtml).join('');
-  else $('tableWrap').innerHTML=`<div class="table-wrap"><table><thead><tr>${['Name','Current Role','Now At','Former Role','Exposure','Profile'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  if(VIEW==='cards'){$('rows').innerHTML=rows.map(rowHtml).join('');}
+  else{
+    const roleLabel=COMPANY?('Role at '+titleCo(scope[0]?.company_label||COMPANY)):'Former role';
+    const th=GRID_HEADS.map(h=>{
+      const label=h.k==='role'?roleLabel:h.t;
+      const on=SORT.col===h.k;const ar=on?(SORT.dir===1?'▲':'▼'):'▾';
+      return `<th class="sortable${on?' sorted':''}" data-sort="${h.k}">${esc(label)}<span class="sar">${ar}</span></th>`;
+    }).join('');
+    $('tableWrap').innerHTML=`<div class="table-wrap"><table class="grid"><thead><tr>${th}<th class="gsp"></th><th></th></tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+  }
   updateShortlistTray();
 }
 function updateShortlistTray(){
@@ -1246,6 +1236,8 @@ function setKey(){TOKEN='open';}   // password removed — editing is open to an
 function toggleSave(id){const p=RAW.find(x=>x.id===id);if(!p)return;p._saved=!p._saved;if(p._saved)SAVED.add(id);else SAVED.delete(id);localStorage.setItem('lx_saved',JSON.stringify([...SAVED]));render();}
 
 document.addEventListener('click',e=>{
+  const th=e.target.closest('th[data-sort]');
+  if(th){const k=th.dataset.sort;if(SORT.col===k)SORT.dir*=-1;else{SORT.col=k;SORT.dir=['sen','exp','left'].includes(k)?-1:1;}render();return;}
   const save=e.target.closest('[data-act="save"]');if(save){e.stopPropagation();toggleSave(save.dataset.id);return;}
   const status=e.target.closest('[data-act="status"]');if(status){e.stopPropagation();cycleStatus(status.dataset.id);return;}
   const menu=e.target.closest('[data-act="menu"]');if(menu){e.stopPropagation();openMenu(menu);return;}
