@@ -177,9 +177,9 @@
 
   /* filter panel */
   .fpanel{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;
-    box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;align-items:stretch;gap:14px}
   .fgroup .glab{font-size:9.5px;font-weight:800;letter-spacing:.8px;color:#6b7794;margin-bottom:7px;text-transform:uppercase}
-  .seg{display:flex;gap:5px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);border:1px solid #dde1f1;
+  .seg{display:flex;flex-wrap:wrap;gap:5px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);border:1px solid #dde1f1;
     border-radius:11px;padding:5px}
   .seg button{border:none;background:transparent;padding:7px 13px;border-radius:8px;cursor:pointer;color:#5b6b8c;
     font-weight:650;font-size:12.5px;display:flex;align-items:center;gap:6px;white-space:nowrap;
@@ -191,8 +191,8 @@
     background:var(--card-bg);cursor:pointer;transition:border-color 180ms ease}
   .lens:hover{border-color:#c8cee8}
   .lens select{border:none;background:transparent;font-weight:650;cursor:pointer;outline:none;color:#3d4a68}
-  .fright{margin-left:auto;display:flex;align-items:center;gap:11px}
-  .search{position:relative}
+  .fright{margin-left:0;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .search{position:relative;margin-right:auto}
   .search input{width:290px;max-width:44vw;padding:10px 13px 10px 38px;border:1px solid #dde1f1;border-radius:11px;
     background:var(--card-bg);font-size:13px;color:#3d4a68;
     transition:border-color 180ms ease,box-shadow 180ms ease,background 180ms ease}
@@ -559,6 +559,7 @@
   </div>
   <div class="rctx">
     <span class="txt">Tracking senior operators and domain experts across priority sectors.</span>
+    <button class="more" id="outreachBtn">✨ Generate outreach list</button>
     <button class="more" id="insightsBtn">📊 View insights</button>
   </div>
 </header>
@@ -838,7 +839,7 @@ function whySpecialty(p){const t=(p.current_role||'')+' '+(p.last_role||'');for(
 // Reject a "now at" value that is clearly a role title or qualification, not a company.
 function whyNiceNow(emp){if(!emp)return '';const s=emp.trim();if(/^(sme|mba|pgdm|pgp|iim\b|nmims|b\.?tech|m\.?tech)\b/i.test(s))return '';if(/^(chief|senior|assistant|asst|deputy|dy|general|regional|national|associate|vice|group|zonal|area|branch|cluster)?\s*(manager|officer|head|analyst|executive|president|director|lead|banker|consultant|specialist|professional|sales|marketing|operations|strategy|management)\b/i.test(s))return '';if(s.split(/\s+/).length>5)return '';return s;}
 function shortWhy(p){
-  const co=p.company_label||p.company||'the company';
+  const co=titleCo(p.company_label||p.company)||'the company';
   const emp=whyNiceNow(deriveEmployer(p));
   const left=Number(p.is_current)===0;
   const rel=p.relationship||'ex_employee';
@@ -875,7 +876,7 @@ function discussionQs(p){
   return g.concat(m);
 }
 function outreachDraft(p){
-  const co=p.company_label||p.company;
+  const co=titleCo(p.company_label||p.company);
   return `Hi ${firstName(p.full_name)},\n\nI'm doing some independent research on ${co} and came across your profile given your time there. I'd really value 15–20 minutes to hear your perspective on ${p._fn.toLowerCase()} at ${co}.\n\nWould you be open to a brief call in the next week or two?\n\nBest regards,`;
 }
 
@@ -926,10 +927,10 @@ function renderPills(){
   // searchable dropdown so the bar never clutters as the client adds more.
   if(cos.length>5){
     const sel=COMPANY?cos.find(c=>c.company===COMPANY):null;
-    const selLabel=sel?(sel.label||sel.company):'All companies';
+    const selLabel=sel?titleCo(sel.label||sel.company):'All companies';
     const selCount=sel?sel.n:RAW.length;
     const items=[`<div class="codrop-item ${COMPANY===''?'active':''}" data-co=""><span class="lbl">All companies</span><span class="c">${RAW.length}</span></div>`]
-      .concat(cos.map(c=>`<div class="codrop-item ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}"><span class="lbl">${esc(c.label||c.company)}</span><span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`));
+      .concat(cos.map(c=>`<div class="codrop-item ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}"><span class="lbl">${esc(titleCo(c.label||c.company))}</span><span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`));
     // "Add company" sits OUTSIDE the dropdown, right beside it, as its own button.
     $('pillrow').innerHTML=`<div class="codrop" id="coDrop"><button class="codrop-btn" id="coDropBtn"><span class="lbl">${esc(selLabel)}</span> <span class="c">${selCount}</span> <span class="carq">▾</span></button><div class="codrop-menu"><input class="codrop-search" id="coDropSearch" placeholder="Filter companies…"/>${items.join('')}</div></div><div class="copill add" id="addCo">＋ Add company</div>`+savedHtml;
     const drop=$('coDrop');
@@ -942,7 +943,7 @@ function renderPills(){
     if(!CODROP_LISTENER){CODROP_LISTENER=true;document.addEventListener('click',()=>{const d=$('coDrop');if(d)d.classList.remove('open');});}
   }else{
     const pills=[`<div class="copill ${COMPANY===''?'active':''}" data-co="">All companies <span class="c">${RAW.length}</span></div>`]
-      .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(c.label||c.company)} <span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
+      .concat(cos.map(c=>`<div class="copill ${COMPANY===c.company?'active':''}" data-co="${esc(c.company)}">${esc(titleCo(c.label||c.company))} <span class="c">${c.n}</span><span class="codel" data-del="${esc(c.company)}" title="Delete this company and its contacts">×</span></div>`))
       .concat([`<div class="copill add" id="addCo">＋ Add company</div>`]);
     $('pillrow').innerHTML=pills.join('')+savedHtml;
     document.querySelectorAll('.copill[data-co]').forEach(t=>t.onclick=()=>{COMPANY=t.dataset.co;renderPills();render();});
@@ -1016,6 +1017,20 @@ function sigBars(score){const lvl=Math.max(1,Math.min(4,Math.ceil((score||0)/33)
 function searchUrl(p){
   return p.linkedin_url||('https://www.linkedin.com/search/results/people/?keywords='+encodeURIComponent(p.full_name+' '+(p.company_label||p.company||'')));
 }
+// A ZoomInfo lookup for a person (we don't store a per-person ZoomInfo URL, so
+// this opens a Google search scoped to zoominfo.com — reliably lands their page).
+function zoomUrl(p){
+  return 'https://www.google.com/search?q='+encodeURIComponent('site:zoominfo.com '+p.full_name+' '+(p.company_label||p.company||''));
+}
+// Present a company label professionally (Title Case), e.g. "bluestone" ->
+// "Bluestone", "kalyan jewellers india" -> "Kalyan Jewellers India". Names that
+// already carry capitals (Swiggy Instamart, Sky Gold And Diamonds) are kept.
+function titleCo(s){
+  s=String(s||'').trim();
+  if(!s)return '';
+  if(/[A-Z]/.test(s))return s;                       // already cased — leave it
+  return s.replace(/\b([a-z])/g,c=>c.toUpperCase());
+}
 function proofChips(p){
   const chips=[];
   const isFounder=['founder','clevel'].includes(p.seniority);
@@ -1055,7 +1070,7 @@ function statusLabel(s){
 }
 function rowHtml(p){
   const sen=p.seniority||'other';
-  const co=p.company_label||p.company||'';
+  const co=titleCo(p.company_label||p.company||'');
   const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
@@ -1076,7 +1091,7 @@ function rowHtml(p){
       <div class="research-chips">${research.map(r=>`<span class="rchip">${esc(r)}</span>`).join('')}</div>
     </div>
     <div class="rr">
-      <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Look this person up on LinkedIn"><span class="sbi">🔍</span> Search Profile</a>
+      <a class="searchbtn" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen title="Open this person on LinkedIn"><span class="sbi">🔗</span> LinkedIn Profile</a>
       <div class="rutil">
         <span class="rsync">Synced ${ago(p.updated_at||p.created_at)}</span>
         <button class="iconbtn" data-act="menu" data-id="${p.id}" title="More">⋯</button>
@@ -1085,12 +1100,20 @@ function rowHtml(p){
   </div>`;
 }
 function tenureYear(s){const m=String(s||'').match(/(?:19|20)\d{2}/);return m?parseInt(m[0],10):null;}
+// A compact Exposure string for exports (years at the target company).
+function exposureStr(p){
+  const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end),nowY=new Date().getFullYear();
+  if(ts&&te&&te>=ts)return (te-ts||'<1')+' yrs ('+ts+'–'+te+')';
+  if(ts&&Number(p.is_current)===1)return Math.max(1,nowY-ts)+'+ yrs (since '+ts+')';
+  if(ts)return 'Since '+ts;
+  return '';
+}
 // Exposure chips (table only): help buy-side judge source credibility — depth of
 // company knowledge + freshness of insight. Built ONLY from real data; when a
 // number isn't truly known we say so rather than inventing one.
 function exposureChips(p){
   const out=[];
-  const co=p.company_label||p.company||'';
+  const co=titleCo(p.company_label||p.company||'');
   const cs=Number(p.career_start_year)||0;
   const ts=tenureYear(p.tenure_start), te=tenureYear(p.tenure_end);
   const isCurrent=Number(p.is_current)===1;
@@ -1139,7 +1162,7 @@ function stillAtTarget(p){
   return coMatch(emp,p.company)||coMatch(emp,p.company_label);
 }
 function tableRow(p){
-  const co=p.company_label||p.company||'';
+  const co=titleCo(p.company_label||p.company||'');
   const emp=deriveEmployer(p);
   const still=!emp&&stillAtTarget(p);
   const leftCo=Number(p.is_current)===0;
@@ -1256,7 +1279,7 @@ function openMenu(btn){
 // ---- drawer ----
 function openDrawer(id){
   const p=RAW.find(x=>x.id===id);if(!p)return;
-  const co=p.company_label||p.company;
+  const co=titleCo(p.company_label||p.company);
   const emp=deriveEmployer(p);
   const leftCo=Number(p.is_current)===0;
   const research=bestFor(p);
@@ -1285,13 +1308,15 @@ function openDrawer(id){
     <div class="dsec">
       <h4>🧾 Source & verification</h4>
       <p>Found via <b>${esc(p.source||'search')}</b> · Last synced ${ago(p.updated_at||p.created_at)}</p>
-      ${p.linkedin_url?`<div class="drow2"><a href="${esc(p.linkedin_url)}" target="_blank" class="btn sm" style="text-decoration:none">🔗 LinkedIn Profile ↗</a></div>`:''}
+      <div class="drow2">
+        <a href="${esc(searchUrl(p))}" target="_blank" class="btn sm" style="text-decoration:none">🔗 LinkedIn Profile ↗</a>
+        <a href="${esc(zoomUrl(p))}" target="_blank" class="btn sm" style="text-decoration:none">🧭 ZoomInfo ↗</a>
+      </div>
     </div>
 
     <div class="dsec">
-      <h4>✅ Status & tracking</h4>
+      <h4>📝 Notes</h4>
       <div class="drow2">
-        <span class="status-pill ${statusClass}" data-act="status" data-id="${p.id}" style="cursor:pointer">${statusLabel(status)}</span>
         <button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" style="font-size:18px;border:1px solid #dde1f1;background:var(--card-bg);padding:6px 12px;border-radius:8px;cursor:pointer">${p._saved?'★ Shortlisted':'☆ Shortlist'}</button>
       </div>
       <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…" style="margin-top:12px">${esc(p.notes||'')}</textarea>
@@ -1342,6 +1367,7 @@ $('tabbar').querySelectorAll('button').forEach(b=>b.onclick=()=>{TAB=b.dataset.t
 // ---- header actions ----
 $('exportBtn').onclick=openExport;
 $('insightsBtn').onclick=openInsights;
+$('outreachBtn').onclick=openOutreach;
 
 // Fetch public LinkedIn profile photos for the current list, in small paced
 // batches (the Worker throttles itself so LinkedIn isn't hit in a burst).
@@ -1640,15 +1666,13 @@ function openInsights(){
   const max=Math.max(1,...Object.values(fnCount));const seq=['#f2f4f7','#efe8ff','#d9c6ff','#b79bf3','#8b5cf6','#6d28d9'];
   const heat=FUNCTIONS.map(f=>{const n=fnCount[f];const lvl=n===0?0:Math.min(5,Math.ceil(n/max*5));return `<div class="hmrow"><div class="fn">${f}</div><div class="cell" style="background:${seq[lvl]};color:${lvl>=3?'#fff':'#475467'}">${n} ${n===1?'contact':'contacts'}</div></div>`;}).join('');
   const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
-  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${deriveEmployer(p)?' · now '+esc(deriveEmployer(p)):''}</div></div><b style="color:#067647">${p.score}</b></div>`).join('');
+  const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${deriveEmployer(p)?' · now '+esc(deriveEmployer(p)):''}</div></div></div>`).join('');
   const movers=[...new Set(list.filter(p=>Number(p.is_current)===0).map(p=>deriveEmployer(p)).filter(Boolean))].slice(0,10);
   openModal(`<h3>📊 Research insights ${COMPANY?'· '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''}</h3>
     <div class="mnote">A quick read on your coverage and best leads. Kept off the main screen for clarity.</div>
     <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:.5px;color:var(--brand)">COVERAGE BY FUNCTION</h4>${heat}
     ${gaps.length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${gaps.map(g=>`<span class="chip gap">⚠ ${g} — no coverage</span>`).join('')}</div>`:''}
     <h4 style="margin:18px 0 4px;font-size:12px;letter-spacing:.5px;color:var(--brand)">TOP CONTACTS</h4>${top||'<div class="mnote">None yet.</div>'}
-    <h4 style="margin:18px 0 6px;font-size:12px;letter-spacing:.5px;color:var(--brand)">WHERE ALUMNI LANDED</h4>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${movers.map(m=>`<span class="chip comp">${esc(m)}</span>`).join('')||'<span class="mnote">No destinations captured.</span>'}</div>
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="openOutreach()">✨ Generate outreach list</button></div>`);
 }
 
@@ -1660,26 +1684,26 @@ function openOutreach(){
   while(chosen.length<Math.min(10,pool.length)){let best=null,bs=-1e9;for(const p of pool){if(chosen.includes(p))continue;const s=sc(p);if(s>bs){bs=s;best=p;}}if(!best)break;chosen.push(best);fnUsed[best._fn]=(fnUsed[best._fn]||0)+1;}
   const why=p=>{const b=[];if(['founder','clevel'].includes(p.seniority))b.push('top-level strategic view');else if(p.score>=70)b.push(`senior ${p._fn.toLowerCase()} insight`);else b.push(`${p._fn.toLowerCase()} perspective`);if(Number(p.is_current)===0)b.push('can speak candidly');if(p._reach>=70)b.push('easy to reach');return b.join(' · ');};
   window.__outreach=chosen.map(p=>({p,why:why(p)}));
-  const rowsH=window.__outreach.map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div><b style="color:#067647">${r.p.score}</b></div>`).join('');
+  const rowsH=window.__outreach.map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div></div>`).join('');
   openModal(`<h3>✨ Recommended outreach list</h3><div class="mnote">Top ${window.__outreach.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''} — ranked by strategic value, freshness, reachability and diversity of perspective.</div>${rowsH||'<div class="mnote">No candidates in view.</div>'}
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
 }
 window.openOutreach=openOutreach;
-window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Role at target','Seniority','Function','Now at','Signal','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),x.p.score,x.why,x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
+window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Former Role','Seniority','Function','Now At','Exposure','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.former_role||x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),exposureStr(x.p),(x.why||'').replace(/ · /g,'; '),x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
 
 // export
 function openExport(){openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
   <div class="acts" style="justify-content:flex-start"><button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="openOutreach()">✨ Outreach list</button></div>`);}
-window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Network','Status','LinkedIn','Notes'];
-  const rows=list.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),p.current_role||'',p.score,'Tier '+p._tier,p._in?'In network':'Out of network',p.contacted,p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Former Role','Seniority','Function','Now At','Exposure','Current Role','LinkedIn','Notes'];
+  const rows=list.map(p=>[p.full_name,titleCo(p.company_label||p.company),RELLABEL[p.relationship]||'',p.former_role||p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),exposureStr(p),p.current_role||'',p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
-function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[cols.join(','),...rows.map(r=>r.map(es).join(','))].join('\n');const b=new Blob([csv],{type:'text/csv'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv='﻿'+[cols.map(es).join(','),...rows.map(r=>r.map(es).join(','))].join('\r\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 
 function exportShortlisted(){
   const shortlisted=RAW.filter(p=>p._saved);
   if(!shortlisted.length){alert('No contacts shortlisted.');return;}
-  const cols=['Name','Company','Type','Role at target','Seniority','Function','Now at','Current role','Signal','Tier','Status','LinkedIn','Notes'];
-  const rows=shortlisted.map(p=>[p.full_name,p.company_label||p.company,RELLABEL[p.relationship]||'',p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),p.current_role||'',p.score,'Tier '+p._tier,statusLabel(p.contacted||'no'),p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
+  const cols=['Name','Company','Type','Former Role','Seniority','Function','Now At','Exposure','Current Role','LinkedIn','Notes'];
+  const rows=shortlisted.map(p=>[p.full_name,titleCo(p.company_label||p.company),RELLABEL[p.relationship]||'',p.former_role||p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),exposureStr(p),p.current_role||'',p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
   downloadCSV('shortlisted-contacts.csv',cols,rows);
 }
 
