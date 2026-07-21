@@ -374,15 +374,15 @@
 
   /* Dense research grid (default view) */
   .table-wrap{margin-top:14px;overflow-x:auto}
-  table.grid{width:100%;border-collapse:separate;border-spacing:0;background:var(--card-bg);
+  table.grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;background:var(--card-bg);
     border:1px solid #e6e6f3;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card)}
   .grid thead th{background:linear-gradient(180deg,#f3f2fb,#ecedf7);color:#5a5480;font-size:11px;font-weight:750;letter-spacing:.4px;
-    text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:2px solid #e2e0f2;white-space:nowrap}
+    text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:2px solid #e2e0f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .grid thead th.sortable{cursor:pointer;user-select:none}
   .grid thead th .sar{color:#b3aede;margin-left:4px;font-size:9px}
   .grid thead th.sorted{color:#5b4e99}
   .grid thead th.sorted .sar{color:#6d5ec7}
-  .grid tbody td{padding:11px 14px;border-bottom:1px solid #f0f0f8;font-size:13px;color:#3d4a68;vertical-align:middle;white-space:nowrap}
+  .grid tbody td{padding:11px 14px;border-bottom:1px solid #f0f0f8;font-size:13px;color:#3d4a68;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .grid tbody tr:last-child td{border-bottom:none}
   .grid tbody tr{cursor:pointer;transition:background 140ms ease}
   .grid tbody tr:nth-child(even){background:#faf9ff}
@@ -392,9 +392,8 @@
   .grid tbody tr.sen-founder{--rail:#8b5cf6}.grid tbody tr.sen-clevel{--rail:#f0637a}
   .grid tbody tr.sen-vp{--rail:#f5a524}.grid tbody tr.sen-director{--rail:#4d7cf0}
   .grid tbody tr.sen-manager{--rail:#8a94b0}.grid tbody tr.sen-other{--rail:#b8bed2}
-  /* spacer column: absorbs all free width so real columns stay tight together on the left */
-  .grid .gsp{width:100%;padding:0;min-width:26px}
-  .gname{display:flex;align-items:center;gap:10px}
+  .gname{display:flex;align-items:center;gap:10px;min-width:0}
+  .gname>div{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gav{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c6bcc,#5b4e99);color:#fff;
     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none}
   .gnm{font-weight:700;color:#1e2233}
@@ -412,7 +411,7 @@
   .gnow{font-weight:650;color:#1e2233}
   .gnow.still{color:#b54708}.gnow.empty{color:#b0b6c8;font-weight:500}
   .gleft{font-weight:700}.gleft.fresh{color:#067647}.gleft.warm{color:#b54708}.gleft.old{color:#98a0b8}.gleft.pres{color:#067647}
-  .gact{text-align:right;white-space:nowrap}
+  .grid tbody td.gact{text-align:right;white-space:nowrap;text-overflow:clip;padding-left:6px}
   .gstar{opacity:0;color:#c0c5d8;font-size:16px;margin-right:9px;cursor:pointer;transition:opacity 140ms}
   .grid tbody tr:hover .gstar{opacity:1}
   .gstar.on{opacity:1;color:#f59e0b}
@@ -1138,16 +1137,16 @@ function tableRow(p){
   const emp=deriveEmployer(p);
   const still=!emp&&stillAtTarget(p);
   const roleAtCo=p.former_role||roleTitle(p)||'—';
+  const nowText=emp||(still?'Still here':'Not mapped');
   const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
   return `<tr class="sen-${seniorityCls(p)}" data-id="${p.id}">
-    <td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>
+    <td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>
     <td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>
-    <td>${esc(p._fn||'—')}</td>
-    <td>${esc(roleAtCo)}</td>
+    <td title="${esc(p._fn||'')}">${esc(p._fn||'—')}</td>
+    <td title="${esc(roleAtCo)}">${esc(roleAtCo)}</td>
     <td class="gexp">${expMini(p)}</td>
-    <td>${nowCell}</td>
+    <td title="${esc(nowText)}">${nowCell}</td>
     <td>${leftCell(p)}</td>
-    <td class="gsp"></td>
     <td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">in</a></td>
   </tr>`;
 }
@@ -1231,7 +1230,9 @@ function render(){
       const on=SORT.col===h.k;const ar=on?(SORT.dir===1?'▲':'▼'):'▾';
       return `<th class="sortable${on?' sorted':''}" data-sort="${h.k}">${esc(label)}<span class="sar">${ar}</span></th>`;
     }).join('');
-    $('tableWrap').innerHTML=`<div class="table-wrap"><table class="grid"><thead><tr>${th}<th class="gsp"></th><th></th></tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
+    // fixed proportionate column widths so every column fits in one view (no side-scroll); long text truncates with a hover tooltip
+    const cg=`<colgroup><col style="width:23%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:10%"><col style="width:14%"><col style="width:8%"><col style="width:8%"></colgroup>`;
+    $('tableWrap').innerHTML=`<div class="table-wrap"><table class="grid">${cg}<thead><tr>${th}<th></th></tr></thead><tbody>${rows.map(tableRow).join('')}</tbody></table></div>`;
   }
   updateShortlistTray();
 }
