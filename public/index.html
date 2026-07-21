@@ -1689,22 +1689,57 @@ function openOutreach(){
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
 }
 window.openOutreach=openOutreach;
-window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Former Role','Seniority','Function','Now At','Exposure','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.former_role||x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),exposureStr(x.p),(x.why||'').replace(/ · /g,'; '),x.p.linkedin_url||'']);downloadCSV('outreach-list.csv',cols,rows);};
+window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Former Role','Seniority','Function','Now At','Exposure','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.former_role||x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),exposureStr(x.p),(x.why||'').replace(/ · /g,'; '),x.p.linkedin_url||'']);downloadXLSX('outreach-list.xlsx',cols,rows,'Outreach');};
 
 // export
 function openExport(){openModal(`<h3>⤓ Export research</h3><div class="mnote">Export the current view (${COMPANY?esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):'all companies'}).</div>
   <div class="acts" style="justify-content:flex-start"><button class="btn primary" onclick="exportContacts()">Contacts (CSV / Excel)</button><button class="btn" onclick="window.print()">Print / PDF</button><button class="btn" onclick="openOutreach()">✨ Outreach list</button></div>`);}
 window.exportContacts=function(){const list=applyFilters(scopeList());const cols=['Name','Company','Type','Former Role','Seniority','Function','Now At','Exposure','Current Role','LinkedIn','Notes'];
   const rows=list.map(p=>[p.full_name,titleCo(p.company_label||p.company),RELLABEL[p.relationship]||'',p.former_role||p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),exposureStr(p),p.current_role||'',p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
-  downloadCSV((COMPANY||'all')+'-contacts.csv',cols,rows);};
+  downloadXLSX((COMPANY||'all')+'-contacts.xlsx',cols,rows,'Contacts');};
 function downloadCSV(name,cols,rows){const es=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv='﻿'+[cols.map(es).join(','),...rows.map(r=>r.map(es).join(','))].join('\r\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+// Real .xlsx export (no libraries): styled colored header, thin borders, auto
+// column widths, frozen header row — so it opens as a clean, aligned table in
+// Excel / Google Sheets (a CSV can't carry any of that).
+const XLSX_CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function xlsxCrc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=XLSX_CRC[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function xlsxZip(files){const enc=new TextEncoder();const u16=n=>[n&0xFF,(n>>8)&0xFF];const u32=n=>[n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF];
+  const parts=[];let offset=0;const central=[];
+  for(const f of files){const nameB=enc.encode(f.name);const data=enc.encode(f.data);const crc=xlsxCrc32(data);
+    const lfh=[0x50,0x4b,0x03,0x04,...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nameB.length),...u16(0)];
+    parts.push(new Uint8Array(lfh),nameB,data);central.push({nameB,crc,len:data.length,offset});offset+=lfh.length+nameB.length+data.length;}
+  const cdStart=offset;const cd=[];let cdLen=0;
+  for(const c of central){const h=[0x50,0x4b,0x01,0x02,...u16(20),...u16(20),...u16(0),...u16(0),...u16(0),...u16(0),...u32(c.crc),...u32(c.len),...u32(c.len),...u16(c.nameB.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(c.offset)];cd.push(new Uint8Array(h),c.nameB);cdLen+=h.length+c.nameB.length;}
+  const eocd=[0x50,0x4b,0x05,0x06,...u16(0),...u16(0),...u16(central.length),...u16(central.length),...u32(cdLen),...u32(cdStart),...u16(0)];
+  const all=[...parts,...cd,new Uint8Array(eocd)];let total=0;all.forEach(a=>total+=a.length);const out=new Uint8Array(total);let p=0;all.forEach(a=>{out.set(a,p);p+=a.length;});return out;}
+function xlsxEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');}
+function xlsxColL(n){let s='';n++;while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-m-1)/26;}return s;}
+function buildXLSX(cols,rows,sheetName){
+  const widths=cols.map((c,i)=>{let w=String(c).length;for(const r of rows){const v=r[i];const l=v==null?0:String(v).length;if(l>w)w=l;}return Math.min(70,Math.max(9,w+2));});
+  const colsXml=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+  const cell=(ci,ri,val,st)=>{const ref=xlsxColL(ci)+ri;if(typeof val==='number'&&isFinite(val))return `<c r="${ref}" s="${st}"><v>${val}</v></c>`;return `<c r="${ref}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xlsxEsc(val)}</t></is></c>`;};
+  const headRow=`<row r="1">${cols.map((c,i)=>cell(i,1,c,1)).join('')}</row>`;
+  const dataRows=rows.map((r,ri)=>`<row r="${ri+2}">${cols.map((_,ci)=>cell(ci,ri+2,r[ci],0)).join('')}</row>`).join('');
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${colsXml}</cols><sheetData>${headRow}${dataRows}</sheetData></worksheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF5B4E99"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFC7CBE0"/></left><right style="thin"><color rgb="FFC7CBE0"/></right><top style="thin"><color rgb="FFC7CBE0"/></top><bottom style="thin"><color rgb="FFC7CBE0"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files=[
+    {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`},
+    {name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:'xl/workbook.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xlsxEsc(sheetName||'Sheet1').slice(0,31)}" sheetId="1" r:id="rId1"/></sheets></workbook>`},
+    {name:'xl/_rels/workbook.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:'xl/styles.xml',data:styles},
+    {name:'xl/worksheets/sheet1.xml',data:sheet},
+  ];
+  return xlsxZip(files);
+}
+function downloadXLSX(name,cols,rows,sheet){const bytes=buildXLSX(cols,rows,sheet);const b=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 
 function exportShortlisted(){
   const shortlisted=RAW.filter(p=>p._saved);
   if(!shortlisted.length){alert('No contacts shortlisted.');return;}
   const cols=['Name','Company','Type','Former Role','Seniority','Function','Now At','Exposure','Current Role','LinkedIn','Notes'];
   const rows=shortlisted.map(p=>[p.full_name,titleCo(p.company_label||p.company),RELLABEL[p.relationship]||'',p.former_role||p.last_role||'',SENLABEL[p.seniority],p._fn,deriveEmployer(p),exposureStr(p),p.current_role||'',p.linkedin_url||'',(p.notes||'').replace(/\n/g,' ')]);
-  downloadCSV('shortlisted-contacts.csv',cols,rows);
+  downloadXLSX('shortlisted-contacts.xlsx',cols,rows,'Shortlisted');
 }
 
 function clearShortlist(){
