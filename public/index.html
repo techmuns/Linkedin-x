@@ -445,6 +445,9 @@
   .dsec:last-child{border-bottom:none}
   .dsec h4{margin:0 0 10px;font-size:10.5px;font-weight:800;letter-spacing:.8px;color:#6d5ec7;text-transform:uppercase;
     display:flex;align-items:center;gap:7px}
+  /* Notes header: label on the left, Shortlist action on the right, textarea directly below */
+  .dnhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .dnhead h4{margin:0}
   .dsec p{margin:0;font-size:13.5px;line-height:1.65;color:#3d4a68}
   .dsec ul{margin:8px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7;color:#3d4a68}
   .dsec ul li{margin-bottom:8px}
@@ -910,9 +913,7 @@ function renderPills(){
   }).sort((a,b)=>b.n-a.n);
   const maxU=RAW.reduce((m,p)=>{const t=Date.parse(p.updated_at||p.created_at||'');return t>m?t:m;},0);
   const rnote=`<span class="refresh-note" title="A daily job re-checks LinkedIn for new senior ex-employees">🔄 Auto-refreshes daily${maxU?' · updated '+ago(new Date(maxU).toISOString()):''}</span>`;
-  const savedHtml=`<div class="savedviews">${rnote}<select class="sv" id="savedViews">
-    <option value="">Saved views: All contacts</option><option value="__saved">★ Shortlisted</option>
-    <option value="no">Not contacted</option><option value="contacted">Contacted</option><option value="replied">Replied</option><option value="scheduled">Scheduled</option><option value="done">Done</option></select></div>`;
+  const savedHtml=`<div class="savedviews">${rnote}</div>`;
 
   // Once there are several companies, collapse the pill row into a compact
   // searchable dropdown so the bar never clutters as the client adds more.
@@ -941,8 +942,6 @@ function renderPills(){
     document.querySelectorAll('.codel[data-del]').forEach(t=>t.onclick=(e)=>{e.stopPropagation();deleteCompany(t.dataset.del);});
   }
   $('addCo').onclick=addCompany;
-  $('savedViews').value=VIEWFILTER;
-  $('savedViews').onchange=e=>{VIEWFILTER=e.target.value;render();};
 }
 
 // Delete a tracked company and all of its contacts.
@@ -1320,11 +1319,8 @@ function openDrawer(id){
     </div>
 
     <div class="dsec">
-      <h4>📝 Notes</h4>
-      <div class="drow2">
-        <button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" style="font-size:18px;border:1px solid #dde1f1;background:var(--card-bg);padding:6px 12px;border-radius:8px;cursor:pointer">${p._saved?'★ Shortlisted':'☆ Shortlist'}</button>
-      </div>
-      <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…" style="margin-top:12px">${esc(p.notes||'')}</textarea>
+      <div class="dnhead"><h4>📝 Notes</h4><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" style="font-size:13px;font-weight:650;border:1px solid #dde1f1;background:var(--card-bg);padding:6px 12px;border-radius:8px;cursor:pointer">${p._saved?'★ Shortlisted':'☆ Shortlist'}</button></div>
+      <textarea id="dNotes" placeholder="Notes — angle, mutual connection, call summary…">${esc(p.notes||'')}</textarea>
     </div>
 
     <div class="dsec">
