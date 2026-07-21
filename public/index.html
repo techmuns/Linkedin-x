@@ -6,19 +6,20 @@
 <title>Scuttlebutt Desk — Buy-Side Intelligence</title>
 <style>
   :root{
-    --bg:#f0f3f9; --panel:#fafbfd; --ink:#1a2138; --muted:#5b6b8c; --faint:#8a97b3;
+    --bg:#e2ddf1; --panel:#fafbfd; --ink:#1a2138; --muted:#5b6b8c; --faint:#8a97b3;
     --line:#e0e4f0; --line2:#ebeef6;
     --brand:#6d28d9; --brand2:#7c3aed; --li:#0a66c2;
     --gold:#f59e0b; --green:#12b76a; --amber:#f79009; --red:#f04438;
     --hd1:#0a0e24; --hd2:#160f38; --hd3:#241653;
     --shadow:0 1px 2px rgba(109,40,217,.04),0 2px 4px rgba(109,40,217,.06);
     --shadow-lg:0 8px 24px rgba(109,40,217,.12),0 16px 40px rgba(109,40,217,.08);
-    --card-bg:linear-gradient(135deg,#f8f9fd 0%,#f4f6fc 100%);
-    --card-border:#dde1f1;
+    --shadow-card:0 1px 3px rgba(30,34,51,.045),0 14px 32px -16px rgba(46,34,102,.28);
+    --card-bg:#ffffff;
+    --card-border:#e4e2f2;
     --card-hover-bg:linear-gradient(135deg,#f5f7fd 0%,#eff2fb 100%);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);
+  body{margin:0;background:linear-gradient(180deg,#dbd5ed 0%,#e1dcf0 55%,#e4e0f1 100%) fixed;color:var(--ink);
     font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif}
   a{color:var(--brand);text-decoration:none}
   button,select,input,textarea{font:inherit;color:inherit}
@@ -176,8 +177,8 @@
   .chip.comp{background:#eef2ff;color:#3538cd;border-color:#e0e7ff}
 
   /* filter panel */
-  .fpanel{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:14px;
-    box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;align-items:stretch;gap:14px}
+  .fpanel{margin-top:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
+    box-shadow:var(--shadow-card);padding:14px 16px;display:flex;flex-direction:column;align-items:stretch;gap:14px}
   .fgroup .glab{font-size:9.5px;font-weight:800;letter-spacing:.8px;color:#6b7794;margin-bottom:7px;text-transform:uppercase}
   .seg{display:flex;flex-wrap:wrap;gap:5px;background:linear-gradient(135deg,#f0f2fb 0%,#e8ecf9 100%);border:1px solid #dde1f1;
     border-radius:11px;padding:5px}
@@ -212,7 +213,7 @@
   /* ---------- CONTACT ROWS ---------- */
   .rows{margin-top:16px;display:flex;flex-direction:column;gap:14px}
   .row{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;
-    box-shadow:var(--shadow);display:grid;grid-template-columns:280px 1fr 210px;cursor:pointer;overflow:hidden;
+    box-shadow:var(--shadow-card);display:grid;grid-template-columns:280px 1fr 210px;cursor:pointer;overflow:hidden;
     will-change:transform;
     transition:transform 200ms ease-out,box-shadow 200ms ease-out,border-color 200ms ease-out,background 200ms ease-out}
   /* Tier-based left accent — darker blue-violet, visible by default */
@@ -351,35 +352,46 @@
   .shortlist-tray .btn{padding:8px 16px;font-size:13px}
 
   /* Company snapshot bar */
-  .snap{background:var(--card-bg);border:1px solid #e6e8f2;border-radius:16px;padding:15px 20px;margin-top:14px;
-    box-shadow:0 1px 3px rgba(30,34,51,.05);display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
-  .snap .cohead{display:flex;align-items:center;gap:13px;padding-right:22px;border-right:1px solid #eef0f7}
-  .snap .colg{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#eef0fd,#e2e6fb);
-    display:flex;align-items:center;justify-content:center;font-weight:800;color:#5b4e99;font-size:16px;flex:none}
+  .snap{position:relative;overflow:hidden;background:linear-gradient(135deg,#ffffff 0%,#faf9ff 100%);
+    border:1px solid #e6e6f3;border-radius:16px;padding:15px 20px 15px 24px;margin-top:14px;
+    box-shadow:var(--shadow-card);display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .snap::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#8b78e6,#5b4e99)}
+  .snap .cohead{display:flex;align-items:center;gap:13px;padding-right:22px;border-right:1px solid #edecf7}
+  .snap .colg{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#7c6bcc,#5b4e99);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;flex:none;
+    box-shadow:0 4px 12px -3px rgba(91,78,153,.55)}
   .snap .con{font-weight:800;font-size:17px;color:#1e2233}
   .snap .cosub{font-size:12px;color:#8790ab;margin-top:2px}
   .snap .stats{display:flex;gap:26px;padding:0 22px;align-items:center;flex-wrap:wrap}
-  .snap .stat .v{font-weight:800;font-size:19px;color:#2e2266}
-  .snap .stat .l{font-size:10.5px;color:#8790ab;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
-  .snap .dest{flex:1;min-width:230px;padding-left:22px;border-left:1px solid #eef0f7;display:flex;flex-direction:column;justify-content:center}
+  .snap .stat .v{font-weight:800;font-size:20px;background:linear-gradient(135deg,#6d5ec7,#3a2b7a);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .snap .stat .l{font-size:10.5px;color:#8790ab;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+  .snap .dest{flex:1;min-width:230px;padding-left:22px;border-left:1px solid #edecf7;display:flex;flex-direction:column;justify-content:center}
   .snap .dest .l{font-size:10.5px;color:#8790ab;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
-  .snap .dchips{display:flex;gap:6px;flex-wrap:wrap}
-  .snap .dchip{background:#f2f0fb;color:#5b4e99;font-weight:650;font-size:12px;padding:4px 10px;border-radius:7px}
+  .snap .dchips{display:flex;gap:7px;flex-wrap:wrap}
+  .snap .dchip{background:linear-gradient(135deg,#f1eefb,#e9e5f9);color:#5b4e99;font-weight:700;font-size:12px;
+    padding:5px 11px;border-radius:8px;border:1px solid #e4def6}
 
   /* Dense research grid (default view) */
   .table-wrap{margin-top:14px;overflow-x:auto}
   table.grid{width:100%;border-collapse:separate;border-spacing:0;background:var(--card-bg);
-    border:1px solid #e6e8f2;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(30,34,51,.05)}
-  .grid thead th{background:#f7f8fc;color:#6b7391;font-size:11px;font-weight:750;letter-spacing:.4px;
-    text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:1px solid #e6e8f2;white-space:nowrap}
+    border:1px solid #e6e6f3;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card)}
+  .grid thead th{background:linear-gradient(180deg,#f3f2fb,#ecedf7);color:#5a5480;font-size:11px;font-weight:750;letter-spacing:.4px;
+    text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:2px solid #e2e0f2;white-space:nowrap}
   .grid thead th.sortable{cursor:pointer;user-select:none}
-  .grid thead th .sar{color:#c0c5d8;margin-left:4px;font-size:9px}
+  .grid thead th .sar{color:#b3aede;margin-left:4px;font-size:9px}
   .grid thead th.sorted{color:#5b4e99}
   .grid thead th.sorted .sar{color:#6d5ec7}
-  .grid tbody td{padding:11px 14px;border-bottom:1px solid #f0f1f7;font-size:13px;color:#3d4a68;vertical-align:middle;white-space:nowrap}
+  .grid tbody td{padding:11px 14px;border-bottom:1px solid #f0f0f8;font-size:13px;color:#3d4a68;vertical-align:middle;white-space:nowrap}
   .grid tbody tr:last-child td{border-bottom:none}
   .grid tbody tr{cursor:pointer;transition:background 140ms ease}
-  .grid tbody tr:hover{background:#faf9ff}
+  .grid tbody tr:nth-child(even){background:#faf9ff}
+  .grid tbody tr:hover{background:#f4f1ff}
+  /* coloured seniority rail on the leftmost cell (drawn as inset shadow so it never shifts layout) */
+  .grid tbody td:first-child{box-shadow:inset 3px 0 0 var(--rail,#cdd2e4)}
+  .grid tbody tr.sen-founder{--rail:#8b5cf6}.grid tbody tr.sen-clevel{--rail:#f0637a}
+  .grid tbody tr.sen-vp{--rail:#f5a524}.grid tbody tr.sen-director{--rail:#4d7cf0}
+  .grid tbody tr.sen-manager{--rail:#8a94b0}.grid tbody tr.sen-other{--rail:#b8bed2}
   /* spacer column: absorbs all free width so real columns stay tight together on the left */
   .grid .gsp{width:100%;padding:0;min-width:26px}
   .gname{display:flex;align-items:center;gap:10px}
@@ -1127,7 +1139,7 @@ function tableRow(p){
   const still=!emp&&stillAtTarget(p);
   const roleAtCo=p.former_role||roleTitle(p)||'—';
   const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
-  return `<tr data-id="${p.id}">
+  return `<tr class="sen-${seniorityCls(p)}" data-id="${p.id}">
     <td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>
     <td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>
     <td>${esc(p._fn||'—')}</td>
