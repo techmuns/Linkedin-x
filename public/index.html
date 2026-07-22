@@ -1778,7 +1778,23 @@ function openOutreach(){
   const list=applyFilters(scopeList());const pool=list.filter(p=>p.contacted!=='skip');const chosen=[];const fnUsed={};
   const sc=p=>{let s=(p.score||0)*1.0;s+=(['founder','clevel'].includes(p.seniority)?15:0);s+=(Number(p.is_current)===0?10:0);s+=p._reach*0.25;s-=(fnUsed[p._fn]||0)*14;if(p.relationship==='competitor_ex')s+=6;return s;};
   while(chosen.length<Math.min(10,pool.length)){let best=null,bs=-1e9;for(const p of pool){if(chosen.includes(p))continue;const s=sc(p);if(s>bs){bs=s;best=p;}}if(!best)break;chosen.push(best);fnUsed[best._fn]=(fnUsed[best._fn]||0)+1;}
-  const why=p=>{const b=[];if(['founder','clevel'].includes(p.seniority))b.push('top-level strategic view');else if(p.score>=70)b.push(`senior ${p._fn.toLowerCase()} insight`);else b.push(`${p._fn.toLowerCase()} perspective`);if(Number(p.is_current)===0)b.push('can speak candidly');if(p._reach>=70)b.push('easy to reach');return b.join(' · ');};
+  const FN_INSIGHT={'Operations':'operations & unit-economics','Supply Chain':'supply-chain, vendor & inventory','Finance':'margins, cash & accounting','Technology':'product, tech-stack & data','Marketing':'CAC, brand & growth','Leadership':'strategy, board & promoter','Sales':'GTM & revenue','HR':'org, culture & attrition'};
+  // Specific, per-person reason built from their real role, tenure, destination,
+  // function, candor and school (not a one-size-fits-all template).
+  const why=p=>{
+    const parts=[];
+    const role=p.former_role||p.last_role||roleTitle(p);
+    const s=tenureYear(p.tenure_start),e=tenureYear(p.tenure_end);const yrs=(s&&e&&e>=s&&e-s<=50)?(e-s):null;
+    const insight=FN_INSIGHT[p._fn]||(p._fn?p._fn.toLowerCase():'domain');
+    if(role&&yrs)parts.push(`${role} for ${yrs} yr${yrs===1?'':'s'} — first-hand ${insight} view`);
+    else if(role)parts.push(`${role} — ${insight} view`);
+    else parts.push(`senior ${insight} view`);
+    if(['founder','clevel'].includes(p.seniority))parts.push('top-table strategic context');
+    const emp=deriveEmployer(p);if(emp)parts.push('now at '+emp);
+    if(Number(p.is_current)===0)parts.push(e?('left '+e+', so candid'):'former, so candid');
+    if(p._eliteAny)parts.push(p._eliteAny+' alum');
+    return parts.join('; ');
+  };
   window.__outreach=chosen.map(p=>({p,why:why(p)}));
   const rowsH=window.__outreach.map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div></div>`).join('');
   openModal(`<h3>✨ Recommended outreach list</h3><div class="mnote">Top ${window.__outreach.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''} — ranked by strategic value, freshness, reachability and diversity of perspective.</div>${rowsH||'<div class="mnote">No candidates in view.</div>'}
