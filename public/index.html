@@ -415,9 +415,9 @@
   .gstar{opacity:0;color:#c0c5d8;font-size:16px;margin-right:9px;cursor:pointer;transition:opacity 140ms}
   .grid tbody tr:hover .gstar{opacity:1}
   .gstar.on{opacity:1;color:#f59e0b}
-  .gli{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#6d5ec7,#5b4e99);color:#fff;
-    display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;text-decoration:none;vertical-align:middle}
-  .gli:hover{filter:brightness(1.1)}
+  .gli{width:30px;height:30px;border-radius:7px;background:#0a66c2;color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;text-decoration:none;vertical-align:middle}
+  .gli:hover{filter:brightness(1.08)}
   .elitebadge{display:inline-block;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:.3px}
 
   /* drawer - premium frosted blue-lilac */
@@ -568,10 +568,10 @@
 
   <div class="fpanel">
     <div class="fgroup">
-      <div class="glab">SOURCE TYPE</div>
+      <div class="glab">Category</div>
       <div class="seg" id="sourceType">
         <button data-st="all" class="on">▦ All</button>
-        <button data-st="finance">📊 Finance leaders</button>
+        <button data-st="finance">📊 Finance</button>
         <button data-st="ops">📦 Ops &amp; Supply Chain</button>
         <button data-st="ceo">👑 People near CEO</button>
         <button data-st="left">🕒 Recently left</button>
@@ -1116,6 +1116,49 @@ function stillAtTarget(p){
 const SENIORITY_DISPLAY={founder:'Founder',clevel:'C-Suite',vp:'VP',director:'Director',manager:'Manager',other:'Senior'};
 function seniorityCls(p){const s=p.seniority||'other';return ['founder','clevel','vp','director','manager'].includes(s)?s:'other';}
 function initialsOf(n){return (String(n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('')||'?').toUpperCase();}
+// Real LinkedIn logo (so the action button reads as the LinkedIn app icon).
+const LI_ICON='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.73v20.53C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.74V1.73C24 .78 23.2 0 22.22 0z"/></svg>';
+// Granular designation from the real role title, so the column shows "Senior
+// Manager", "Deputy Manager", "AGM", "Senior Executive"… instead of collapsing
+// everyone into "Manager"/"Senior". Falls back to the tier when no rank is found.
+const capWord=s=>String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1).toLowerCase();
+const DESIG_RULES=[
+  [/\b(co[-\s]?founder|founder)\b/i,'Founder'],
+  [/\bchief\b|\bC[EFTOMR]O\b|\bcxo\b/i,'C-Suite'],
+  [/\bpresident\b/i,'President'],
+  [/\b(evp|executive vice[-\s]?president)\b/i,'EVP'],
+  [/\b(svp|senior vice[-\s]?president|sr\.? vice[-\s]?president)\b/i,'SVP'],
+  [/\b(avp|assistant vice[-\s]?president|associate vice[-\s]?president)\b/i,'AVP'],
+  [/\b(vp|vice[-\s]?president)\b/i,'VP'],
+  [/\bmanaging director\b/i,'Managing Director'],
+  [/\b(dgm|deputy general manager|dy\.? general manager)\b/i,'Dy. GM'],
+  [/\b(agm|assistant general manager|asst\.? general manager)\b/i,'AGM'],
+  [/\b(gm|general manager)\b/i,'General Manager'],
+  [/\b(sr\.?|senior) director\b/i,'Sr. Director'],
+  [/\b(associate|assoc\.?|deputy|dy\.?) director\b/i,'Assoc. Director'],
+  [/\bdirector\b/i,'Director'],
+  [/\bprincipal\b/i,'Principal'],
+  [/\bhead\b/i,'Head'],
+  [/\b(sr\.?|senior) manager\b/i,'Senior Manager'],
+  [/\b(deputy|dy\.?) manager\b/i,'Deputy Manager'],
+  [/\b(asst\.?|assistant) manager\b/i,'Asst. Manager'],
+  [/\bmanager\b/i,'Manager'],
+  [/\b(sr\.?|senior) (executive|officer|analyst|associate|engineer|consultant|specialist|developer|architect|scientist)\b/i,m=>'Senior '+capWord(m[2])],
+  [/\b(team|tech|technical|project|program|product|group|squad)?\s*lead\b/i,'Lead'],
+  [/\b(business partner|hrbp)\b/i,'Business Partner'],
+  [/\bexecutive\b/i,'Executive'],
+  [/\bconsultant\b/i,'Consultant'],
+  [/\bspecialist\b/i,'Specialist'],
+  [/\bassociate\b/i,'Associate'],
+  [/\bengineer\b/i,'Engineer'],
+  [/\banalyst\b/i,'Analyst'],
+  [/\bofficer\b/i,'Officer'],
+];
+function designationOf(p){
+  const low=(p.former_role||roleTitle(p)||'').trim().toLowerCase();
+  if(low){for(const [re,out] of DESIG_RULES){const m=low.match(re);if(m)return typeof out==='function'?out(m):out;}}
+  return SENIORITY_DISPLAY[p.seniority]||'Senior';
+}
 // Compact exposure for the grid: "4 yrs" bold + the year range below.
 function expMini(p){
   const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end),nowY=new Date().getFullYear();
@@ -1142,13 +1185,13 @@ function tableRow(p,keys){
   const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
   const C={
     name:`<td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>`,
-    sen:`<td><span class="gsen ${seniorityCls(p)}">${SENIORITY_DISPLAY[p.seniority]||'Senior'}</span></td>`,
+    sen:`<td><span class="gsen ${seniorityCls(p)}">${esc(designationOf(p))}</span></td>`,
     fn:`<td title="${esc(p._fn||'')}">${esc(p._fn||'—')}</td>`,
     role:`<td title="${esc(roleAtCo)}">${esc(roleAtCo)}</td>`,
     exp:`<td class="gexp">${expMini(p)}</td>`,
     now:`<td title="${esc(nowText)}">${nowCell}</td>`,
     left:`<td>${leftCell(p)}</td>`,
-    act:`<td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">in</a></td>`,
+    act:`<td class="gact"><span class="gstar ${p._saved?'on':''}" data-act="save" data-id="${p.id}" onclick="event.stopPropagation()" title="Shortlist">${p._saved?'★':'☆'}</span><a class="gli" href="${esc(searchUrl(p))}" target="_blank" rel="noopener" data-noopen onclick="event.stopPropagation()" title="Open on LinkedIn">${LI_ICON}</a></td>`,
   };
   return `<tr class="sen-${seniorityCls(p)}" data-id="${p.id}">${keys.map(k=>C[k]).join('')}</tr>`;
 }
@@ -1238,8 +1281,8 @@ function render(){
     // Column set + widths depend on the tab. Current employees have no Now At / Exposure / Left,
     // so the remaining columns widen to fill the table (fixed layout → no empty gaps).
     const COLS=(TAB==='current')
-      ?[{k:'name',t:'Name',w:28},{k:'sen',t:'Seniority',w:15},{k:'fn',t:'Function',w:17},{k:'role',t:roleLabel,w:32},{k:'act',t:'',w:8}]
-      :[{k:'name',t:'Name',w:23},{k:'sen',t:'Seniority',w:11},{k:'fn',t:'Function',w:11},{k:'role',t:roleLabel,w:15},{k:'exp',t:'Exposure',w:10},{k:'now',t:'Now At',w:14},{k:'left',t:'Left',w:8},{k:'act',t:'',w:8}];
+      ?[{k:'name',t:'Name',w:26},{k:'sen',t:'Designation',w:18},{k:'fn',t:'Function',w:16},{k:'role',t:roleLabel,w:32},{k:'act',t:'',w:8}]
+      :[{k:'name',t:'Name',w:22},{k:'sen',t:'Designation',w:14},{k:'fn',t:'Function',w:10},{k:'role',t:roleLabel,w:14},{k:'exp',t:'Exposure',w:10},{k:'now',t:'Now At',w:14},{k:'left',t:'Left',w:8},{k:'act',t:'',w:8}];
     const keys=COLS.map(c=>c.k);
     const cg=`<colgroup>${COLS.map(c=>`<col style="width:${c.w}%">`).join('')}</colgroup>`;
     const th=COLS.map(c=>{
