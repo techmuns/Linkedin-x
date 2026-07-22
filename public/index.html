@@ -790,9 +790,10 @@ function reachOf(p){let r=18;if(p.linkedin_url)r+=46;if(p.current_employer)r+=20
 // profile read). The client wants ISB / IIM / IIT flagged even for juniors.
 function eliteSchool(edu){
   const s=String(edu||'');
-  if(/indian school of business|\bisb\b/i.test(s))return 'ISB';
-  if(/indian institute of management|\biim\b/i.test(s))return 'IIM';
-  if(/indian institute of technology|\biit\b/i.test(s))return 'IIT';
+  // whitespace-tolerant, and allow the common "India Institute" typo (missing n) + plural "Institutes"
+  if(/indian\s+school\s+of\s+business|\bisb\b/i.test(s))return 'ISB';
+  if(/india[n]?\s+institutes?\s+of\s+management|\biim\b/i.test(s))return 'IIM';
+  if(/india[n]?\s+institutes?\s+of\s+technology|\biit\b/i.test(s))return 'IIT';
   return '';
 }
 function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._elite=eliteSchool(p.education);p._in=!!p.linkedin_url&&p._reach>=55;return p;}
