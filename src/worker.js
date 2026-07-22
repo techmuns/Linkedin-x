@@ -101,8 +101,8 @@ async function aiOutreachReason(env, company, it) {
       ],
       max_tokens: 90,
     });
-    return cleanReason(res && (res.response || res.result || '')) || null;
-  } catch { return null; }
+    return { reason: cleanReason(res && (res.response || res.result || '')) || null };
+  } catch (e) { return { reason: null, err: String((e && e.message) || e).slice(0, 200) }; }
 }
 
 // ---- Person upsert -------------------------------------------------------
@@ -1010,8 +1010,8 @@ async function handleApi(request, env, url, ctx) {
     const company = (body.company || '').trim();
     const items = Array.isArray(body.items) ? body.items.slice(0, 14) : [];
     if (!env.AI || !items.length) return json({ ok: true, reasons: items.map(() => null), ai: !!env.AI });
-    const reasons = await Promise.all(items.map(it => aiOutreachReason(env, company, it)));
-    return json({ ok: true, reasons, ai: true });
+    const out = await Promise.all(items.map(it => aiOutreachReason(env, company, it)));
+    return json({ ok: true, reasons: out.map(o => o.reason), ai: true, errors: out.map(o => o.err).filter(Boolean).slice(0, 3) });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
