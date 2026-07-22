@@ -285,6 +285,38 @@ export async function resolveLinkedInBatch(env, company, people) {
   return { resolved, tried, aborted: false };
 }
 
+// Detect an elite Indian school (ISB/IIM/IIT) in a text blob — same rules as the
+// dashboard badge.
+function eliteSchoolIn(text) {
+  const s = String(text || '');
+  if (/indian\s+school\s+of\s+business|\bisb\b/i.test(s)) return 'ISB';
+  if (/india[n]?\s+institutes?\s+of\s+management|\biim\b/i.test(s)) return 'IIM';
+  if (/india[n]?\s+institutes?\s+of\s+technology|\biit\b/i.test(s)) return 'IIT';
+  return '';
+}
+// Free alternative to profile-reading: use search to check whether a person's
+// LinkedIn profile shows an ISB/IIM/IIT education, without paid Apify. Restricts
+// to the person's LinkedIn profile (name + company match) so we don't pick up a
+// different same-named person. Returns { school, evidence, weak, url }.
+// `weak` = their profile matched the school query but the snippet didn't name
+// which school (so it's a likely-elite hint we don't act on).
+export async function probeEliteViaSearch(env, fullName, company) {
+  const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
+  const coPart = company ? ` ${company}` : '';
+  const q = `site:linkedin.com/in "${fullName}"${coPart} (IIT OR IIM OR ISB OR "indian institute of technology" OR "indian institute of management" OR "indian school of business")`;
+  let results;
+  try { results = await searcher(q, env, 1); } catch { return { school: '', err: true }; }
+  for (const r of (results || [])) {
+    if (!cleanLinkedInUrl(r.url)) continue;                 // must be a LinkedIn profile
+    if (!titleHasName(r.title, fullName)) continue;         // must be THIS person
+    const school = eliteSchoolIn((r.title || '') + ' ' + (r.snippet || ''));
+    const evidence = (r.snippet || r.title || '').slice(0, 150);
+    if (school) return { school, evidence, url: cleanLinkedInUrl(r.url) };
+    return { school: '', weak: true, evidence, url: cleanLinkedInUrl(r.url) };
+  }
+  return { school: '' };
+}
+
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
 // leaver went NOW. ZoomInfo's public company page does — it lists current

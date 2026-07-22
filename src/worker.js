@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteViaSearch } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -904,6 +904,27 @@ async function handleApi(request, env, url, ctx) {
       ? env.DB.prepare('UPDATE people SET linkedin_url = ?, url_tried = ? WHERE id = ?').bind(found.get(id), now, id)
       : env.DB.prepare('UPDATE people SET url_tried = ? WHERE id = ?').bind(now, id)));
     return json({ ok: true, resolved: resolved.length, remaining });
+  }
+
+  // POST /api/elite-probe -> DRY RUN. Detect ISB/IIM/IIT via search only (no
+  // Apify, no DB write). Body: { company, names?[], limit? }. For measuring the
+  // free search-based detector's accuracy before wiring it in.
+  if (path === '/api/elite-probe' && method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    let people = Array.isArray(body.names) ? body.names.map(n => ({ full_name: n })) : null;
+    if (!people) {
+      const co = normCompany(company);
+      people = ((await env.DB.prepare(
+        'SELECT full_name FROM people WHERE company = ? ORDER BY score DESC LIMIT ?'
+      ).bind(co, Math.min(Number(body.limit) || 12, 25)).all()).results) || [];
+    }
+    const results = [];
+    for (const p of people) {
+      const res = await probeEliteViaSearch(env, p.full_name, company);
+      results.push({ name: p.full_name, ...res });
+    }
+    return json({ ok: true, count: results.length, results });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
