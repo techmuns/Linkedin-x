@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -274,6 +274,35 @@ async function cronEnrichApify(env, budget) {
       await env.DB.batch(list.map(r => env.DB.prepare('UPDATE people SET enriched_at = ? WHERE id = ?').bind(now, r.id)));
       try { await dedupeCompany(env, company); } catch { /* best effort */ }
       done += list.length;
+    }
+  }
+  return done;
+}
+
+// Daily self-heal: find LinkedIn URLs for people who arrived without one (e.g.
+// ZoomInfo-sourced), so cronEnrichApify can then read their profile for school /
+// Now At / Exposure. Marks url_tried whether or not one is found.
+async function cronResolveLinkedIn(env, budget) {
+  if (!hasSearchKey(env)) return 0;
+  let done = 0;
+  for (let round = 0; round < 8 && done < budget; round++) {
+    const rows = (await env.DB.prepare(
+      `SELECT id, full_name, company, company_label FROM people
+         WHERE (linkedin_url IS NULL OR linkedin_url = '') AND url_tried IS NULL
+       ORDER BY score DESC LIMIT 8`
+    ).all()).results || [];
+    if (!rows.length) break;
+    const byCo = new Map();
+    for (const r of rows) { const c = r.company_label || r.company; if (!byCo.has(c)) byCo.set(c, []); byCo.get(c).push(r); }
+    for (const [company, list] of byCo) {
+      const { resolved, tried, aborted } = await resolveLinkedInBatch(env, company, list);
+      if (aborted) return done;               // search API down — stop, retry next run
+      const now = new Date().toISOString();
+      const found = new Map(resolved.map(r => [r.id, r.linkedin_url]));
+      if (tried.length) await env.DB.batch(tried.map(id => found.has(id)
+        ? env.DB.prepare('UPDATE people SET linkedin_url = ?, url_tried = ? WHERE id = ?').bind(found.get(id), now, id)
+        : env.DB.prepare('UPDATE people SET url_tried = ? WHERE id = ?').bind(now, id)));
+      done += tried.length;
     }
   }
   return done;
@@ -653,6 +682,9 @@ async function ensureSchema(env) {
   // is sticky and never re-billed. Backfill rows already enriched earlier.
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN enriched_at TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare("UPDATE people SET enriched_at = updated_at WHERE enriched_at IS NULL AND source LIKE '%apify%'").run(); } catch { /* best effort */ }
+  // url_tried: stamped once we've searched for a person's LinkedIn URL (found or
+  // not) so we don't re-search the same name forever.
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN url_tried TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
@@ -844,6 +876,36 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, id, ran: true, ...r });
   }
 
+  // POST /api/resolve-linkedin -> find LinkedIn URLs for a company's people who
+  // arrived without one (e.g. ZoomInfo-sourced), so they become enrichable and
+  // we can read their school / Now At / Exposure. Body: { company, limit? }. The
+  // dashboard calls this until { remaining: 0 }, then runs enrichment.
+  if (path === '/api/resolve-linkedin' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    if (!hasSearchKey(env)) return json({ ok: true, resolved: 0, remaining: 0, disabled: true });
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const limit = Math.min(Math.max(Number(body.limit) || 8, 1), 10);
+    const co = normCompany(company);
+    const rows = await env.DB.prepare(
+      `SELECT id, full_name FROM people WHERE company = ?
+         AND (linkedin_url IS NULL OR linkedin_url = '') AND url_tried IS NULL
+       ORDER BY score DESC LIMIT ?`
+    ).bind(co, limit + 1).all();
+    const batch = (rows.results || []).slice(0, limit);
+    const remaining = Math.max(0, (rows.results || []).length - batch.length);
+    if (!batch.length) return json({ ok: true, resolved: 0, remaining: 0 });
+    const { resolved, tried, aborted } = await resolveLinkedInBatch(env, company, batch);
+    if (aborted) return json({ ok: true, resolved: 0, remaining, aborted: true });
+    const now = new Date().toISOString();
+    const found = new Map(resolved.map(r => [r.id, r.linkedin_url]));
+    if (tried.length) await env.DB.batch(tried.map(id => found.has(id)
+      ? env.DB.prepare('UPDATE people SET linkedin_url = ?, url_tried = ? WHERE id = ?').bind(found.get(id), now, id)
+      : env.DB.prepare('UPDATE people SET url_tried = ? WHERE id = ?').bind(now, id)));
+    return json({ ok: true, resolved: resolved.length, remaining });
+  }
+
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
   // small batch of a company's people who haven't been enriched yet, and fill
   // their true Now At + Exposure + education. Body: { company, limit? }. The
@@ -1002,8 +1064,10 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       await ensureSchema(env);
-      // First, fill Now At + Exposure for anyone not yet read — this clears
-      // companies the client searched but never enriched, with no re-run needed.
+      // First, find LinkedIn URLs for people who arrived without one (ZoomInfo),
+      // then read profiles for anyone not yet enriched — so school / Now At /
+      // Exposure fill in over time with no manual step.
+      try { await cronResolveLinkedIn(env, 24); } catch { /* best effort */ }
       try { await cronEnrichApify(env, 40); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {

@@ -1644,9 +1644,25 @@ function landAnalysis(){
 let ENRICHING=false;
 function setEnrichPill(text){const p=$('enrichPill');if(!p)return;if(text){$('enrichPillText').textContent=text;p.classList.add('show');}else p.classList.remove('show');}
 let APIFY_OFF=false;
+// Before reading profiles, find LinkedIn URLs for people who came in without one
+// (e.g. ZoomInfo-sourced) so they become enrichable too — this is what lets
+// ISB/IIM/IIT + Now At fill in for any company, with no manual step.
+async function resolveLinkedInLoop(company){
+  for(let guard=0;guard<32;guard++){
+    let r;
+    try{r=await (await fetch('/api/resolve-linkedin',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:8})})).json();}
+    catch{break;}
+    if(!r||r.disabled||r.aborted)break;
+    if(r.resolved)await loadAll();
+    if(!r.remaining)break;
+    setEnrichPill('Finding LinkedIn profiles… '+r.remaining+' left');
+  }
+}
 async function enrichApifyLoop(company){
   if(ENRICHING||APIFY_OFF)return;ENRICHING=true;let holdMsg=false;
   try{
+    setEnrichPill('Finding LinkedIn profiles…');
+    await resolveLinkedInLoop(company);
     setEnrichPill('Filling Now At…');
     for(let guard=0;guard<40;guard++){
       let r;

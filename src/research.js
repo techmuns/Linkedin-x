@@ -248,6 +248,43 @@ export function hasSearchKey(env) {
   return !!(env.SERPER_API_KEY || (env.GOOGLE_API_KEY && env.GOOGLE_CSE_ID));
 }
 
+// ---- LinkedIn URL resolution ----------------------------------------------
+// Many people (especially ZoomInfo-sourced) arrive as name + company with NO
+// LinkedIn URL, so we can never read their profile for school / Now At /
+// Exposure. This finds a person's profile URL via a targeted name search so the
+// normal Apify enrichment can then read it. Guarded by a first+last-name match
+// so we never attach the wrong person's profile.
+function nameTokensOf(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length > 1);
+}
+function titleHasName(title, fullName) {
+  const t = String(title || '').toLowerCase();
+  const toks = nameTokensOf(fullName);
+  if (toks.length < 2) return false;                 // need at least first + last
+  return t.includes(toks[0]) && t.includes(toks[toks.length - 1]);
+}
+// people: [{ id, full_name }]. Returns { resolved:[{id,linkedin_url}], tried:[id], aborted }.
+// aborted = the very first lookup threw (search API down / rate-limited), so
+// nothing was marked tried and the caller should stop and retry later.
+export async function resolveLinkedInBatch(env, company, people) {
+  const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
+  const resolved = [], tried = [];
+  for (let i = 0; i < people.length; i++) {
+    const p = people[i];
+    let results;
+    try { results = await searcher(`"${p.full_name}" ${company} site:linkedin.com/in`, env, 1); }
+    catch { if (i === 0) return { resolved, tried, aborted: true }; break; }
+    tried.push(p.id);
+    let url = null;
+    for (const r of (results || [])) {
+      const u = cleanLinkedInUrl(r.url);
+      if (u && titleHasName(r.title, p.full_name)) { url = u; break; }
+    }
+    if (url) resolved.push({ id: p.id, linkedin_url: url });
+  }
+  return { resolved, tried, aborted: false };
+}
+
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
 // leaver went NOW. ZoomInfo's public company page does — it lists current
