@@ -73,6 +73,38 @@ function requireAuth(request, env) {
   return true;
 }
 
+// ---- Outreach reasons (Workers AI) --------------------------------------
+function cleanReason(t) {
+  let s = String(t || '').trim();
+  s = s.replace(/^(sure|certainly|of course|here(?:'| i)s|here is|reason|answer)[:,\s-]*/i, '');
+  s = s.replace(/^["'`\s]+|["'`\s]+$/g, '').trim();
+  s = s.split('\n')[0].trim();                          // first line only
+  if (s.length > 240) s = s.slice(0, 237).replace(/\s+\S*$/, '') + '…';
+  return s;
+}
+function outreachReasonPrompt(company, it) {
+  const co = company || 'the company';
+  const tenure = it.years ? `for ${it.years} year${it.years === 1 ? '' : 's'}` : '';
+  const status = it.isCurrent
+    ? `still works at ${co}`
+    : `has left ${co}${it.nowAt ? `, now at ${it.nowAt}` : ''}`;
+  return `Company under research (buy-side equity): ${co}.
+Person: ${it.name || 'the person'} — was ${it.role || 'a senior employee'} at ${co} ${tenure}. Function: ${it.fn || 'general'}.${it.school ? ` Studied at ${it.school}.` : ''} Currently: ${status}.
+Write ONE concise sentence (max 28 words) on why interviewing this person gives a research edge on ${co} — name their specific vantage point (what they'd know first-hand), and note candor if they've left. No preamble, no quotes.`;
+}
+async function aiOutreachReason(env, company, it) {
+  try {
+    const res = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: 'You are a buy-side research analyst. Output exactly one specific sentence — no preamble, no quotes, no lists.' },
+        { role: 'user', content: outreachReasonPrompt(company, it) },
+      ],
+      max_tokens: 90,
+    });
+    return cleanReason(res && (res.response || res.result || '')) || null;
+  } catch { return null; }
+}
+
 // ---- Person upsert -------------------------------------------------------
 
 async function findExisting(env, person) {
@@ -966,6 +998,20 @@ async function handleApi(request, env, url, ctx) {
       ? env.DB.prepare('UPDATE people SET elite_guess = ?, elite_tried = ? WHERE id = ?').bind(foundMap.get(id), now, id)
       : env.DB.prepare('UPDATE people SET elite_tried = ? WHERE id = ?').bind(now, id)));
     return json({ ok: true, found: found.length, remaining });
+  }
+
+  // POST /api/outreach-reasons -> write a specific, LLM-generated reason (via
+  // Workers AI) for each person in the outreach list. Body: { company, items[] }.
+  // Returns { reasons:[string|null] } aligned to items; null = fall back to the
+  // client's data-driven template (also used when Workers AI is unavailable).
+  if (path === '/api/outreach-reasons' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    const items = Array.isArray(body.items) ? body.items.slice(0, 14) : [];
+    if (!env.AI || !items.length) return json({ ok: true, reasons: items.map(() => null), ai: !!env.AI });
+    const reasons = await Promise.all(items.map(it => aiOutreachReason(env, company, it)));
+    return json({ ok: true, reasons, ai: true });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a

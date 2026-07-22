@@ -1796,9 +1796,27 @@ function openOutreach(){
     return parts.join('; ');
   };
   window.__outreach=chosen.map(p=>({p,why:why(p)}));
-  const rowsH=window.__outreach.map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div></div>`).join('');
-  openModal(`<h3>✨ Recommended outreach list</h3><div class="mnote">Top ${window.__outreach.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''} — ranked by strategic value, freshness, reachability and diversity of perspective.</div>${rowsH||'<div class="mnote">No candidates in view.</div>'}
-    <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list (CSV)</button></div>`);
+  openModal(`<h3>✨ Recommended outreach list</h3><div class="mnote">Top ${window.__outreach.length} to contact ${COMPANY?'for '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''} — ranked by strategic value, freshness, reachability and diversity of perspective.</div><div id="outreachAiNote" class="mnote" style="font-size:11px;color:var(--brand)">✨ Personalising each reason…</div><div id="outreachRows">${outreachRowsHtml()}</div>
+    <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="exportOutreach()">⤓ Export list</button></div>`);
+  upgradeOutreachReasons(COMPANY);
+}
+// Rows for the outreach modal (re-rendered after the LLM upgrades the reasons).
+function outreachRowsHtml(){
+  return (window.__outreach||[]).map((r,i)=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2)"><b style="width:20px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(r.p.full_name)}</b> <span style="color:var(--gold)">${'★'.repeat(6-r.p._tier)}</span><div style="color:var(--muted);font-size:12px">${esc(r.p.last_role||SENLABEL[r.p.seniority])} · ${r.p._fn}${r.p.current_employer?' · now '+esc(r.p.current_employer):''}</div><div style="font-size:11.5px;color:var(--brand);margin-top:2px">✨ ${esc(r.why)}</div></div></div>`).join('')||'<div class="mnote">No candidates in view.</div>';
+}
+// Upgrade the template reasons to LLM-written ones (Workers AI). Best-effort:
+// on failure or when AI is unavailable, the data-driven reasons stay.
+async function upgradeOutreachReasons(company){
+  const list=window.__outreach||[];if(!list.length)return;
+  const items=list.map(r=>({name:r.p.full_name,role:r.p.former_role||r.p.last_role||roleTitle(r.p),years:(()=>{const s=tenureYear(r.p.tenure_start),e=tenureYear(r.p.tenure_end);return (s&&e&&e>=s&&e-s<=50)?e-s:null;})(),nowAt:deriveEmployer(r.p),fn:r.p._fn,isCurrent:Number(r.p.is_current)===1,school:r.p._eliteAny||''}));
+  const coLabel=company?(RAW.find(p=>p.company===company)?.company_label||company):'';
+  try{
+    const res=await (await fetch('/api/outreach-reasons',{method:'POST',headers:authHeaders(),body:JSON.stringify({company:coLabel,items})})).json();
+    let any=false;
+    if(res&&Array.isArray(res.reasons))res.reasons.forEach((rr,i)=>{if(rr&&list[i]){list[i].why=rr;any=true;}});
+    const el=$('outreachRows');if(any&&el)el.innerHTML=outreachRowsHtml();
+  }catch{}
+  const note=$('outreachAiNote');if(note)note.style.display='none';
 }
 window.openOutreach=openOutreach;
 window.exportOutreach=function(){const r=window.__outreach||[];const cols=['Rank','Name','Former Role','Seniority','Function','Now At','Exposure','Why recommended','LinkedIn'];const rows=r.map((x,i)=>[i+1,x.p.full_name,x.p.former_role||x.p.last_role||'',SENLABEL[x.p.seniority],x.p._fn,deriveEmployer(x.p),exposureStr(x.p),(x.why||'').replace(/ · /g,'; '),x.p.linkedin_url||'']);downloadXLSX('outreach-list.xlsx',cols,rows,'Outreach');};

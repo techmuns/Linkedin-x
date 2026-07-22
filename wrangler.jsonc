@@ -8,6 +8,10 @@
   "compatibility_date": "2024-11-01",
   "observability": { "enabled": true },
 
+  // Cloudflare Workers AI (built-in LLM). Used to write personalised outreach
+  // reasons. Free daily allowance; the code falls back gracefully if it errors.
+  "ai": { "binding": "AI" },
+
   // Daily refresh: re-research every tracked company so new senior ex-employees
   // appear automatically. Runs the scheduled() handler in src/worker.js.
   "triggers": {
