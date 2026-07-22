@@ -92,17 +92,34 @@ function outreachReasonPrompt(company, it) {
 Person: ${it.name || 'the person'} — was ${it.role || 'a senior employee'} at ${co} ${tenure}. Function: ${it.fn || 'general'}.${it.school ? ` Studied at ${it.school}.` : ''} Currently: ${status}.
 Write ONE concise sentence (max 28 words) on why interviewing this person gives a research edge on ${co} — name their specific vantage point (what they'd know first-hand), and note candor if they've left. No preamble, no quotes.`;
 }
+// Try current Workers AI models in order; remember the one that works (per
+// isolate) so we don't keep hitting a deprecated one.
+const AI_MODELS = [
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  '@cf/meta/llama-4-scout-17b-16e-instruct',
+  '@cf/mistralai/mistral-small-3.1-24b-instruct',
+  '@cf/meta/llama-3.2-3b-instruct',
+];
+let AI_MODEL = null;
+async function aiRun(env, messages) {
+  const order = AI_MODEL ? [AI_MODEL, ...AI_MODELS.filter(m => m !== AI_MODEL)] : AI_MODELS;
+  let err = '';
+  for (const model of order) {
+    try {
+      const res = await env.AI.run(model, { messages, max_tokens: 90 });
+      const txt = res && (res.response || res.result || '');
+      if (txt) { AI_MODEL = model; return { text: txt }; }
+      err = 'empty response';
+    } catch (e) { err = String((e && e.message) || e).slice(0, 200); }
+  }
+  return { text: '', err };
+}
 async function aiOutreachReason(env, company, it) {
-  try {
-    const res = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-      messages: [
-        { role: 'system', content: 'You are a buy-side research analyst. Output exactly one specific sentence — no preamble, no quotes, no lists.' },
-        { role: 'user', content: outreachReasonPrompt(company, it) },
-      ],
-      max_tokens: 90,
-    });
-    return { reason: cleanReason(res && (res.response || res.result || '')) || null };
-  } catch (e) { return { reason: null, err: String((e && e.message) || e).slice(0, 200) }; }
+  const r = await aiRun(env, [
+    { role: 'system', content: 'You are a buy-side research analyst. Output exactly one specific sentence — no preamble, no quotes, no lists.' },
+    { role: 'user', content: outreachReasonPrompt(company, it) },
+  ]);
+  return { reason: r.text ? (cleanReason(r.text) || null) : null, err: r.err };
 }
 
 // ---- Person upsert -------------------------------------------------------
