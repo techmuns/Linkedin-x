@@ -323,6 +323,20 @@ export async function probeEliteViaSearch(env, fullName, company) {
   return { school: '' };
 }
 
+// Batch wrapper for the elite probe. people: [{ id, full_name }].
+// Returns { found:[{id,school}], tried:[id], aborted }. aborted = the search API
+// failed on the first person, so nothing was marked tried (retry later).
+export async function probeEliteBatch(env, company, people) {
+  const found = [], tried = [];
+  for (let i = 0; i < people.length; i++) {
+    const res = await probeEliteViaSearch(env, people[i].full_name, company);
+    if (res && res.err) { if (i === 0) return { found, tried, aborted: true }; break; }
+    tried.push(people[i].id);
+    if (res && res.school) found.push({ id: people[i].id, school: res.school });
+  }
+  return { found, tried, aborted: false };
+}
+
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
 // leaver went NOW. ZoomInfo's public company page does — it lists current

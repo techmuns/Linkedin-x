@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteViaSearch } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -302,6 +302,34 @@ async function cronResolveLinkedIn(env, budget) {
       if (tried.length) await env.DB.batch(tried.map(id => found.has(id)
         ? env.DB.prepare('UPDATE people SET linkedin_url = ?, url_tried = ? WHERE id = ?').bind(found.get(id), now, id)
         : env.DB.prepare('UPDATE people SET url_tried = ? WHERE id = ?').bind(now, id)));
+      done += tried.length;
+    }
+  }
+  return done;
+}
+
+// Daily self-heal: for people we couldn't read a verified education for, detect
+// a LIKELY ISB/IIM/IIT from search and store it in elite_guess.
+async function cronProbeElite(env, budget) {
+  if (!hasSearchKey(env)) return 0;
+  let done = 0;
+  for (let round = 0; round < 8 && done < budget; round++) {
+    const rows = (await env.DB.prepare(
+      `SELECT id, full_name, company, company_label FROM people
+         WHERE (education IS NULL OR education = '') AND elite_guess IS NULL AND elite_tried IS NULL
+       ORDER BY score DESC LIMIT 8`
+    ).all()).results || [];
+    if (!rows.length) break;
+    const byCo = new Map();
+    for (const r of rows) { const c = r.company_label || r.company; if (!byCo.has(c)) byCo.set(c, []); byCo.get(c).push(r); }
+    for (const [company, list] of byCo) {
+      const { found, tried, aborted } = await probeEliteBatch(env, company, list);
+      if (aborted) return done;
+      const now = new Date().toISOString();
+      const fm = new Map(found.map(f => [f.id, f.school]));
+      if (tried.length) await env.DB.batch(tried.map(id => fm.has(id)
+        ? env.DB.prepare('UPDATE people SET elite_guess = ?, elite_tried = ? WHERE id = ?').bind(fm.get(id), now, id)
+        : env.DB.prepare('UPDATE people SET elite_tried = ? WHERE id = ?').bind(now, id)));
       done += tried.length;
     }
   }
@@ -685,6 +713,10 @@ async function ensureSchema(env) {
   // url_tried: stamped once we've searched for a person's LinkedIn URL (found or
   // not) so we don't re-search the same name forever.
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN url_tried TEXT').run(); } catch { /* already exists */ }
+  // elite_guess: a LIKELY ISB/IIM/IIT detected from search (not verified by
+  // reading the profile). elite_tried: stamped once probed so we don't repeat.
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN elite_guess TEXT').run(); } catch { /* already exists */ }
+  try { await env.DB.prepare('ALTER TABLE people ADD COLUMN elite_tried TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
@@ -906,25 +938,34 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, resolved: resolved.length, remaining });
   }
 
-  // POST /api/elite-probe -> DRY RUN. Detect ISB/IIM/IIT via search only (no
-  // Apify, no DB write). Body: { company, names?[], limit? }. For measuring the
-  // free search-based detector's accuracy before wiring it in.
-  if (path === '/api/elite-probe' && method === 'POST') {
+  // POST /api/probe-elite -> for a company's people with no verified education
+  // yet, detect a LIKELY ISB/IIM/IIT from search and store it in elite_guess
+  // (not the verified education field). Body: { company, limit? }. The dashboard
+  // calls this until { remaining: 0 }.
+  if (path === '/api/probe-elite' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    if (!hasSearchKey(env)) return json({ ok: true, found: 0, remaining: 0, disabled: true });
     const body = await request.json().catch(() => ({}));
     const company = (body.company || '').trim();
-    let people = Array.isArray(body.names) ? body.names.map(n => ({ full_name: n })) : null;
-    if (!people) {
-      const co = normCompany(company);
-      people = ((await env.DB.prepare(
-        'SELECT full_name FROM people WHERE company = ? ORDER BY score DESC LIMIT ?'
-      ).bind(co, Math.min(Number(body.limit) || 12, 25)).all()).results) || [];
-    }
-    const results = [];
-    for (const p of people) {
-      const res = await probeEliteViaSearch(env, p.full_name, company);
-      results.push({ name: p.full_name, ...res });
-    }
-    return json({ ok: true, count: results.length, results });
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const limit = Math.min(Math.max(Number(body.limit) || 8, 1), 10);
+    const co = normCompany(company);
+    const rows = await env.DB.prepare(
+      `SELECT id, full_name FROM people WHERE company = ?
+         AND (education IS NULL OR education = '') AND elite_guess IS NULL AND elite_tried IS NULL
+       ORDER BY score DESC LIMIT ?`
+    ).bind(co, limit + 1).all();
+    const batch = (rows.results || []).slice(0, limit);
+    const remaining = Math.max(0, (rows.results || []).length - batch.length);
+    if (!batch.length) return json({ ok: true, found: 0, remaining: 0 });
+    const { found, tried, aborted } = await probeEliteBatch(env, company, batch);
+    if (aborted) return json({ ok: true, found: 0, remaining, aborted: true });
+    const now = new Date().toISOString();
+    const foundMap = new Map(found.map(f => [f.id, f.school]));
+    if (tried.length) await env.DB.batch(tried.map(id => foundMap.has(id)
+      ? env.DB.prepare('UPDATE people SET elite_guess = ?, elite_tried = ? WHERE id = ?').bind(foundMap.get(id), now, id)
+      : env.DB.prepare('UPDATE people SET elite_tried = ? WHERE id = ?').bind(now, id)));
+    return json({ ok: true, found: found.length, remaining });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
@@ -1090,6 +1131,8 @@ export default {
       // Exposure fill in over time with no manual step.
       try { await cronResolveLinkedIn(env, 24); } catch { /* best effort */ }
       try { await cronEnrichApify(env, 40); } catch { /* best effort */ }
+      // Fill a LIKELY school (from search) for anyone Apify couldn't verify.
+      try { await cronProbeElite(env, 24); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {
         const names = new Map();

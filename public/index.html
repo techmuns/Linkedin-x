@@ -400,6 +400,9 @@
   .gvk{color:#12b76a;font-size:12px;margin-left:2px}
   .gschool{display:inline-block;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;padding:1px 6px;
     border-radius:5px;margin-left:5px;vertical-align:middle}
+  /* "likely" (search-detected, unverified) elite badge — dashed + muted so it's
+     clearly distinct from the solid verified badge */
+  .gschool.likely{background:#fff;color:#8b93ad;border:1px dashed #c3cbe0;cursor:help}
   .gnew{display:inline-block;background:#d1fae5;color:#047857;font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:5px;margin-left:5px;vertical-align:middle}
   .gsen{font-weight:750;font-size:12px;padding:3px 10px;border-radius:6px;display:inline-block;white-space:nowrap}
   .gsen.founder{background:#f4ebff;color:#6941c6}.gsen.clevel{background:#fee4e2;color:#b42318}
@@ -419,6 +422,7 @@
     display:inline-flex;align-items:center;justify-content:center;text-decoration:none;vertical-align:middle}
   .gli:hover{filter:brightness(1.08)}
   .elitebadge{display:inline-block;background:#eef2ff;color:#4338ca;font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:.3px}
+  .elitebadge.likely{background:#f5f6fb;color:#8b93ad;border:1px dashed #c3cbe0;cursor:help}
 
   /* drawer - premium frosted blue-lilac */
   .drawer-bg{position:fixed;inset:0;background:rgba(26,24,69,.55);backdrop-filter:blur(4px);
@@ -796,7 +800,7 @@ function eliteSchool(edu){
   if(/india[n]?\s+institutes?\s+of\s+technology|\biit\b/i.test(s))return 'IIT';
   return '';
 }
-function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._elite=eliteSchool(p.education);p._in=!!p.linkedin_url&&p._reach>=55;return p;}
+function enrich(p){p._fn=fnOf(p);p._tier=tierOf(p.score);p._reach=reachOf(p);p._saved=SAVED.has(p.id);p._elite=eliteSchool(p.education);p._eliteLikely=(!p._elite&&p.elite_guess)?p.elite_guess:'';p._eliteAny=p._elite||p._eliteLikely;p._in=!!p.linkedin_url&&p._reach>=55;return p;}
 
 const BESTFOR={Leadership:['Strategy & positioning','Leadership quality'],Finance:['Unit economics','Margins & cash'],Operations:['Operational insight','Execution at scale'],Technology:['Product & tech','Data maturity'],Marketing:['Brand & CAC','Growth channels'],'Supply Chain':['Sourcing & vendors','Inventory & WC']};
 function bestFor(p){return BESTFOR[p._fn]||['Sector view','Competitive read'];}
@@ -965,7 +969,7 @@ function stypePass(p){
   if(STYPE==='ops')return p._fn==='Operations'||p._fn==='Supply Chain';
   if(STYPE==='ceo')return ['founder','clevel'].includes(p.seniority);
   if(STYPE==='left')return Number(p.is_current)===0;
-  if(STYPE==='elite')return !!p._elite;
+  if(STYPE==='elite')return !!p._eliteAny;
   return true;
 }
 function applyFilters(list){
@@ -1051,7 +1055,7 @@ function rowHtml(p){
     <div class="rl">
       ${avatarEl(p,'rav')}
       <div class="rid">
-        <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${p._elite?` <span class="elitebadge" title="Studied at ${p._elite}">🎓 ${p._elite}</span>`:''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
+        <div class="rtop"><div class="rname">${esc(p.full_name)}${p.linkedin_url?' <span class="vchk" title="Profile found &amp; linkable on LinkedIn">✓</span>':''}${p._elite?` <span class="elitebadge" title="Studied at ${p._elite}">🎓 ${p._elite}</span>`:p._eliteLikely?` <span class="elitebadge likely" title="Likely ${p._eliteLikely} — detected from search, not verified">🎓 ${p._eliteLikely}?</span>`:''}${isNew(p)?' <span class="newb">NEW</span>':''}</div><button class="star ${p._saved?'on':''}" data-act="save" data-id="${p.id}" title="Shortlist">${p._saved?'★':'☆'}</button></div>
         <div class="rrole">${esc(roleTitle(p))}</div>
         <div class="rco">${leftCo?'Ex-':''}${esc(co)}${emp?` · now ${esc(emp)}`:''}</div>
       </div>
@@ -1184,7 +1188,7 @@ function tableRow(p,keys){
   const nowText=emp||(still?'Still here':'Not mapped');
   const nowCell=emp?`<span class="gnow">${esc(emp)}</span>`:still?`<span class="gnow still">Still here</span>`:`<span class="gnow empty">Not mapped</span>`;
   const C={
-    name:`<td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>`,
+    name:`<td><div class="gname"><span class="gav">${esc(initialsOf(p.full_name))}</span><div title="${esc(p.full_name)}"><span class="gnm">${esc(p.full_name)}</span>${p.linkedin_url?'<span class="gvk">✓</span>':''}${p._elite?`<span class="gschool">${p._elite}</span>`:p._eliteLikely?`<span class="gschool likely" title="Likely ${p._eliteLikely} — detected from search, not verified">${p._eliteLikely}?</span>`:''}${isNew(p)?'<span class="gnew">NEW</span>':''}</div></div></td>`,
     sen:`<td><span class="gsen ${seniorityCls(p)}">${esc(designationOf(p))}</span></td>`,
     fn:`<td title="${esc(p._fn||'')}">${esc(p._fn||'—')}</td>`,
     role:`<td title="${esc(roleAtCo)}">${esc(roleAtCo)}</td>`,
@@ -1209,7 +1213,7 @@ function renderSnapshot(scope){
   const tens=base.map(p=>{const ts=tenureYear(p.tenure_start),te=tenureYear(p.tenure_end)||(effCurrent(p)?nowY:null);return (ts&&te&&te>=ts&&te-ts<=60)?te-ts:null;}).filter(v=>v!=null);
   const avgTen=tens.length?(tens.reduce((a,b)=>a+b,0)/tens.length):0;
   const avgStr=avgTen?avgTen.toFixed(1)+' yrs':'—';
-  const elite=base.filter(p=>p._elite).length;
+  const elite=base.filter(p=>p._eliteAny).length;
   const stat=(v,l)=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
   let sub,stats,sideLabel,chips;
   if(isCurrent){
@@ -1701,25 +1705,41 @@ async function resolveLinkedInLoop(company){
     setEnrichPill('Finding LinkedIn profiles… '+r.remaining+' left');
   }
 }
+// Search-based "likely" school detection (free) for people Apify couldn't verify.
+async function probeEliteLoop(company){
+  for(let guard=0;guard<32;guard++){
+    let r;
+    try{r=await (await fetch('/api/probe-elite',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:8})})).json();}
+    catch{break;}
+    if(!r||r.disabled||r.aborted)break;
+    if(r.found)await loadAll();
+    if(!r.remaining)break;
+    setEnrichPill('Checking schools… '+r.remaining+' left');
+  }
+}
 async function enrichApifyLoop(company){
-  if(ENRICHING||APIFY_OFF)return;ENRICHING=true;let holdMsg=false;
+  if(ENRICHING)return;ENRICHING=true;let holdMsg=false;   // resolve+probe are search-based, so run even when Apify is off
   try{
     setEnrichPill('Finding LinkedIn profiles…');
     await resolveLinkedInLoop(company);
-    setEnrichPill('Filling Now At…');
-    for(let guard=0;guard<40;guard++){
-      let r;
-      try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:12})})).json();}
-      catch{break;}
-      if(!r||r.disabled){APIFY_OFF=true;break;}
-      // Apify's free runs are used up (or errored): fall back to the free ZoomInfo
-      // data silently — no paid-plan nag in front of the client.
-      if(r.error==='apify_error'){APIFY_OFF=true;break;}
-      if(r.updated||r.nowFilled||r.deduped)await loadAll();
-      if(!r.remaining){break;}
-      setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
+    if(!APIFY_OFF){
+      setEnrichPill('Filling Now At…');
+      for(let guard=0;guard<40;guard++){
+        let r;
+        try{r=await (await fetch('/api/enrich-apify',{method:'POST',headers:authHeaders(),body:JSON.stringify({company,limit:12})})).json();}
+        catch{break;}
+        if(!r||r.disabled){APIFY_OFF=true;break;}
+        // Apify's free runs are used up (or errored): fall back silently — no
+        // paid-plan nag in front of the client.
+        if(r.error==='apify_error'){APIFY_OFF=true;break;}
+        if(r.updated||r.nowFilled||r.deduped)await loadAll();
+        if(!r.remaining){break;}
+        setEnrichPill('Filling Now At… '+r.remaining+' profiles left');
+      }
     }
-    await loadAll();   // final refresh (reflects the end-of-loop dedupe)
+    setEnrichPill('Checking schools…');
+    await probeEliteLoop(company);         // fills a LIKELY school for anyone still unverified
+    await loadAll();                       // final refresh
   }finally{ENRICHING=false;if(holdMsg)setTimeout(()=>setEnrichPill(''),9000);else setEnrichPill('');}
 }
 function failAnalysis(msg){
