@@ -285,13 +285,19 @@ export async function resolveLinkedInBatch(env, company, people) {
   return { resolved, tried, aborted: false };
 }
 
-// Detect an elite Indian school (ISB/IIM/IIT) in a text blob — same rules as the
-// dashboard badge.
+// Detect an elite Indian school in a SEARCH SNIPPET. Stricter than the dashboard
+// badge on purpose: a bare "IIT"/"IIM"/"ISB" appears on profiles for non-school
+// reasons (skills, groups, posts) and Google surfaces it because we queried it —
+// so we require the spelled-out name OR the abbreviation qualified by a campus.
 function eliteSchoolIn(text) {
   const s = String(text || '');
-  if (/indian\s+school\s+of\s+business|\bisb\b/i.test(s)) return 'ISB';
-  if (/india[n]?\s+institutes?\s+of\s+management|\biim\b/i.test(s)) return 'IIM';
-  if (/india[n]?\s+institutes?\s+of\s+technology|\biit\b/i.test(s)) return 'IIT';
+  if (/indian\s+school\s+of\s+business/i.test(s) || /\bisb\s*[-,\s]\s*(hyderabad|mohali)/i.test(s)) return 'ISB';
+  if (/india[n]?\s+institutes?\s+of\s+management/i.test(s)
+      || /\biim[\s-]*(ahmedabad|bangalore|bengaluru|calcutta|kolkata|lucknow|kozhikode|indore|shillong|rohtak|udaipur|nagpur|amritsar)\b/i.test(s)
+      || /\biim-?[abcl]\b/i.test(s)) return 'IIM';
+  if (/india[n]?\s+institutes?\s+of\s+technology/i.test(s)
+      || /\biit[\s-]*(delhi|bombay|mumbai|madras|chennai|kanpur|kharagpur|roorkee|guwahati|hyderabad|dhanbad|indore|ropar|mandi|patna|bhu|varanasi|gandhinagar|jodhpur|tirupati|bhilai|goa|palakkad|jammu|dharwad)\b/i.test(s)
+      || /\biit-?[dbmkg]\b/i.test(s)) return 'IIT';
   return '';
 }
 // Free alternative to profile-reading: use search to check whether a person's
