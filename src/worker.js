@@ -1036,17 +1036,18 @@ async function handleApi(request, env, url, ctx) {
   if (path === '/api/fc-test' && method === 'GET') {
     const target = url.searchParams.get('url') || '';
     if (!target) return json({ error: 'url required' }, { status: 400 });
-    let md = null, err = null;
-    try { md = await firecrawlScrape(env, target); } catch (e) { err = String((e && e.message) || e).slice(0, 200); }
-    const s = String(md || '');
-    return json({
-      ok: true, url: target, err, len: s.length,
-      authwall: /sign in|join now|log in to|authwall|create your free account/i.test(s),
-      hasEducation: /education/i.test(s),
-      hasExperience: /experience/i.test(s),
-      elite: /indian institute of (technology|management)|indian school of business/i.test(s),
-      snippet: s.slice(0, 600),
-    });
+    // Raw call so we can see Firecrawl's exact status + body (why it refuses).
+    let status = 0, body = '', err = null;
+    try {
+      const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.FIRECRAWL_API_KEY}` },
+        body: JSON.stringify({ url: target, formats: ['markdown'], waitFor: 2500 }),
+      });
+      status = r.status;
+      body = (await r.text().catch(() => '')).slice(0, 500);
+    } catch (e) { err = String((e && e.message) || e).slice(0, 200); }
+    return json({ ok: true, url: target, status, err, body });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
