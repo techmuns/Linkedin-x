@@ -357,7 +357,7 @@ function normName(s) {
 
 // Ask Firecrawl to render a URL and hand back its markdown. ZoomInfo needs a
 // real browser render (PerimeterX), which Firecrawl does server-side.
-async function firecrawlScrape(env, url) {
+export async function firecrawlScrape(env, url) {
   // Abort at 30s so a slow ZoomInfo render can't stall the (now synchronous)
   // search request.
   const ctrl = new AbortController();

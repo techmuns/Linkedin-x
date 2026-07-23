@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, firecrawlScrape } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -1029,6 +1029,24 @@ async function handleApi(request, env, url, ctx) {
     if (!env.AI || !items.length) return json({ ok: true, reasons: items.map(() => null), ai: !!env.AI });
     const out = await Promise.all(items.map(it => aiOutreachReason(env, company, it)));
     return json({ ok: true, reasons: out.map(o => o.reason), ai: true, errors: out.map(o => o.err).filter(Boolean).slice(0, 3) });
+  }
+
+  // GET /api/fc-test?url=... -> DIAGNOSTIC: what does Firecrawl actually get from
+  // a LinkedIn profile? (temporary, to decide if Firecrawl can replace Apify)
+  if (path === '/api/fc-test' && method === 'GET') {
+    const target = url.searchParams.get('url') || '';
+    if (!target) return json({ error: 'url required' }, { status: 400 });
+    let md = null, err = null;
+    try { md = await firecrawlScrape(env, target); } catch (e) { err = String((e && e.message) || e).slice(0, 200); }
+    const s = String(md || '');
+    return json({
+      ok: true, url: target, err, len: s.length,
+      authwall: /sign in|join now|log in to|authwall|create your free account/i.test(s),
+      hasEducation: /education/i.test(s),
+      hasExperience: /experience/i.test(s),
+      elite: /indian institute of (technology|management)|indian school of business/i.test(s),
+      snippet: s.slice(0, 600),
+    });
   }
 
   // POST /api/enrich-apify -> read the real LinkedIn profiles (via Apify) for a
