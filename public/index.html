@@ -600,7 +600,7 @@
         <button data-st="all" class="on">▦ All</button>
         <button data-st="finance">📊 Finance</button>
         <button data-st="ops">📦 Ops &amp; Supply Chain</button>
-        <button data-st="ceo">👑 People near CEO</button>
+        <button data-st="ceo">👑 C-Suite &amp; Founders</button>
         <button data-st="left">🕒 Recently left</button>
         <button data-st="elite" title="Studied at ISB, IIM or IIT (from their profile)">🎓 ISB/IIM/IIT</button>
       </div>
@@ -608,7 +608,6 @@
     <div class="fright">
       <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="text" id="q" placeholder="Search by name, role, company, expertise…"/></div>
-      <button class="btn sm" id="getPhotosBtn" title="Fill each person's current company (Now At) and total experience from their public LinkedIn profile">✨ Enrich</button>
       <button class="btn sm" id="importBtn" title="Fill Now At + Exposure from a CSV you export (ZoomInfo, any spreadsheet) or a Google Sheet — no scraping, no login shared">⬆ Import</button>
       <div class="toggle"><button id="viewTable" class="on">▤ Table</button><button id="viewCards">▦ Cards</button></div>
     </div>
@@ -880,7 +879,10 @@ function shortWhy(p){
   // Employee / ex-employee: role + specialty + where they are now + a rotated,
   // function-specific insight so same-bucket people still read differently.
   const spec=whySpecialty(p);
-  let subject=`${co} ${whyRoleLabel(fn,p.seniority)}`;
+  // Lead with the elite-school signal when we have it — it's the sharpest
+  // differentiator the client asked to see up front.
+  const eliteAdj=p._eliteAny?`${p._eliteAny}-trained `:'';
+  let subject=`${co} ${eliteAdj}${whyRoleLabel(fn,p.seniority)}`;
   if(spec)subject+=` — ${spec}`;
   const insight=pickWhy(WHY_INSIGHT[fn]||[`On-the-ground ${(WHY_FNADJ[fn]||fn.toLowerCase())} insight`],seed);
   const lead=left?`Ex-${subject}${now}.`:`${subject}${now}.`;
@@ -926,6 +928,17 @@ const PRIVATE_COS=[
   ['DeHaat',''],['Ninjacart',''],['Zetwerk',''],['OfBusiness',''],['Moglix',''],['Infra.Market',''],['Cars24',''],['Spinny',''],['Urban Company',''],['cult.fit',''],['PharmEasy',''],['Practo',''],['Unacademy',''],['upGrad',''],
 ];
 function isNew(p){const t=Date.parse(p.created_at);return !isNaN(t)&&(Date.now()-t)<7*86400000;}
+// Drop obvious scrape artifacts (markdown headings, company-name-as-person rows)
+// so a few bad ingest rows never surface to the client or skew the counts.
+function isRealPerson(p){
+  const n=String(p.full_name||'').trim();
+  const role=String(p.last_role||p.former_role||p.title||'');
+  if(!n)return false;
+  if(/^[#*>\-\s]|key employees|^\W+$/i.test(n))return false;      // "## Key Employees…", bullets, symbols
+  if(/^[#*>]|key employees/i.test(role))return false;
+  if(/\b(pvt\.?\s*ltd|private limited|\bllp\b)\b/i.test(n))return false;  // a company row, not a person
+  return true;
+}
 let ELITE_LEADS=[];
 async function loadEliteLeads(){
   if(!COMPANY){ELITE_LEADS=[];return;}
@@ -933,7 +946,7 @@ async function loadEliteLeads(){
   catch{ELITE_LEADS=[];}
 }
 async function loadAll(){
-  const r=await fetch('/api/people');RAW=((await r.json()).people||[]).map(enrich);
+  const r=await fetch('/api/people');RAW=((await r.json()).people||[]).filter(isRealPerson).map(enrich);
   if(!COMPANY_DIR.length){try{COMPANY_DIR=await(await fetch('/companies.json')).json();}catch{COMPANY_DIR=[];}}
   await loadEliteLeads();
   renderPills();render();
@@ -1262,7 +1275,7 @@ function renderSnapshot(scope){
     sub=`${base.length} senior ex-employees tracked`;
     stats=stat(seniorPct+'%','Senior +')+stat(avgStr,'Avg tenure')+stat(leftRecent,'Left ≤ 2 yrs')+stat(elite,'🎓 ISB/IIM/IIT');
     sideLabel='Top destinations';
-    chips=tops.length?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join(''):`<span class="cosub">No destinations mapped yet — run Enrich to fill “Now At”.</span>`;
+    chips=tops.length?tops.map(([n,c])=>`<span class="dchip">${esc(n)} · ${c}</span>`).join(''):`<span class="cosub">No destinations mapped yet — these fill in automatically as profiles are read.</span>`;
   }
   snap.innerHTML=`
     <div class="cohead"><div class="colg">${esc(initials(label))}</div>
@@ -1326,7 +1339,9 @@ function render(){
   $('tableWrap').style.display=(VIEW==='table'&&has)?'block':'none';
   if(VIEW==='cards'){$('rows').innerHTML=rows.map(rowHtml).join('');}
   else{
-    const roleLabel=COMPANY?('Role at '+titleCo(scope[0]?.company_label||COMPANY)):'Former role';
+    // Just "Role" when a company is selected — the company is already named in the
+    // snapshot above, and "Role at <Long Company>" was truncating in the header.
+    const roleLabel=COMPANY?'Role':'Former role';
     // Column set + widths depend on the tab. Current employees have no Now At / Exposure / Left,
     // so the remaining columns widen to fill the table (fixed layout → no empty gaps).
     const COLS=(TAB==='current')
@@ -1480,8 +1495,10 @@ $('outreachBtn').onclick=openOutreach;
 
 // Fetch public LinkedIn profile photos for the current list, in small paced
 // batches (the Worker throttles itself so LinkedIn isn't hit in a burst).
-$('getPhotosBtn').onclick=getPhotos;
+// Enrichment now runs automatically on every search + a daily job, so the manual
+// "Enrich" button was removed. getPhotos() is kept (unused) for the daily path.
 async function getPhotos(){
+  const btnEl=$('getPhotosBtn');if(!btnEl)return;   // button removed from the UI
   if(!TOKEN){setKey();if(!TOKEN)return;}
   const btn=$('getPhotosBtn');const orig=btn.textContent;btn.disabled=true;
   let emps=0,exp=0,blocked=false;
@@ -1816,13 +1833,11 @@ function openInsights(){
   const list=scopeList();const fnCount={};FUNCTIONS.forEach(f=>fnCount[f]=list.filter(p=>p._fn===f).length);
   const max=Math.max(1,...Object.values(fnCount));const seq=['#f2f4f7','#efe8ff','#d9c6ff','#b79bf3','#8b5cf6','#6d28d9'];
   const heat=FUNCTIONS.map(f=>{const n=fnCount[f];const lvl=n===0?0:Math.min(5,Math.ceil(n/max*5));return `<div class="hmrow"><div class="fn">${f}</div><div class="cell" style="background:${seq[lvl]};color:${lvl>=3?'#fff':'#475467'}">${n} ${n===1?'contact':'contacts'}</div></div>`;}).join('');
-  const gaps=FUNCTIONS.filter(f=>fnCount[f]===0);
   const top=[...list].sort((a,b)=>b.score-a.score).slice(0,5).map((p,i)=>`<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)"><b style="width:18px;color:var(--brand)">${i+1}</b><div style="flex:1"><b>${esc(p.full_name)}</b><div style="color:var(--muted);font-size:12px">${SENLABEL[p.seniority]} · ${p._fn}${deriveEmployer(p)?' · now '+esc(deriveEmployer(p)):''}</div></div></div>`).join('');
   const movers=[...new Set(list.filter(p=>Number(p.is_current)===0).map(p=>deriveEmployer(p)).filter(Boolean))].slice(0,10);
   openModal(`<h3>📊 Research insights ${COMPANY?'· '+esc(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY):''}</h3>
     <div class="mnote">A quick read on your coverage and best leads. Kept off the main screen for clarity.</div>
     <h4 style="margin:14px 0 8px;font-size:12px;letter-spacing:.5px;color:var(--brand)">COVERAGE BY FUNCTION</h4>${heat}
-    ${gaps.length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${gaps.map(g=>`<span class="chip gap">⚠ ${g} — no coverage</span>`).join('')}</div>`:''}
     <h4 style="margin:18px 0 4px;font-size:12px;letter-spacing:.5px;color:var(--brand)">TOP CONTACTS</h4>${top||'<div class="mnote">None yet.</div>'}
     <div class="acts"><button class="btn" onclick="document.getElementById('genBg').style.display='none'">Close</button><button class="btn primary" onclick="openOutreach()">✨ Generate outreach list</button></div>`);
 }
