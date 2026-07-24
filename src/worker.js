@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, discoverEliteAtCompany, discoverFinancePeople } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, discoverEliteAtCompany, discoverFunctionPeople, DISCOVER_FUNCTIONS } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -420,22 +420,24 @@ async function cronDiscoverElite(env, budget) {
   return done;
 }
 
-// Daily self-heal: for each tracked company not yet done, pull in finance people
-// (ops-heavy scrapes routinely miss them) so the Finance filter isn't empty.
-async function cronDiscoverFinance(env, budget) {
+// Daily self-heal: for each tracked company + each under-covered function not yet
+// fetched, pull in that function's people so no filter stays empty on ops-heavy
+// scrapes. `budget` caps how many (company, function) fetches run per night.
+async function cronDiscoverFunctions(env, budget) {
   if (!hasSearchKey(env)) return 0;
   const { results } = await env.DB.prepare('SELECT company, company_label FROM people GROUP BY company').all();
   let done = 0;
   for (const r of (results || [])) {
-    if (done >= budget) break;
-    const co = r.company;
-    if (await getSetting(env, 'fin:' + co)) continue;           // already fetched once
-    const label = r.company_label || co;
-    const { people, aborted } = await discoverFinancePeople(env, label);
-    if (aborted) break;
-    if (people.length) await upsertPeopleBulk(env, label, people.map(p => ({ ...p, company: label, company_label: label })));
-    try { await setSetting(env, 'fin:' + co, new Date().toISOString()); } catch { /* best effort */ }
-    done++;
+    const co = r.company, label = r.company_label || co;
+    for (const func of DISCOVER_FUNCTIONS) {
+      if (done >= budget) return done;
+      if (await getSetting(env, 'fn:' + func + ':' + co)) continue;   // already fetched once
+      const { people, aborted } = await discoverFunctionPeople(env, label, func);
+      if (aborted) return done;
+      if (people.length) await upsertPeopleBulk(env, label, people.map(p => ({ ...p, company: label, company_label: label })));
+      try { await setSetting(env, 'fn:' + func + ':' + co, new Date().toISOString()); } catch { /* best effort */ }
+      done++;
+    }
   }
   return done;
 }
@@ -1108,16 +1110,20 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, found: leads.length, leads: results || [] });
   }
 
-  // POST /api/discover-finance -> find the company's finance people on public
-  // LinkedIn and add them as real rows, so the Finance filter stops being empty
-  // for ops-heavy companies whose scrape missed finance. Body: { company }.
-  if (path === '/api/discover-finance' && method === 'POST') {
+  // POST /api/discover-function -> find an under-covered function's people
+  // (Finance / Marketing / Supply Chain) on public LinkedIn and add them as real
+  // rows, so that filter stops being empty for ops-heavy companies whose scrape
+  // missed it. Body: { company, func? } (func defaults to Finance). The legacy
+  // /api/discover-finance path still works (finance).
+  if ((path === '/api/discover-function' || path === '/api/discover-finance') && method === 'POST') {
     if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
     if (!hasSearchKey(env)) return json({ ok: true, found: 0, added: 0, disabled: true });
     const body = await request.json().catch(() => ({}));
     const company = (body.company || '').trim();
     if (!company) return json({ error: 'company required' }, { status: 400 });
-    const { people, aborted } = await discoverFinancePeople(env, company);
+    const func = path === '/api/discover-finance' ? 'Finance' : (body.func || 'Finance');
+    if (!DISCOVER_FUNCTIONS.includes(func)) return json({ error: 'unknown func' }, { status: 400 });
+    const { people, aborted } = await discoverFunctionPeople(env, company, func);
     if (aborted) return json({ ok: true, found: 0, added: 0, aborted: true });
     let created = 0;
     if (people.length) {
@@ -1125,8 +1131,8 @@ async function handleApi(request, env, url, ctx) {
       const res = await upsertPeopleBulk(env, company, rows);
       created = res.created;
     }
-    try { await setSetting(env, 'fin:' + normCompany(company), new Date().toISOString()); } catch { /* best effort */ }
-    return json({ ok: true, found: people.length, added: created });
+    try { await setSetting(env, 'fn:' + func + ':' + normCompany(company), new Date().toISOString()); } catch { /* best effort */ }
+    return json({ ok: true, func, found: people.length, added: created });
   }
 
   // POST /api/outreach-reasons -> write a specific, LLM-generated reason (via
@@ -1310,8 +1316,8 @@ export default {
       try { await cronProbeElite(env, 24); } catch { /* best effort */ }
       // Company-first discovery: find named IIT/IIM/ISB alumni our list missed.
       try { await cronDiscoverElite(env, 12); } catch { /* best effort */ }
-      // Pull in finance people ops-heavy scrapes miss (fills the Finance filter).
-      try { await cronDiscoverFinance(env, 12); } catch { /* best effort */ }
+      // Pull in Finance / Marketing / Supply Chain people ops-heavy scrapes miss.
+      try { await cronDiscoverFunctions(env, 18); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {
         const names = new Map();

@@ -393,30 +393,44 @@ export async function discoverEliteAtCompany(env, company) {
   return { leads: [...seen.values()], aborted: false };
 }
 
-// ---- Finance (and other under-covered functions) discovery ----------------
+// ---- Under-covered-function discovery (Finance / Marketing / Supply Chain) --
 // Public scrapes of logistics/retail companies skew heavily to operations, so
-// finance people often never land in our list at all — the client sees an empty
-// Finance filter and (rightly) distrusts it. This asks LinkedIn directly for the
-// company's finance people and returns them as real, addable rows (name + role +
-// current/ex + profile link) so the Finance filter fills with actual people.
-const FINANCE_Q = '("Chief Financial Officer" OR CFO OR "VP Finance" OR "Head of Finance" OR "Financial Controller" OR "Finance Controller" OR "Finance Manager" OR "Finance Director" OR "FP&A" OR "Chartered Accountant" OR "Finance Lead" OR "Financial Planning")';
-// A real finance JOB TITLE (not just the word "finance" appearing anywhere).
-const FIN_TITLE_RE = /\b(chief financial officer|cfo|deputy cfo|group cfo|vp[,\s]+finance|vice president[,\s]+finance|head[,\s]+of finance|finance head|financial controller|finance controller|finance manager|senior finance manager|finance director|director[,\s]+finance|manager[,\s]+finance|finance lead|finance business partner|fp&a|financial planning|treasury (?:head|manager|lead)|chartered accountant)\b/i;
+// whole functions (finance especially) often never land in our list — the client
+// sees an empty filter and (rightly) distrusts it. This asks LinkedIn directly
+// for a function's people and returns them as real, addable rows (name + role +
+// current/ex + profile link). Each spec's title-regex is aligned with the
+// dashboard's fnOf() classifier so discovered people land in the right bucket.
+const FUNCTION_SPECS = {
+  Finance: {
+    q: '("Chief Financial Officer" OR CFO OR "VP Finance" OR "Head of Finance" OR "Financial Controller" OR "Finance Manager" OR "Finance Director" OR "FP&A" OR "Chartered Accountant" OR "Finance Lead" OR "Financial Planning")',
+    re: /\b(chief financial officer|cfo|deputy cfo|group cfo|vp[,\s]+finance|vice president[,\s]+finance|head[,\s]+of finance|finance head|financial controller|finance controller|finance manager|senior finance manager|finance director|director[,\s]+finance|manager[,\s]+finance|finance lead|finance business partner|fp&a|financial planning|treasury (?:head|manager|lead)|chartered accountant)\b/i,
+  },
+  Marketing: {
+    q: '("Chief Marketing Officer" OR CMO OR "VP Marketing" OR "Head of Marketing" OR "Marketing Manager" OR "Brand Manager" OR "Growth Manager" OR "Head of Growth" OR "Digital Marketing" OR "Performance Marketing" OR "Marketing Director")',
+    re: /\b(chief marketing officer|cmo|vp[,\s]+marketing|vice president[,\s]+marketing|head[,\s]+of marketing|marketing head|senior marketing manager|marketing manager|marketing director|director[,\s]+marketing|brand manager|brand head|brand director|growth manager|head[,\s]+of growth|growth lead|digital marketing (?:manager|lead|head)|performance marketing (?:manager|lead)|marketing lead)\b/i,
+  },
+  'Supply Chain': {
+    q: '("Supply Chain" OR "VP Supply Chain" OR "Head of Supply Chain" OR "Head of Procurement" OR Procurement OR "Strategic Sourcing" OR "Warehouse Manager" OR "Inventory Manager" OR Merchandising)',
+    re: /\b(supply chain (?:head|manager|director|lead)|vp[,\s]+supply chain|head[,\s]+of supply chain|\bscm\b|head[,\s]+of procurement|procurement (?:head|manager|lead|specialist|director)|strategic sourcing|sourcing (?:head|manager|lead)|warehouse (?:head|manager)|inventory (?:head|manager)|merchandising (?:head|manager)|fulfil?ment (?:head|manager))\b/i,
+  },
+};
 
-export async function discoverFinancePeople(env, company) {
+export async function discoverFunctionPeople(env, company, funcKey) {
+  const spec = FUNCTION_SPECS[funcKey];
+  if (!spec) return { people: [], aborted: false };
   const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
   const coLc = String(company || '').toLowerCase().trim();
   const seen = new Map();                                // linkedin_url -> person
   let results;
-  try { results = await searcher(`site:linkedin.com/in "${company}" ${FINANCE_Q}`, env, 1); }
+  try { results = await searcher(`site:linkedin.com/in "${company}" ${spec.q}`, env, 1); }
   catch { return { people: [], aborted: true }; }
   for (const r of (results || [])) {
     const url = cleanLinkedInUrl(r.url);
     if (!url || seen.has(url)) continue;
     const title = r.title || '', snippet = r.snippet || '', hay = title + ' ' + snippet;
     if (coLc && !hay.toLowerCase().includes(coLc)) continue;   // must actually name the company
-    const rm = hay.match(FIN_TITLE_RE);
-    if (!rm) continue;                                         // must be a real finance TITLE
+    const rm = hay.match(spec.re);
+    if (!rm) continue;                                         // must be a real title for this function
     const name = nameFromLinkedInTitle(title);
     if (!name) continue;
     // Current vs ex: is the company named in the title (i.e. their current shop),
@@ -429,11 +443,14 @@ export async function discoverFinancePeople(env, company) {
       last_role: role, former_role: isCurrent ? '' : role,
       current_employer: isCurrent ? company : '',              // ex destinations fill in later via enrichment
       is_current: isCurrent, relationship: isCurrent ? 'current_employee' : 'ex_employee',
-      source: 'search', source_detail: 'finance-discovery',
+      source: 'search', source_detail: funcKey.toLowerCase().replace(/\s+/g, '-') + '-discovery',
     });
   }
   return { people: [...seen.values()], aborted: false };
 }
+// Backward-compatible alias (finance was the first function wired up).
+export function discoverFinancePeople(env, company) { return discoverFunctionPeople(env, company, 'Finance'); }
+export const DISCOVER_FUNCTIONS = Object.keys(FUNCTION_SPECS);
 
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
