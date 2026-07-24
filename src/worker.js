@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, discoverEliteAtCompany } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, discoverEliteAtCompany, discoverFinancePeople } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -415,6 +415,26 @@ async function cronDiscoverElite(env, budget) {
     if (aborted) break;
     await persistEliteLeads(env, co, label, leads);
     try { await setSetting(env, 'disc:' + co, new Date().toISOString()); } catch { /* best effort */ }
+    done++;
+  }
+  return done;
+}
+
+// Daily self-heal: for each tracked company not yet done, pull in finance people
+// (ops-heavy scrapes routinely miss them) so the Finance filter isn't empty.
+async function cronDiscoverFinance(env, budget) {
+  if (!hasSearchKey(env)) return 0;
+  const { results } = await env.DB.prepare('SELECT company, company_label FROM people GROUP BY company').all();
+  let done = 0;
+  for (const r of (results || [])) {
+    if (done >= budget) break;
+    const co = r.company;
+    if (await getSetting(env, 'fin:' + co)) continue;           // already fetched once
+    const label = r.company_label || co;
+    const { people, aborted } = await discoverFinancePeople(env, label);
+    if (aborted) break;
+    if (people.length) await upsertPeopleBulk(env, label, people.map(p => ({ ...p, company: label, company_label: label })));
+    try { await setSetting(env, 'fin:' + co, new Date().toISOString()); } catch { /* best effort */ }
     done++;
   }
   return done;
@@ -1088,6 +1108,27 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, found: leads.length, leads: results || [] });
   }
 
+  // POST /api/discover-finance -> find the company's finance people on public
+  // LinkedIn and add them as real rows, so the Finance filter stops being empty
+  // for ops-heavy companies whose scrape missed finance. Body: { company }.
+  if (path === '/api/discover-finance' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    if (!hasSearchKey(env)) return json({ ok: true, found: 0, added: 0, disabled: true });
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const { people, aborted } = await discoverFinancePeople(env, company);
+    if (aborted) return json({ ok: true, found: 0, added: 0, aborted: true });
+    let created = 0;
+    if (people.length) {
+      const rows = people.map(p => ({ ...p, company, company_label: company }));
+      const res = await upsertPeopleBulk(env, company, rows);
+      created = res.created;
+    }
+    try { await setSetting(env, 'fin:' + normCompany(company), new Date().toISOString()); } catch { /* best effort */ }
+    return json({ ok: true, found: people.length, added: created });
+  }
+
   // POST /api/outreach-reasons -> write a specific, LLM-generated reason (via
   // Workers AI) for each person in the outreach list. Body: { company, items[] }.
   // Returns { reasons:[string|null] } aligned to items; null = fall back to the
@@ -1269,6 +1310,8 @@ export default {
       try { await cronProbeElite(env, 24); } catch { /* best effort */ }
       // Company-first discovery: find named IIT/IIM/ISB alumni our list missed.
       try { await cronDiscoverElite(env, 12); } catch { /* best effort */ }
+      // Pull in finance people ops-heavy scrapes miss (fills the Finance filter).
+      try { await cronDiscoverFinance(env, 12); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {
         const names = new Map();

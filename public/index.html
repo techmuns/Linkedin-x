@@ -1787,6 +1787,13 @@ async function discoverEliteLoop(company){
     if(r&&!r.disabled&&Array.isArray(r.leads)){ELITE_LEADS=r.leads;render();}
   }catch{/* best effort */}
 }
+// Pull finance people into the table (ops-heavy scrapes miss them → empty Finance filter).
+async function discoverFinanceLoop(company){
+  try{
+    const r=await(await fetch('/api/discover-finance',{method:'POST',headers:authHeaders(),body:JSON.stringify({company})})).json();
+    if(r&&r.added)await loadAll();
+  }catch{/* best effort */}
+}
 async function enrichApifyLoop(company){
   if(ENRICHING)return;ENRICHING=true;let holdMsg=false;   // resolve+probe are search-based, so run even when Apify is off
   try{
@@ -1811,6 +1818,8 @@ async function enrichApifyLoop(company){
     await probeEliteLoop(company);         // fills a LIKELY school for anyone still unverified
     setEnrichPill('Finding elite alumni…');
     await discoverEliteLoop(company);      // company-first: who here went to IIT/IIM/ISB?
+    setEnrichPill('Finding finance people…');
+    await discoverFinanceLoop(company);    // fill the Finance filter for ops-heavy scrapes
     await loadAll();                       // final refresh
   }finally{ENRICHING=false;if(holdMsg)setTimeout(()=>setEnrichPill(''),9000);else setEnrichPill('');}
 }

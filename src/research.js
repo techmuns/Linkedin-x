@@ -393,6 +393,48 @@ export async function discoverEliteAtCompany(env, company) {
   return { leads: [...seen.values()], aborted: false };
 }
 
+// ---- Finance (and other under-covered functions) discovery ----------------
+// Public scrapes of logistics/retail companies skew heavily to operations, so
+// finance people often never land in our list at all — the client sees an empty
+// Finance filter and (rightly) distrusts it. This asks LinkedIn directly for the
+// company's finance people and returns them as real, addable rows (name + role +
+// current/ex + profile link) so the Finance filter fills with actual people.
+const FINANCE_Q = '("Chief Financial Officer" OR CFO OR "VP Finance" OR "Head of Finance" OR "Financial Controller" OR "Finance Controller" OR "Finance Manager" OR "Finance Director" OR "FP&A" OR "Chartered Accountant" OR "Finance Lead" OR "Financial Planning")';
+// A real finance JOB TITLE (not just the word "finance" appearing anywhere).
+const FIN_TITLE_RE = /\b(chief financial officer|cfo|deputy cfo|group cfo|vp[,\s]+finance|vice president[,\s]+finance|head[,\s]+of finance|finance head|financial controller|finance controller|finance manager|senior finance manager|finance director|director[,\s]+finance|manager[,\s]+finance|finance lead|finance business partner|fp&a|financial planning|treasury (?:head|manager|lead)|chartered accountant)\b/i;
+
+export async function discoverFinancePeople(env, company) {
+  const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
+  const coLc = String(company || '').toLowerCase().trim();
+  const seen = new Map();                                // linkedin_url -> person
+  let results;
+  try { results = await searcher(`site:linkedin.com/in "${company}" ${FINANCE_Q}`, env, 1); }
+  catch { return { people: [], aborted: true }; }
+  for (const r of (results || [])) {
+    const url = cleanLinkedInUrl(r.url);
+    if (!url || seen.has(url)) continue;
+    const title = r.title || '', snippet = r.snippet || '', hay = title + ' ' + snippet;
+    if (coLc && !hay.toLowerCase().includes(coLc)) continue;   // must actually name the company
+    const rm = hay.match(FIN_TITLE_RE);
+    if (!rm) continue;                                         // must be a real finance TITLE
+    const name = nameFromLinkedInTitle(title);
+    if (!name) continue;
+    // Current vs ex: is the company named in the title (i.e. their current shop),
+    // as opposed to only appearing in the snippet as a past role?
+    const afterName = title.replace(/\s*\|\s*linkedin.*$/i, '').split(/\s+[-–—|]\s+/).slice(1).join(' ').toLowerCase();
+    const isCurrent = afterName.includes(coLc) ? 1 : 0;
+    const role = rm[0].replace(/\s+/g, ' ').trim();
+    seen.set(url, {
+      full_name: name, linkedin_url: url,
+      last_role: role, former_role: isCurrent ? '' : role,
+      current_employer: isCurrent ? company : '',              // ex destinations fill in later via enrichment
+      is_current: isCurrent, relationship: isCurrent ? 'current_employee' : 'ex_employee',
+      source: 'search', source_detail: 'finance-discovery',
+    });
+  }
+  return { people: [...seen.values()], aborted: false };
+}
+
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
 // leaver went NOW. ZoomInfo's public company page does — it lists current
