@@ -337,6 +337,62 @@ export async function probeEliteBatch(env, company, people) {
   return { found, tried, aborted: false };
 }
 
+// ---- Company-first elite discovery ----------------------------------------
+// The per-person probe above only checks people we ALREADY have — but our list
+// (often ZoomInfo-sourced) misses many people entirely, which is why the client
+// kept seeing "0 IIT/IIM". This asks the question the other way round: "who at
+// <company> went to IIT / IIM / ISB?" — one search per school — and returns the
+// named LinkedIn profiles found. High-signal because the school is read straight
+// from the result title/snippet with the same strict matcher, and we require the
+// company to actually appear so we don't pick up unrelated people.
+
+// Pull a person's name out of a LinkedIn result title. Titles look like
+// "Sudeep Nagar - BlueStone | LinkedIn" or "Anurag Mittal - Mumbai, India |
+// Professional Profile | LinkedIn" — the name is the part before the first
+// " - " / " | ". Reject anything that isn't a plausible 2–5 word person name.
+function nameFromLinkedInTitle(title) {
+  let t = String(title || '').trim();
+  t = t.replace(/\s*\|\s*linkedin\s*$/i, '');            // drop trailing "| LinkedIn"
+  t = t.split(/\s+[-–—|]\s+/)[0].trim();                 // name is before " - Company" / " | …"
+  t = t.replace(/[,(].*$/, '').trim();                   // drop a trailing ", Location" / "(…)"
+  const toks = t.split(/\s+/);
+  if (toks.length < 2 || toks.length > 5) return '';
+  if (!/^[A-Za-z][A-Za-z.'’-]*(\s+[A-Za-z][A-Za-z.'’-]*)+$/.test(t)) return '';
+  return t;
+}
+
+const ELITE_QUERIES = [
+  { q: '("Indian Institute of Technology" OR IIT)' },
+  { q: '("Indian Institute of Management" OR IIM)' },
+  { q: '"Indian School of Business"' },
+];
+
+// company: the display label (e.g. "BlueStone"). Returns
+// { leads:[{full_name,linkedin_url,school,evidence}], aborted }. aborted = the
+// first search threw (API down), so nothing was gathered — retry later.
+export async function discoverEliteAtCompany(env, company) {
+  const searcher = env.SERPER_API_KEY ? serperSearch : googleSearch;
+  const coLc = String(company || '').toLowerCase().trim();
+  const seen = new Map();                                // linkedin_url -> lead
+  for (let i = 0; i < ELITE_QUERIES.length; i++) {
+    let results;
+    try { results = await searcher(`site:linkedin.com/in "${company}" ${ELITE_QUERIES[i].q}`, env, 1); }
+    catch { if (seen.size === 0 && i === 0) return { leads: [], aborted: true }; break; }
+    for (const r of (results || [])) {
+      const url = cleanLinkedInUrl(r.url);
+      if (!url || seen.has(url)) continue;
+      const hay = (r.title || '') + ' ' + (r.snippet || '');
+      if (coLc && !hay.toLowerCase().includes(coLc)) continue;   // must actually name the company
+      const school = eliteSchoolIn(hay);                          // strict: real school, not a bare abbrev
+      if (!school) continue;
+      const name = nameFromLinkedInTitle(r.title);
+      if (!name) continue;
+      seen.set(url, { full_name: name, linkedin_url: url, school, evidence: (r.snippet || r.title || '').slice(0, 160) });
+    }
+  }
+  return { leads: [...seen.values()], aborted: false };
+}
+
 // ---- ZoomInfo via Firecrawl ------------------------------------------------
 // LinkedIn blocks servers, and public LinkedIn snippets rarely say where a
 // leaver went NOW. ZoomInfo's public company page does — it lists current

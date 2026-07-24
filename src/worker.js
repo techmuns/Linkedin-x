@@ -10,7 +10,7 @@
 // Reads are open. The dashboard stores the token in the browser and sends it
 // on edits.
 
-import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch } from './research.js';
+import { researchCompany, hasSearchKey, hasApify, apifyEnrich, resolveLinkedInBatch, probeEliteBatch, discoverEliteAtCompany } from './research.js';
 
 const SENIORITY_RANK = {
   founder: 100,
@@ -381,6 +381,41 @@ async function cronProbeElite(env, budget) {
         : env.DB.prepare('UPDATE people SET elite_tried = ? WHERE id = ?').bind(now, id)));
       done += tried.length;
     }
+  }
+  return done;
+}
+
+// Store company-first elite discovery results, and cross-mark anyone we already
+// track so their likely-school badge fills in too. Shared by the endpoint + cron.
+async function persistEliteLeads(env, co, label, leads) {
+  if (!leads || !leads.length) return;
+  const now = new Date().toISOString();
+  await env.DB.batch(leads.map(l => env.DB.prepare(
+    'INSERT OR IGNORE INTO elite_leads (id, company, company_label, full_name, linkedin_url, school, evidence, found_at) VALUES (?,?,?,?,?,?,?,?)'
+  ).bind(crypto.randomUUID(), co, label, l.full_name, l.linkedin_url, l.school, l.evidence || '', now)));
+  await env.DB.batch(leads.map(l => env.DB.prepare(
+    `UPDATE people SET elite_guess = ?, elite_tried = COALESCE(elite_tried, ?)
+       WHERE company = ? AND lower(full_name) = lower(?)
+         AND (education IS NULL OR education = '') AND (elite_guess IS NULL OR elite_guess = '')`
+  ).bind(l.school, now, co, l.full_name)));
+}
+
+// Daily self-heal: for each tracked company we haven't asked yet, run the
+// company-first "who here went to IIT/IIM/ISB?" discovery once.
+async function cronDiscoverElite(env, budget) {
+  if (!hasSearchKey(env)) return 0;
+  const { results } = await env.DB.prepare('SELECT company, company_label FROM people GROUP BY company').all();
+  let done = 0;
+  for (const r of (results || [])) {
+    if (done >= budget) break;
+    const co = r.company;
+    if (await getSetting(env, 'disc:' + co)) continue;          // already discovered once
+    const label = r.company_label || co;
+    const { leads, aborted } = await discoverEliteAtCompany(env, label);
+    if (aborted) break;
+    await persistEliteLeads(env, co, label, leads);
+    try { await setSetting(env, 'disc:' + co, new Date().toISOString()); } catch { /* best effort */ }
+    done++;
   }
   return done;
 }
@@ -767,6 +802,10 @@ async function ensureSchema(env) {
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN elite_guess TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('ALTER TABLE people ADD COLUMN elite_tried TEXT').run(); } catch { /* already exists */ }
   try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { /* already exists */ }
+  // elite_leads: named IIT/IIM/ISB people found by asking "who at <company> went
+  // to an elite school?" (company-first discovery) — surfaces alumni our people
+  // list never had. One row per (company, profile).
+  try { await env.DB.prepare('CREATE TABLE IF NOT EXISTS elite_leads (id TEXT PRIMARY KEY, company TEXT, company_label TEXT, full_name TEXT, linkedin_url TEXT, school TEXT, evidence TEXT, found_at TEXT, UNIQUE(company, linkedin_url))').run(); } catch { /* already exists */ }
   schemaEnsured = true;
 }
 
@@ -1017,6 +1056,38 @@ async function handleApi(request, env, url, ctx) {
     return json({ ok: true, found: found.length, remaining });
   }
 
+  // GET /api/discover-elite?company=X -> the stored company-first elite alumni
+  // (IIT/IIM/ISB) for the panel. Read-only, no search spend.
+  if (path === '/api/discover-elite' && method === 'GET') {
+    const co = normCompany(url.searchParams.get('company'));
+    if (!co) return json({ leads: [] });
+    const { results } = await env.DB.prepare(
+      'SELECT full_name, linkedin_url, school, evidence FROM elite_leads WHERE company = ? ORDER BY school ASC, full_name ASC LIMIT 60'
+    ).bind(co).all();
+    return json({ leads: results || [] });
+  }
+
+  // POST /api/discover-elite -> run company-first elite discovery once: "who at
+  // <company> went to IIT/IIM/ISB?". Stores what it finds, cross-marks anyone we
+  // already track (fills their likely-school badge), and returns the full list.
+  // Body: { company }. Free — search only, no Apify.
+  if (path === '/api/discover-elite' && method === 'POST') {
+    if (!requireAuth(request, env)) return json({ error: 'unauthorized' }, { status: 401 });
+    if (!hasSearchKey(env)) return json({ ok: true, found: 0, leads: [], disabled: true });
+    const body = await request.json().catch(() => ({}));
+    const company = (body.company || '').trim();
+    if (!company) return json({ error: 'company required' }, { status: 400 });
+    const co = normCompany(company);
+    const { leads, aborted } = await discoverEliteAtCompany(env, company);
+    if (aborted) return json({ ok: true, found: 0, leads: [], aborted: true });
+    if (leads.length) await persistEliteLeads(env, co, company, leads);
+    try { await setSetting(env, 'disc:' + co, new Date().toISOString()); } catch { /* best effort */ }
+    const { results } = await env.DB.prepare(
+      'SELECT full_name, linkedin_url, school, evidence FROM elite_leads WHERE company = ? ORDER BY school ASC, full_name ASC LIMIT 60'
+    ).bind(co).all();
+    return json({ ok: true, found: leads.length, leads: results || [] });
+  }
+
   // POST /api/outreach-reasons -> write a specific, LLM-generated reason (via
   // Workers AI) for each person in the outreach list. Body: { company, items[] }.
   // Returns { reasons:[string|null] } aligned to items; null = fall back to the
@@ -1196,6 +1267,8 @@ export default {
       try { await cronEnrichApify(env, 40); } catch { /* best effort */ }
       // Fill a LIKELY school (from search) for anyone Apify couldn't verify.
       try { await cronProbeElite(env, 24); } catch { /* best effort */ }
+      // Company-first discovery: find named IIT/IIM/ISB alumni our list missed.
+      try { await cronDiscoverElite(env, 12); } catch { /* best effort */ }
       // Research (needs a search key): refresh each tracked company.
       if (hasSearchKey(env)) {
         const names = new Map();

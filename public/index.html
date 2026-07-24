@@ -372,6 +372,22 @@
   .snap .dchip{background:linear-gradient(135deg,#f1eefb,#e9e5f9);color:#5b4e99;font-weight:700;font-size:12px;
     padding:5px 11px;border-radius:8px;border:1px solid #e4def6}
 
+  /* Company-first elite-alumni panel — named IIT/IIM/ISB people found on public
+     LinkedIn. A distinct discovery strip; NOT part of the outreach table. */
+  .epanel{position:relative;overflow:hidden;background:linear-gradient(135deg,#fbfaff 0%,#f4f1fd 100%);
+    border:1px solid #e6e2f5;border-radius:14px;padding:13px 18px;margin-top:12px;box-shadow:var(--shadow-card)}
+  .epanel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#8b6f14)}
+  .epanel .ephead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .epanel .eptitle{font-weight:800;font-size:13px;color:#1e2233}
+  .epanel .epcount{background:#efe8ff;color:#5b4e99;font-weight:800;font-size:11px;padding:1px 8px;border-radius:20px}
+  .epanel .epnote{font-size:11px;color:#8790ab;margin:3px 0 9px}
+  .epanel .epchips{display:flex;gap:8px;flex-wrap:wrap}
+  .epanel .epchip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #e6e2f5;
+    border-radius:9px;padding:5px 9px 5px 11px;font-size:12.5px;color:#2c3350;text-decoration:none;font-weight:650;
+    transition:border-color 140ms ease,box-shadow 140ms ease}
+  .epanel .epchip:hover{border-color:#c9a227;box-shadow:0 3px 10px -4px rgba(139,111,20,.45)}
+  .epanel .epchip .epli{color:#0a66c2;font-weight:800;font-size:11px}
+
   /* Dense research grid (default view) */
   .table-wrap{margin-top:14px;overflow-x:auto}
   table.grid{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;background:var(--card-bg);
@@ -569,6 +585,8 @@
   </div>
 
   <div class="snap" id="snapshot" style="display:none"></div>
+
+  <div class="epanel" id="elitePanel" style="display:none"></div>
 
   <div class="fpanel">
     <div class="fgroup">
@@ -903,9 +921,16 @@ const PRIVATE_COS=[
   ['DeHaat',''],['Ninjacart',''],['Zetwerk',''],['OfBusiness',''],['Moglix',''],['Infra.Market',''],['Cars24',''],['Spinny',''],['Urban Company',''],['cult.fit',''],['PharmEasy',''],['Practo',''],['Unacademy',''],['upGrad',''],
 ];
 function isNew(p){const t=Date.parse(p.created_at);return !isNaN(t)&&(Date.now()-t)<7*86400000;}
+let ELITE_LEADS=[];
+async function loadEliteLeads(){
+  if(!COMPANY){ELITE_LEADS=[];return;}
+  try{const r=await(await fetch('/api/discover-elite?company='+encodeURIComponent(COMPANY))).json();ELITE_LEADS=r.leads||[];}
+  catch{ELITE_LEADS=[];}
+}
 async function loadAll(){
   const r=await fetch('/api/people');RAW=((await r.json()).people||[]).map(enrich);
   if(!COMPANY_DIR.length){try{COMPANY_DIR=await(await fetch('/companies.json')).json();}catch{COMPANY_DIR=[];}}
+  await loadEliteLeads();
   renderPills();render();
 }
 function scopeList(){return COMPANY?RAW.filter(p=>p.company===COMPANY):RAW;}
@@ -1241,6 +1266,20 @@ function renderSnapshot(scope){
     <div class="dest"><div class="l">${sideLabel}</div><div class="dchips">${chips}</div></div>`;
   snap.style.display='flex';
 }
+// Company-first elite-alumni strip: named IIT/IIM/ISB people found for the
+// selected company (discovery, not the outreach table). Hidden when empty.
+function renderElitePanel(){
+  const el=$('elitePanel');
+  if(!COMPANY||!ELITE_LEADS.length){el.style.display='none';return;}
+  const label=titleCo(RAW.find(p=>p.company===COMPANY)?.company_label||COMPANY);
+  const order={ISB:0,IIM:1,IIT:2};
+  const leads=ELITE_LEADS.slice().sort((a,b)=>((order[a.school]??9)-(order[b.school]??9))||String(a.full_name).localeCompare(b.full_name));
+  const chips=leads.map(l=>`<a class="epchip" href="${esc(l.linkedin_url)}" target="_blank" rel="noopener" title="${esc(l.evidence||'')}"><span>${esc(l.full_name)}</span><span class="gschool">${esc(l.school)}</span><span class="epli">in ↗</span></a>`).join('');
+  el.innerHTML=`<div class="ephead"><span class="eptitle">🎓 Elite alumni linked to ${esc(label)}</span><span class="epcount">${leads.length}</span></div>
+    <div class="epnote">IIT / IIM / ISB profiles found automatically on public LinkedIn — current or past. Verify before outreach.</div>
+    <div class="epchips">${chips}</div>`;
+  el.style.display='block';
+}
 
 // Sorting for the grid. Default (SORT.col==='') keeps the relevance order from applyFilters.
 function sortComparable(p,col){
@@ -1269,6 +1308,7 @@ function render(){
   $('tcEx').textContent=scope.filter(p=>effCurrent(p)===0).length;
   $('tcCur').textContent=scope.filter(p=>effCurrent(p)===1).length;
   renderSnapshot(scope);
+  renderElitePanel();
   // Current tab drops the exposure/now-at/left columns — don't stay sorted by a hidden one.
   if(TAB==='current'&&['exp','now','left'].includes(SORT.col)){SORT.col='';SORT.dir=-1;}
   const rows=sortRows(applyFilters(scope));
@@ -1717,6 +1757,14 @@ async function probeEliteLoop(company){
     setEnrichPill('Checking schools… '+r.remaining+' left');
   }
 }
+// Company-first elite discovery: one call runs the "who at <company> went to
+// IIT/IIM/ISB?" searches server-side and returns the named alumni for the panel.
+async function discoverEliteLoop(company){
+  try{
+    const r=await(await fetch('/api/discover-elite',{method:'POST',headers:authHeaders(),body:JSON.stringify({company})})).json();
+    if(r&&!r.disabled&&Array.isArray(r.leads)){ELITE_LEADS=r.leads;render();}
+  }catch{/* best effort */}
+}
 async function enrichApifyLoop(company){
   if(ENRICHING)return;ENRICHING=true;let holdMsg=false;   // resolve+probe are search-based, so run even when Apify is off
   try{
@@ -1739,6 +1787,8 @@ async function enrichApifyLoop(company){
     }
     setEnrichPill('Checking schools…');
     await probeEliteLoop(company);         // fills a LIKELY school for anyone still unverified
+    setEnrichPill('Finding elite alumni…');
+    await discoverEliteLoop(company);      // company-first: who here went to IIT/IIM/ISB?
     await loadAll();                       // final refresh
   }finally{ENRICHING=false;if(holdMsg)setTimeout(()=>setEnrichPill(''),9000);else setEnrichPill('');}
 }
