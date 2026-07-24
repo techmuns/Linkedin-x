@@ -599,6 +599,7 @@
       <div class="seg" id="sourceType">
         <button data-st="all" class="on">▦ All</button>
         <button data-st="finance">📊 Finance</button>
+        <button data-st="marketing">📣 Marketing</button>
         <button data-st="ops">📦 Ops &amp; Supply Chain</button>
         <button data-st="ceo">👑 C-Suite &amp; Founders</button>
         <button data-st="left">🕒 Recently left</button>
@@ -1009,6 +1010,7 @@ async function deleteCompany(company){
 function stypePass(p){
   if(STYPE==='all')return true;
   if(STYPE==='finance')return p._fn==='Finance';
+  if(STYPE==='marketing')return p._fn==='Marketing';
   if(STYPE==='ops')return p._fn==='Operations'||p._fn==='Supply Chain';
   if(STYPE==='ceo')return ['founder','clevel'].includes(p.seniority);
   if(STYPE==='left')return Number(p.is_current)===0;
