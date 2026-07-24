@@ -428,7 +428,12 @@
   .gexp small{display:block;color:#98a0b8;font-weight:500;font-size:11px;margin-top:1px}
   .gexp .muted{color:#b0b6c8}
   .gnow{font-weight:650;color:#1e2233}
-  .gnow.still{color:#b54708}.gnow.empty{color:#b0b6c8;font-weight:500}
+  .gnow.still{color:#b54708}
+  /* Empty "Now At" — a soft, left-aligned status chip so unknown values read as
+     intentional (and line up with real employer names) instead of floaty grey text. */
+  .gnow.empty{display:inline-flex;align-items:center;gap:6px;color:#8f97ac;font-weight:600;font-size:11px;
+    background:#f4f3fa;border:1px solid #ebe9f5;border-radius:20px;padding:2px 10px 2px 8px}
+  .gnow.empty::before{content:"";width:5px;height:5px;border-radius:50%;background:#cbcfde;flex:none}
   .gleft{font-weight:700}.gleft.fresh{color:#067647}.gleft.warm{color:#b54708}.gleft.old{color:#98a0b8}.gleft.pres{color:#067647}
   .grid tbody td.gact{text-align:right;white-space:nowrap;text-overflow:clip;padding-left:6px}
   .gstar{opacity:0;color:#c0c5d8;font-size:16px;margin-right:9px;cursor:pointer;transition:opacity 140ms}
