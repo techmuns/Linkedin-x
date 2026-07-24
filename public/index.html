@@ -801,7 +801,7 @@ function ago(iso){if(!iso)return '—';const d=Date.parse(iso);if(isNaN(d))retur
 
 // enrichment
 function fnOf(p){const t=((p.last_role||'')+' '+(p.current_role||'')+' '+(p.seniority||'')).toLowerCase();
-  if(/\bcfo\b|chief financial|financial officer|finance|controller|\baccounts\b|treasury|\baudit\b|fp&a/.test(t))return'Finance';
+  if(/\bcfo\b|chief financial|financ(e|ial)|controller|account(ant|ing|s)|treasury|\baudit\b|fp&a|taxation/.test(t))return'Finance';
   if(/\bcto\b|\bcio\b|chief technology|software|engineering|\bengineer|developer|data scien|analytics|machine learning|platform|\bproduct\b/.test(t))return'Technology';
   if(/\bcmo\b|chief marketing|marketing|\bbrand\b|growth|social media|communications|\bcategory\b/.test(t))return'Marketing';
   if(/supply chain|\bscm\b|procurement|sourcing|merchandis|warehouse|inventory|fulfil/.test(t))return'Supply Chain';
